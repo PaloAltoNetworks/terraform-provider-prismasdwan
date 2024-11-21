@@ -1,3 +1,3 @@
-data "prismasdwan_site" "site1" {
-  site_name = "Site1"
+data "prismasdwan_site" "example" {
+  site_id = "123456789"
 }
