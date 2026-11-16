@@ -33,9 +33,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &sitePrismaAccessConfigResource{}
-	_ resource.ResourceWithConfigure   = &sitePrismaAccessConfigResource{}
-	_ resource.ResourceWithImportState = &sitePrismaAccessConfigResource{}
+	_ resource.Resource                   = &sitePrismaAccessConfigResource{}
+	_ resource.ResourceWithConfigure      = &sitePrismaAccessConfigResource{}
+	_ resource.ResourceWithImportState    = &sitePrismaAccessConfigResource{}
+	_ resource.ResourceWithValidateConfig = &sitePrismaAccessConfigResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -56,6 +57,12 @@ type sitePrismaAccessConfigResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *sitePrismaAccessConfigResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *sitePrismaAccessConfigResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_site_prisma_access_config"
@@ -64,13 +71,14 @@ func (r *sitePrismaAccessConfigResource) Metadata(_ context.Context, req resourc
 // Schema defines the schema for this data source.
 func (r *sitePrismaAccessConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Site Prisma Access Config.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=PrismaAccessConfig
 			// generic x_parameters is added to accomodate path parameters
@@ -79,53 +87,60 @@ func (r *sitePrismaAccessConfigResource) Schema(_ context.Context, _ resource.Sc
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=remote_networks, type=ARRAY_REFERENCE macro=rss_schema
 			"remote_networks": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Remote networks.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=edge_location_display, type=STRING macro=rss_schema
 						"edge_location_display": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Edge location display.",
 						},
 						// key name holder for attribute: name=edge_location_display, type=STRING macro=rss_schema
 						// property: name=edge_location_value, type=STRING macro=rss_schema
 						"edge_location_value": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Edge location value.",
 						},
 						// key name holder for attribute: name=edge_location_value, type=STRING macro=rss_schema
 						// property: name=remote_network_names, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -134,6 +149,7 @@ func (r *sitePrismaAccessConfigResource) Schema(_ context.Context, _ resource.Sc
 							Computed:    false,
 							Optional:    true,
 							Sensitive:   false,
+							Description: "Remote network names.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=remote_network_names, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -143,27 +159,30 @@ func (r *sitePrismaAccessConfigResource) Schema(_ context.Context, _ resource.Sc
 							Computed:    false,
 							Optional:    true,
 							Sensitive:   false,
+							Description: "Service link ids.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=service_link_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=spn_name, type=STRING macro=rss_schema
 						"spn_name": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Spn name.",
 						},
 						// key name holder for attribute: name=spn_name, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=spn_name, type=STRING macro=rss_schema
+			// key name holder for attribute: name=remote_networks, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=site_id, type=STRING macro=rss_schema
 			"site_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Site id. Value: at most 50 characters, matching `^-?[0-9]{1,50}$`. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=site_id, type=STRING macro=rss_schema
 		},
@@ -268,6 +287,8 @@ func (r *sitePrismaAccessConfigResource) doPost(ctx context.Context, plan *rsMod
 	request_body_string, _ = sjson.Delete(request_body_string, "_etag")
 	tflog.Debug(ctx, "http json override: set request_body_string::_schema")
 	request_body_string, _ = sjson.Set(request_body_string, "_schema", 0)
+	// inject overrides
+	request_body_string = SetIfNull(request_body_string, "site_id", *params["site_id"])
 	// copy pointer
 	create_request.RequestBody = &request_body_string
 
@@ -366,7 +387,16 @@ func (r *sitePrismaAccessConfigResource) doPost(ctx context.Context, plan *rsMod
 		}
 	}
 	// property: name=site_id, type=STRING macro=copy_to_state
+	priorSiteId := state.SiteId
 	state.SiteId = types.StringPointerValue(ans.SiteId)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.SiteId == nil {
+		if !plan.SiteId.IsUnknown() {
+			state.SiteId = plan.SiteId
+		} else {
+			state.SiteId = priorSiteId
+		}
+	}
 	return true
 }
 
@@ -438,7 +468,23 @@ func (r *sitePrismaAccessConfigResource) doGet(ctx context.Context, state *rsMod
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -489,7 +535,16 @@ func (r *sitePrismaAccessConfigResource) doGet(ctx context.Context, state *rsMod
 		}
 	}
 	// property: name=site_id, type=STRING macro=copy_to_state
+	priorSiteId := state.SiteId
 	state.SiteId = types.StringPointerValue(ans.SiteId)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.SiteId == nil {
+		if !savestate.SiteId.IsUnknown() {
+			state.SiteId = savestate.SiteId
+		} else {
+			state.SiteId = priorSiteId
+		}
+	}
 	return true
 }
 
@@ -565,9 +620,9 @@ func (r *sitePrismaAccessConfigResource) doPut(ctx context.Context, plan *rsMode
 		body.Id = StringValueOrNil(plan.Id)
 	}
 	// property: name=remote_networks, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.RemoteNetworks == nil && (state == nil || state.RemoteNetworks == nil) {
+	if plan.RemoteNetworks == nil && (!(state != nil) || state.RemoteNetworks == nil) {
 		body.RemoteNetworks = nil
-	} else if len(plan.RemoteNetworks) == 0 && (state == nil || len(state.RemoteNetworks) == 0) {
+	} else if len(plan.RemoteNetworks) == 0 && (!(state != nil) || len(state.RemoteNetworks) == 0) {
 		body.RemoteNetworks = []sdwan_schema.RemoteNetwork{}
 	} else if len(plan.RemoteNetworks) != 0 || (state != nil && len(state.RemoteNetworks) != 0) {
 		RemoteNetworksToUse := plan.RemoteNetworks
@@ -609,6 +664,8 @@ func (r *sitePrismaAccessConfigResource) doPut(ctx context.Context, plan *rsMode
 
 	// process http json path
 	request_body_string := string(json_body)
+	// inject overrides
+	request_body_string = SetIfNull(request_body_string, "site_id", *params["site_id"])
 	// copy pointer
 	put_request.RequestBody = &request_body_string
 
@@ -646,6 +703,12 @@ func (r *sitePrismaAccessConfigResource) doPut(ctx context.Context, plan *rsMode
 	if json_err != nil {
 		resp.Diagnostics.AddError("error in json unmarshal to PrismaAccessConfig in update", json_err.Error())
 		return false
+	}
+
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
 	}
 
 	// Store the answer to state. schema=PrismaAccessConfig
@@ -686,7 +749,16 @@ func (r *sitePrismaAccessConfigResource) doPut(ctx context.Context, plan *rsMode
 		}
 	}
 	// property: name=site_id, type=STRING macro=copy_to_state
+	priorSiteId := state.SiteId
 	state.SiteId = types.StringPointerValue(ans.SiteId)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.SiteId == nil {
+		if !plan.SiteId.IsUnknown() {
+			state.SiteId = plan.SiteId
+		} else {
+			state.SiteId = priorSiteId
+		}
+	}
 	return true
 }
 

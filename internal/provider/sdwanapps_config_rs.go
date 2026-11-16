@@ -32,9 +32,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &sdwanappsConfigResource{}
-	_ resource.ResourceWithConfigure   = &sdwanappsConfigResource{}
-	_ resource.ResourceWithImportState = &sdwanappsConfigResource{}
+	_ resource.Resource                   = &sdwanappsConfigResource{}
+	_ resource.ResourceWithConfigure      = &sdwanappsConfigResource{}
+	_ resource.ResourceWithImportState    = &sdwanappsConfigResource{}
+	_ resource.ResourceWithValidateConfig = &sdwanappsConfigResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -55,6 +56,12 @@ type sdwanappsConfigResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *sdwanappsConfigResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"app_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *sdwanappsConfigResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_sdwanapps_config"
@@ -63,13 +70,14 @@ func (r *sdwanappsConfigResource) Metadata(_ context.Context, req resource.Metad
 // Schema defines the schema for this data source.
 func (r *sdwanappsConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Sdwanapps Config.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=SDWANAppConfigScreen
 			// generic x_parameters is added to accomodate path parameters
@@ -78,53 +86,60 @@ func (r *sdwanappsConfigResource) Schema(_ context.Context, _ resource.SchemaReq
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=state, type=STRING macro=rss_schema
 			"state": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "State. Value: one of enabled, disabled, paused.",
 			},
 			// key name holder for attribute: name=state, type=STRING macro=rss_schema
-			// property: name=user_config, type=OBJECT macro=rss_schema
-			"user_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+			// property: name=user_config, type=JSON_STRING macro=rss_schema
+			"user_config": rsschema.StringAttribute{
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "User config.",
 			},
-			// key name holder for attribute: name=user_config, type=OBJECT macro=rss_schema
+			// key name holder for attribute: name=user_config, type=JSON_STRING macro=rss_schema
 			// property: name=version, type=STRING macro=rss_schema
 			"version": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Version.",
 			},
 			// key name holder for attribute: name=version, type=STRING macro=rss_schema
 		},
@@ -188,7 +203,8 @@ func (r *sdwanappsConfigResource) doPost(ctx context.Context, plan *rsModelSDWAN
 	body.Id = StringValueOrNil(plan.Id)
 	// property: name=state, type=STRING macro=copy_from_plan
 	body.State = StringValueOrNil(plan.State)
-	// property: name=user_config, type=OBJECT macro=copy_from_plan
+	// property: name=user_config, type=JSON_STRING macro=copy_from_plan
+	body.UserConfig = JSONStringToMap(plan.UserConfig, &resp.Diagnostics)
 	// property: name=version, type=STRING macro=copy_from_plan
 	body.Version = StringValueOrNil(plan.Version)
 
@@ -279,7 +295,13 @@ func (r *sdwanappsConfigResource) doPost(ctx context.Context, plan *rsModelSDWAN
 	state.Id = types.StringPointerValue(ans.Id)
 	// property: name=state, type=STRING macro=copy_to_state
 	state.State = types.StringPointerValue(ans.State)
-	// property: name=user_config, type=OBJECT macro=copy_to_state
+	// property: name=user_config, type=JSON_STRING macro=copy_to_state
+	// x_flag_json_string: the api returns an object, terraform holds it as JSON text; keep the configured text when it means the same
+	priorUserConfigJson := types.StringNull()
+	if true {
+		priorUserConfigJson = plan.UserConfig
+	}
+	state.UserConfig = JSONStringFromMap(ans.UserConfig, priorUserConfigJson)
 	// property: name=version, type=STRING macro=copy_to_state
 	state.Version = types.StringPointerValue(ans.Version)
 	return true
@@ -353,7 +375,23 @@ func (r *sdwanappsConfigResource) doGet(ctx context.Context, state *rsModelSDWAN
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -377,7 +415,13 @@ func (r *sdwanappsConfigResource) doGet(ctx context.Context, state *rsModelSDWAN
 	state.Id = types.StringPointerValue(ans.Id)
 	// property: name=state, type=STRING macro=copy_to_state
 	state.State = types.StringPointerValue(ans.State)
-	// property: name=user_config, type=OBJECT macro=copy_to_state
+	// property: name=user_config, type=JSON_STRING macro=copy_to_state
+	// x_flag_json_string: the api returns an object, terraform holds it as JSON text; keep the configured text when it means the same
+	priorUserConfigJson := types.StringNull()
+	if true {
+		priorUserConfigJson = savestate.UserConfig
+	}
+	state.UserConfig = JSONStringFromMap(ans.UserConfig, priorUserConfigJson)
 	// property: name=version, type=STRING macro=copy_to_state
 	state.Version = types.StringPointerValue(ans.Version)
 	return true
@@ -460,7 +504,11 @@ func (r *sdwanappsConfigResource) doPut(ctx context.Context, plan *rsModelSDWANA
 	} else {
 		body.State = StringValueOrNil(plan.State)
 	}
-	// property: name=user_config, type=OBJECT macro=copy_from_plan_or_state
+	// property: name=user_config, type=JSON_STRING macro=copy_from_plan_or_state
+	body.UserConfig = JSONStringToMap(plan.UserConfig, &resp.Diagnostics)
+	if body.UserConfig == nil && state != nil {
+		body.UserConfig = JSONStringToMap(state.UserConfig, &resp.Diagnostics)
+	}
 	// property: name=version, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.Version = ValueStringPointerFromPlanOrState(plan.Version, state.Version)
@@ -516,6 +564,12 @@ func (r *sdwanappsConfigResource) doPut(ctx context.Context, plan *rsModelSDWANA
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=SDWANAppConfigScreen
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=6
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -527,7 +581,13 @@ func (r *sdwanappsConfigResource) doPut(ctx context.Context, plan *rsModelSDWANA
 	state.Id = types.StringPointerValue(ans.Id)
 	// property: name=state, type=STRING macro=copy_to_state
 	state.State = types.StringPointerValue(ans.State)
-	// property: name=user_config, type=OBJECT macro=copy_to_state
+	// property: name=user_config, type=JSON_STRING macro=copy_to_state
+	// x_flag_json_string: the api returns an object, terraform holds it as JSON text; keep the configured text when it means the same
+	priorUserConfigJson := types.StringNull()
+	if true {
+		priorUserConfigJson = plan.UserConfig
+	}
+	state.UserConfig = JSONStringFromMap(ans.UserConfig, priorUserConfigJson)
 	// property: name=version, type=STRING macro=copy_to_state
 	state.Version = types.StringPointerValue(ans.Version)
 	return true

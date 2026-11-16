@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	sdwan "github.com/paloaltonetworks/terraform-provider-prismasdwan/sdk"
@@ -20,7 +21,7 @@ import (
 )
 
 // +-----------------------------------------------------------------
-// | Schema Map Summary (size=goLangStructMap=7)
+// | Schema Map Summary (size=goLangStructMap=8)
 // | Computed Resource Name=sites_prismasase_connections
 // +-----------------------------------------------------------------
 // | RoutingConfigs HasID=false
@@ -28,8 +29,9 @@ import (
 // | IPSecTunnelAuthentication HasID=false
 // | IPSecTunnel HasID=false
 // | RemoteNetworkGroup HasID=false
+// | RoutingConfigsV3N1 HasID=false
 // | IPSecTunnelConfigs HasID=false
-// | SaseConnectionScreenV2N1 HasID=true
+// | SaseConnectionScreenV3N1 HasID=true
 // +-----------------------------------------------------------------
 
 // Data source.
@@ -61,7 +63,7 @@ type dsModelWithFilterSitePrismaSaseConnection struct {
 	TfParameters types.Map                          `tfsdk:"x_parameters"` // Generic Map for Path Ids
 	Etag         types.Int64                        `tfsdk:"x_etag"`       // propertyName=_etag type=INTEGER
 	Schema       types.Int64                        `tfsdk:"x_schema"`     // propertyName=_schema type=INTEGER
-	Items        []*dsModelSaseConnectionScreenV2N1 `tfsdk:"items"`
+	Items        []*dsModelSaseConnectionScreenV3N1 `tfsdk:"items"`
 }
 
 // Metadata returns the data source type name.
@@ -72,13 +74,14 @@ func (d *sitePrismaSaseConnectionDataSource) Metadata(_ context.Context, req dat
 // Schema defines the schema for this data source.
 func (d *sitePrismaSaseConnectionDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Retrieves a list of Prisma SD-WAN Site Prisma Sase Connection items.",
 		Attributes: map[string]dsschema.Attribute{
 			"filters": dsschema.MapAttribute{
 				Required:    true,
 				Computed:    false,
 				Optional:    false,
 				ElementType: types.StringType,
+				Description: "Path parameters used to locate the items to retrieve.",
 			},
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": dsschema.MapAttribute{
@@ -86,389 +89,472 @@ func (d *sitePrismaSaseConnectionDataSource) Schema(_ context.Context, _ datasou
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Additional path parameters for the data source, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": dsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Entity tag returned by the API, managed automatically by the provider.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": dsschema.Int64Attribute{
-				Required: false,
-				Computed: true,
-				Optional: true,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Description: "Schema version returned by the API, managed automatically by the provider.",
 			},
 			"items": dsschema.ListNestedAttribute{
-				Computed: true,
+				Computed:    true,
+				Description: "The list of items returned by the data source.",
 				NestedObject: dsschema.NestedAttributeObject{
 					Attributes: map[string]dsschema.Attribute{
-						// rest all properties to be read from GET API Schema schema=SaseConnectionScreenV2N1
+						// rest all properties to be read from GET API Schema schema=SaseConnectionScreenV3N1
 						// property: name=_etag, type=INTEGER macro=rss_schema
 						"x_etag": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 						// property: name=_schema, type=INTEGER macro=rss_schema
 						"x_schema": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 						// property: name=enabled_wan_interface_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"enabled_wan_interface_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Enabled wan interface ids.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=enabled_wan_interface_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=id, type=STRING macro=rss_schema
 						"id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=id, type=STRING macro=rss_schema
 						// property: name=ipsec_tunnel_configs, type=REFERENCE macro=rss_schema
 						"ipsec_tunnel_configs": dsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Ipsec tunnel configs.",
 							Attributes: map[string]dsschema.Attribute{
 								// property: name=anti_replay, type=BOOLEAN macro=rss_schema
 								"anti_replay": dsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Anti replay.",
 								},
 								// key name holder for attribute: name=anti_replay, type=BOOLEAN macro=rss_schema
 								// property: name=copy_tos, type=BOOLEAN macro=rss_schema
 								"copy_tos": dsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Copy tos.",
 								},
 								// key name holder for attribute: name=copy_tos, type=BOOLEAN macro=rss_schema
 								// property: name=enable_gre_encapsulation, type=BOOLEAN macro=rss_schema
 								"enable_gre_encapsulation": dsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Enable gre encapsulation.",
 								},
 								// key name holder for attribute: name=enable_gre_encapsulation, type=BOOLEAN macro=rss_schema
 								// property: name=ike_key_exchange, type=STRING macro=rss_schema
 								"ike_key_exchange": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Ike key exchange.",
 								},
 								// key name holder for attribute: name=ike_key_exchange, type=STRING macro=rss_schema
 								// property: name=prismaaccess_ike_crypto_profile_id, type=STRING macro=rss_schema
 								"prismaaccess_ike_crypto_profile_id": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Prismaaccess ike crypto profile id.",
 								},
 								// key name holder for attribute: name=prismaaccess_ike_crypto_profile_id, type=STRING macro=rss_schema
 								// property: name=prismaaccess_ipsec_profile_id, type=STRING macro=rss_schema
 								"prismaaccess_ipsec_profile_id": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Prismaaccess ipsec profile id.",
 								},
 								// key name holder for attribute: name=prismaaccess_ipsec_profile_id, type=STRING macro=rss_schema
 								// property: name=tunnel_monitoring, type=BOOLEAN macro=rss_schema
 								"tunnel_monitoring": dsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Tunnel monitoring.",
 								},
 								// key name holder for attribute: name=tunnel_monitoring, type=BOOLEAN macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=tunnel_monitoring, type=BOOLEAN macro=rss_schema
+						// key name holder for attribute: name=ipsec_tunnel_configs, type=REFERENCE macro=rss_schema
 						// property: name=is_active, type=BOOLEAN macro=rss_schema
 						"is_active": dsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Is active.",
 						},
 						// key name holder for attribute: name=is_active, type=BOOLEAN macro=rss_schema
 						// property: name=is_enabled, type=BOOLEAN macro=rss_schema
 						"is_enabled": dsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Is enabled.",
 						},
 						// key name holder for attribute: name=is_enabled, type=BOOLEAN macro=rss_schema
 						// property: name=license_type, type=STRING macro=rss_schema
 						"license_type": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "License type.",
 						},
 						// key name holder for attribute: name=license_type, type=STRING macro=rss_schema
-						// property: name=prismaaccess_edge_location, type=ARRAY_PRIMITIVE macro=rss_schema
-						"prismaaccess_edge_location": dsschema.ListAttribute{
+						// property: name=prismaaccess_edge_location_config, type=ARRAY_PRIMITIVE macro=rss_schema
+						"prismaaccess_edge_location_config": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Prismaaccess edge location config.",
 							ElementType: types.StringType,
 						},
-						// key name holder for attribute: name=prismaaccess_edge_location, type=ARRAY_PRIMITIVE macro=rss_schema
+						// key name holder for attribute: name=prismaaccess_edge_location_config, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=prismaaccess_qos_cir_mbps, type=INTEGER macro=rss_schema
 						"prismaaccess_qos_cir_mbps": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Prismaaccess qos cir mbps.",
 						},
 						// key name holder for attribute: name=prismaaccess_qos_cir_mbps, type=INTEGER macro=rss_schema
 						// property: name=prismaaccess_qos_profile_id, type=STRING macro=rss_schema
 						"prismaaccess_qos_profile_id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Prismaaccess qos profile id.",
 						},
 						// key name holder for attribute: name=prismaaccess_qos_profile_id, type=STRING macro=rss_schema
+						// property: name=prismasase_connection_id, type=STRING macro=rss_schema
+						"prismasase_connection_id": dsschema.StringAttribute{
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Prismasase connection id. Filled in by the server when it is not set.",
+						},
+						// key name holder for attribute: name=prismasase_connection_id, type=STRING macro=rss_schema
 						// property: name=remote_network_groups, type=ARRAY_REFERENCE macro=rss_schema
 						"remote_network_groups": dsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Remote network groups.",
 							NestedObject: dsschema.NestedAttributeObject{
 								Attributes: map[string]dsschema.Attribute{
 									// property: name=ipsec_tunnels, type=ARRAY_REFERENCE macro=rss_schema
 									"ipsec_tunnels": dsschema.ListNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    false,
+										Sensitive:   false,
+										Description: "Ipsec tunnels.",
 										NestedObject: dsschema.NestedAttributeObject{
 											Attributes: map[string]dsschema.Attribute{
 												// property: name=authentication, type=REFERENCE macro=rss_schema
 												"authentication": dsschema.SingleNestedAttribute{
-													Required:  false,
-													Computed:  false,
-													Optional:  true,
-													Sensitive: false,
+													Required:    false,
+													Computed:    true,
+													Optional:    false,
+													Sensitive:   false,
+													Description: "Authentication.",
 													Attributes: map[string]dsschema.Attribute{
 														// property: name=branch_ike_identification, type=STRING macro=rss_schema
 														"branch_ike_identification": dsschema.StringAttribute{
-															Required:  false,
-															Computed:  false,
-															Optional:  true,
-															Sensitive: false,
+															Required:    false,
+															Computed:    true,
+															Optional:    false,
+															Sensitive:   false,
+															Description: "Branch ike identification.",
 														},
 														// key name holder for attribute: name=branch_ike_identification, type=STRING macro=rss_schema
 														// property: name=prismaaccess_ike_identification, type=STRING macro=rss_schema
 														"prismaaccess_ike_identification": dsschema.StringAttribute{
-															Required:  false,
-															Computed:  false,
-															Optional:  true,
-															Sensitive: false,
+															Required:    false,
+															Computed:    true,
+															Optional:    false,
+															Sensitive:   false,
+															Description: "Prismaaccess ike identification.",
 														},
 														// key name holder for attribute: name=prismaaccess_ike_identification, type=STRING macro=rss_schema
 														// property: name=psk, type=STRING macro=rss_schema
 														"psk": dsschema.StringAttribute{
-															Required:  false,
-															Computed:  false,
-															Optional:  true,
-															Sensitive: false,
+															Required:    false,
+															Computed:    true,
+															Optional:    false,
+															Sensitive:   true,
+															Description: "Psk.",
 														},
 														// key name holder for attribute: name=psk, type=STRING macro=rss_schema
 													},
 												},
-												// key name holder for attribute: name=psk, type=STRING macro=rss_schema
+												// key name holder for attribute: name=authentication, type=REFERENCE macro=rss_schema
 												// property: name=name, type=STRING macro=rss_schema
 												"name": dsschema.StringAttribute{
-													Required:  false,
-													Computed:  false,
-													Optional:  true,
-													Sensitive: false,
+													Required:    false,
+													Computed:    true,
+													Optional:    false,
+													Sensitive:   false,
+													Description: "Name.",
 												},
 												// key name holder for attribute: name=name, type=STRING macro=rss_schema
 												// property: name=routing, type=REFERENCE macro=rss_schema
 												"routing": dsschema.SingleNestedAttribute{
-													Required:  false,
-													Computed:  false,
-													Optional:  true,
-													Sensitive: false,
+													Required:    false,
+													Computed:    true,
+													Optional:    false,
+													Sensitive:   false,
+													Description: "Routing.",
 													Attributes: map[string]dsschema.Attribute{
 														// property: name=branch_as_number, type=STRING macro=rss_schema
 														"branch_as_number": dsschema.StringAttribute{
-															Required:  false,
-															Computed:  false,
-															Optional:  true,
-															Sensitive: false,
+															Required:    false,
+															Computed:    true,
+															Optional:    false,
+															Sensitive:   false,
+															Description: "Branch as number.",
 														},
 														// key name holder for attribute: name=branch_as_number, type=STRING macro=rss_schema
 														// property: name=branch_ip_address, type=STRING macro=rss_schema
 														"branch_ip_address": dsschema.StringAttribute{
-															Required:  false,
-															Computed:  false,
-															Optional:  true,
-															Sensitive: false,
+															Required:    false,
+															Computed:    true,
+															Optional:    false,
+															Sensitive:   false,
+															Description: "Branch ip address.",
 														},
 														// key name holder for attribute: name=branch_ip_address, type=STRING macro=rss_schema
 														// property: name=prismaaccess_ip_address, type=STRING macro=rss_schema
 														"prismaaccess_ip_address": dsschema.StringAttribute{
-															Required:  false,
-															Computed:  false,
-															Optional:  true,
-															Sensitive: false,
+															Required:    false,
+															Computed:    true,
+															Optional:    false,
+															Sensitive:   false,
+															Description: "Prismaaccess ip address.",
 														},
 														// key name holder for attribute: name=prismaaccess_ip_address, type=STRING macro=rss_schema
 													},
 												},
-												// key name holder for attribute: name=prismaaccess_ip_address, type=STRING macro=rss_schema
+												// key name holder for attribute: name=routing, type=REFERENCE macro=rss_schema
 												// property: name=routing_configs, type=REFERENCE macro=rss_schema
 												"routing_configs": dsschema.SingleNestedAttribute{
-													Required:  false,
-													Computed:  false,
-													Optional:  true,
-													Sensitive: false,
+													Required:    false,
+													Computed:    true,
+													Optional:    false,
+													Sensitive:   false,
+													Description: "Routing configs.",
 													Attributes: map[string]dsschema.Attribute{
 														// property: name=advertise_default_route, type=BOOLEAN macro=rss_schema
 														"advertise_default_route": dsschema.BoolAttribute{
-															Required:  false,
-															Computed:  false,
-															Optional:  true,
-															Sensitive: false,
+															Required:    false,
+															Computed:    true,
+															Optional:    false,
+															Sensitive:   false,
+															Description: "Advertise default route.",
 														},
 														// key name holder for attribute: name=advertise_default_route, type=BOOLEAN macro=rss_schema
 														// property: name=bgp_secret, type=STRING macro=rss_schema
 														"bgp_secret": dsschema.StringAttribute{
-															Required:  false,
-															Computed:  false,
-															Optional:  true,
-															Sensitive: true,
+															Required:    false,
+															Computed:    true,
+															Optional:    false,
+															Sensitive:   true,
+															Description: "Bgp secret.",
 														},
 														// key name holder for attribute: name=bgp_secret, type=STRING macro=rss_schema
 														// property: name=export_routes, type=BOOLEAN macro=rss_schema
 														"export_routes": dsschema.BoolAttribute{
-															Required:  false,
-															Computed:  false,
-															Optional:  true,
-															Sensitive: false,
+															Required:    false,
+															Computed:    true,
+															Optional:    false,
+															Sensitive:   false,
+															Description: "Export routes.",
 														},
 														// key name holder for attribute: name=export_routes, type=BOOLEAN macro=rss_schema
 														// property: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=rss_schema
 														"summarize_mobile_routes_before_advertise": dsschema.BoolAttribute{
-															Required:  false,
-															Computed:  false,
-															Optional:  true,
-															Sensitive: false,
+															Required:    false,
+															Computed:    true,
+															Optional:    false,
+															Sensitive:   false,
+															Description: "Summarize mobile routes before advertise.",
 														},
 														// key name holder for attribute: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=rss_schema
 													},
 												},
-												// key name holder for attribute: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=rss_schema
+												// key name holder for attribute: name=routing_configs, type=REFERENCE macro=rss_schema
 												// property: name=wan_interface_id, type=STRING macro=rss_schema
 												"wan_interface_id": dsschema.StringAttribute{
-													Required:  false,
-													Computed:  false,
-													Optional:  true,
-													Sensitive: false,
+													Required:    false,
+													Computed:    true,
+													Optional:    false,
+													Sensitive:   false,
+													Description: "Wan interface id.",
 												},
 												// key name holder for attribute: name=wan_interface_id, type=STRING macro=rss_schema
 											},
 										},
 									},
-									// key name holder for attribute: name=wan_interface_id, type=STRING macro=rss_schema
+									// key name holder for attribute: name=ipsec_tunnels, type=ARRAY_REFERENCE macro=rss_schema
 									// property: name=name, type=STRING macro=rss_schema
 									"name": dsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    false,
+										Sensitive:   false,
+										Description: "Name.",
 									},
 									// key name holder for attribute: name=name, type=STRING macro=rss_schema
 									// property: name=spn_name, type=ARRAY_PRIMITIVE macro=rss_schema
 									"spn_name": dsschema.ListAttribute{
 										Required:    false,
-										Computed:    false,
-										Optional:    true,
+										Computed:    true,
+										Optional:    false,
 										Sensitive:   false,
+										Description: "Spn name.",
 										ElementType: types.StringType,
 									},
 									// key name holder for attribute: name=spn_name, type=ARRAY_PRIMITIVE macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=spn_name, type=ARRAY_PRIMITIVE macro=rss_schema
+						// key name holder for attribute: name=remote_network_groups, type=ARRAY_REFERENCE macro=rss_schema
 						// property: name=routing_configs, type=REFERENCE macro=rss_schema
 						"routing_configs": dsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Routing configs.",
 							Attributes: map[string]dsschema.Attribute{
 								// property: name=advertise_default_route, type=BOOLEAN macro=rss_schema
 								"advertise_default_route": dsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Advertise default route.",
 								},
 								// key name holder for attribute: name=advertise_default_route, type=BOOLEAN macro=rss_schema
 								// property: name=bgp_secret, type=STRING macro=rss_schema
 								"bgp_secret": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: true,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   true,
+									Description: "Bgp secret. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=bgp_secret, type=STRING macro=rss_schema
+								// property: name=branch_as_number, type=STRING macro=rss_schema
+								"branch_as_number": dsschema.StringAttribute{
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Branch as number.",
+								},
+								// key name holder for attribute: name=branch_as_number, type=STRING macro=rss_schema
+								// property: name=deployment_mode, type=STRING macro=rss_schema
+								"deployment_mode": dsschema.StringAttribute{
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Deployment mode.",
+								},
+								// key name holder for attribute: name=deployment_mode, type=STRING macro=rss_schema
 								// property: name=export_routes, type=BOOLEAN macro=rss_schema
 								"export_routes": dsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Export routes.",
 								},
 								// key name holder for attribute: name=export_routes, type=BOOLEAN macro=rss_schema
+								// property: name=peering_type, type=STRING macro=rss_schema
+								"peering_type": dsschema.StringAttribute{
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Peering type.",
+								},
+								// key name holder for attribute: name=peering_type, type=STRING macro=rss_schema
 								// property: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=rss_schema
 								"summarize_mobile_routes_before_advertise": dsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Summarize mobile routes before advertise.",
 								},
 								// key name holder for attribute: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=rss_schema
+						// key name holder for attribute: name=routing_configs, type=REFERENCE macro=rss_schema
 						// property: name=site_id, type=STRING macro=rss_schema
 						"site_id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Site id. Value: at most 50 characters, matching `^-?[0-9]{1,50}$`.",
 						},
 						// key name holder for attribute: name=site_id, type=STRING macro=rss_schema
 					},
@@ -507,7 +593,7 @@ func (d *sitePrismaSaseConnectionDataSource) Read(ctx context.Context, req datas
 	svc := sdwan_client.NewClient(d.client)
 
 	// Prepare input for the API endpoint.
-	get_path := "/sdwan/v2.1/api/sites/{site_id}/prismasase_connections/{prismasase_connection_id}"
+	get_path := "/sdwan/v3.1/api/sites/{site_id}/prismasase_connections/{prismasase_connection_id}"
 	list_request := &sdwan_client.SdwanClientRequestResponse{}
 	list_request.Method = "GET"
 	list_request.Path = get_path[:strings.LastIndex(get_path, "/")]
@@ -518,17 +604,25 @@ func (d *sitePrismaSaseConnectionDataSource) Read(ctx context.Context, req datas
 
 	// Perform the operation.
 	svc.ExecuteSdwanRequest(ctx, list_request)
+	response_body_string := `{"items":[]}`
 	if list_request.ResponseErr != nil {
-		if IsObjectNotFound(*list_request.ResponseErr) {
-			resp.State.RemoveResource(ctx)
-		} else {
-			resp.Diagnostics.AddError("error reading prismasdwan_site_prisma_sase_connection", (*list_request.ResponseErr).Error())
+		// a 404 here means the list endpoint itself is missing, which must not look like "no matches"
+		{
+			resp.Diagnostics.AddError("error reading prismasdwan_site_prisma_sase_connection",
+				fmt.Sprintf("%s (GET %s)", (*list_request.ResponseErr).Error(), *list_request.FinalPath))
+			return
 		}
-		return
+	} else {
+		response_body_string = string(*list_request.ResponseBytes)
+		// some endpoints return the one object itself instead of {"items": [...]}: treat it as the only item
+		var body map[string]interface{}
+		if err := json.Unmarshal([]byte(response_body_string), &body); err == nil {
+			if _, isList := body["items"]; !isList && body["id"] != nil {
+				wrapped, _ := json.Marshal(map[string]interface{}{"items": []map[string]interface{}{body}})
+				response_body_string = string(wrapped)
+			}
+		}
 	}
-
-	// read json string from http response
-	response_body_string := string(*list_request.ResponseBytes)
 	tflog.Info(ctx, "lookup response from server", map[string]any{
 		"path": response_body_string,
 	})
@@ -541,7 +635,9 @@ func (d *sitePrismaSaseConnectionDataSource) Read(ctx context.Context, req datas
 		resp.Diagnostics.AddError("error in json unmarshal to generic map in lookup", json_err.Error())
 		return
 	}
-	// ensure its as array
+
+	// no match is an empty list, not null: items[0] and length(items) must work on a miss
+	state_with_filter.Items = []*dsModelSaseConnectionScreenV3N1{} // ensure its as array
 	for _, item := range response.Items {
 		// create json from item
 		item_json, item_err := json.Marshal(item)
@@ -578,20 +674,20 @@ func (d *sitePrismaSaseConnectionDataSource) Read(ctx context.Context, req datas
 		}
 
 		// Store the answer to state.
-		var state dsModelSaseConnectionScreenV2N1
+		var state dsModelSaseConnectionScreenV3N1
 
 		// start copying attributes
-		var ans sdwan_schema.SaseConnectionScreenV2N1
+		var ans sdwan_schema.SaseConnectionScreenV3N1
 		// copy from json response
 		json_err := json.Unmarshal(item_json, &ans)
 		// if found, exit
 		if json_err != nil {
-			resp.Diagnostics.AddError("error in json unmarshal to SaseConnectionScreenV2N1", json_err.Error())
+			resp.Diagnostics.AddError("error in json unmarshal to SaseConnectionScreenV3N1", json_err.Error())
 			return
 		}
 
-		// lets copy all items into state schema=SaseConnectionScreenV2N1
-		// copy_to_state: state=state prefix=dsModel ans=ans properties=14
+		// lets copy all items into state schema=SaseConnectionScreenV3N1
+		// copy_to_state: state=state prefix=dsModel ans=ans properties=15
 		tflog.Debug(ctx, "copy_to_state state=state prefix=dsModel ans=ans")
 		// property: name=_etag, type=INTEGER macro=copy_to_state
 		state.Etag = types.Int64PointerValue(ans.Etag)
@@ -631,14 +727,16 @@ func (d *sitePrismaSaseConnectionDataSource) Read(ctx context.Context, req datas
 		state.IsEnabled = types.BoolPointerValue(ans.IsEnabled)
 		// property: name=license_type, type=STRING macro=copy_to_state
 		state.LicenseType = types.StringPointerValue(ans.LicenseType)
-		// property: name=prismaaccess_edge_location, type=ARRAY_PRIMITIVE macro=copy_to_state
-		varPrismaaccessEdgeLocation, errPrismaaccessEdgeLocation := types.ListValueFrom(ctx, types.StringType, ans.PrismaaccessEdgeLocation)
-		state.PrismaaccessEdgeLocation = varPrismaaccessEdgeLocation
-		resp.Diagnostics.Append(errPrismaaccessEdgeLocation.Errors()...)
+		// property: name=prismaaccess_edge_location_config, type=ARRAY_PRIMITIVE macro=copy_to_state
+		varPrismaaccessEdgeLocationConfig, errPrismaaccessEdgeLocationConfig := types.ListValueFrom(ctx, types.StringType, ans.PrismaaccessEdgeLocationConfig)
+		state.PrismaaccessEdgeLocationConfig = varPrismaaccessEdgeLocationConfig
+		resp.Diagnostics.Append(errPrismaaccessEdgeLocationConfig.Errors()...)
 		// property: name=prismaaccess_qos_cir_mbps, type=INTEGER macro=copy_to_state
 		state.PrismaaccessQosCirMbps = types.Int64PointerValue(ans.PrismaaccessQosCirMbps)
 		// property: name=prismaaccess_qos_profile_id, type=STRING macro=copy_to_state
 		state.PrismaaccessQosProfileId = types.StringPointerValue(ans.PrismaaccessQosProfileId)
+		// property: name=prismasase_connection_id, type=STRING macro=copy_to_state
+		state.PrismasaseConnectionId = types.StringPointerValue(ans.PrismasaseConnectionId)
 		// property: name=remote_network_groups, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.RemoteNetworkGroups == nil {
 			state.RemoteNetworkGroups = nil
@@ -655,7 +753,8 @@ func (d *sitePrismaSaseConnectionDataSource) Read(ctx context.Context, req datas
 				if varLoopRemoteNetworkGroups.IpsecTunnels == nil {
 					state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = nil
 				} else if len(varLoopRemoteNetworkGroups.IpsecTunnels) == 0 {
-					state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = []dsModelIPSecTunnel{}
+					// api does not accept empty list as missing value
+					state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = nil
 				} else {
 					state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = make([]dsModelIPSecTunnel, 0, len(varLoopRemoteNetworkGroups.IpsecTunnels))
 					for varLoopIpsecTunnelsIndex, varLoopIpsecTunnels := range varLoopRemoteNetworkGroups.IpsecTunnels {
@@ -725,15 +824,21 @@ func (d *sitePrismaSaseConnectionDataSource) Read(ctx context.Context, req datas
 		if ans.RoutingConfigs == nil {
 			state.RoutingConfigs = nil
 		} else {
-			state.RoutingConfigs = &dsModelRoutingConfigs{}
-			// copy_to_state: state=state.RoutingConfigs prefix=dsModel ans=ans.RoutingConfigs properties=4
+			state.RoutingConfigs = &dsModelRoutingConfigsV3N1{}
+			// copy_to_state: state=state.RoutingConfigs prefix=dsModel ans=ans.RoutingConfigs properties=7
 			tflog.Debug(ctx, "copy_to_state state=state.RoutingConfigs prefix=dsModel ans=ans.RoutingConfigs")
 			// property: name=advertise_default_route, type=BOOLEAN macro=copy_to_state
 			state.RoutingConfigs.AdvertiseDefaultRoute = types.BoolPointerValue(ans.RoutingConfigs.AdvertiseDefaultRoute)
 			// property: name=bgp_secret, type=STRING macro=copy_to_state
 			state.RoutingConfigs.BgpSecret = types.StringPointerValue(ans.RoutingConfigs.BgpSecret)
+			// property: name=branch_as_number, type=STRING macro=copy_to_state
+			state.RoutingConfigs.BranchAsNumber = types.StringPointerValue(ans.RoutingConfigs.BranchAsNumber)
+			// property: name=deployment_mode, type=STRING macro=copy_to_state
+			state.RoutingConfigs.DeploymentMode = types.StringPointerValue(ans.RoutingConfigs.DeploymentMode)
 			// property: name=export_routes, type=BOOLEAN macro=copy_to_state
 			state.RoutingConfigs.ExportRoutes = types.BoolPointerValue(ans.RoutingConfigs.ExportRoutes)
+			// property: name=peering_type, type=STRING macro=copy_to_state
+			state.RoutingConfigs.PeeringType = types.StringPointerValue(ans.RoutingConfigs.PeeringType)
 			// property: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=copy_to_state
 			state.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise = types.BoolPointerValue(ans.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise)
 		}

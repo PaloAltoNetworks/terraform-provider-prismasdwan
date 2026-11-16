@@ -35,9 +35,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &securityPolicyRuleResource{}
-	_ resource.ResourceWithConfigure   = &securityPolicyRuleResource{}
-	_ resource.ResourceWithImportState = &securityPolicyRuleResource{}
+	_ resource.Resource                   = &securityPolicyRuleResource{}
+	_ resource.ResourceWithConfigure      = &securityPolicyRuleResource{}
+	_ resource.ResourceWithImportState    = &securityPolicyRuleResource{}
+	_ resource.ResourceWithValidateConfig = &securityPolicyRuleResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -58,6 +59,12 @@ type securityPolicyRuleResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *securityPolicyRuleResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"policy_set_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *securityPolicyRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_security_policy_rule"
@@ -66,13 +73,14 @@ func (r *securityPolicyRuleResource) Metadata(_ context.Context, req resource.Me
 // Schema defines the schema for this data source.
 func (r *securityPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Security Policy Rule.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=SecurityPolicyV2RuleScreenV2N3
 			// generic x_parameters is added to accomodate path parameters
@@ -81,29 +89,33 @@ func (r *securityPolicyRuleResource) Schema(_ context.Context, _ resource.Schema
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=action, type=STRING macro=rss_schema
 			"action": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Action. Value: one of allow, reject, deny.",
 			},
 			// key name holder for attribute: name=action, type=STRING macro=rss_schema
 			// property: name=app_def_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -112,15 +124,18 @@ func (r *securityPolicyRuleResource) Schema(_ context.Context, _ resource.Schema
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "App def ids. At most 256 items.",
+				Validators:  ListMaxItems(256),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=app_def_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -129,6 +144,8 @@ func (r *securityPolicyRuleResource) Schema(_ context.Context, _ resource.Schema
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Dest device ids. At most 10 items.",
+				Validators:  ListMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -138,6 +155,8 @@ func (r *securityPolicyRuleResource) Schema(_ context.Context, _ resource.Schema
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Destination prefix ids. At most 16 items.",
+				Validators:  ListMaxItems(16),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=destination_prefix_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -147,123 +166,139 @@ func (r *securityPolicyRuleResource) Schema(_ context.Context, _ resource.Schema
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Destination zone ids. At most 16 items.",
+				Validators:  ListMaxItems(16),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=destination_zone_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=enabled, type=BOOLEAN macro=rss_schema
 			"enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Enabled.",
 			},
 			// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=security_profile_group_id, type=STRING macro=rss_schema
 			"security_profile_group_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Security profile group id.",
 			},
 			// key name holder for attribute: name=security_profile_group_id, type=STRING macro=rss_schema
 			// property: name=services, type=ARRAY_REFERENCE macro=rss_schema
 			"services": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Services.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=destination_ports, type=ARRAY_REFERENCE macro=rss_schema
 						"destination_ports": rsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Destination ports.",
 							NestedObject: rsschema.NestedAttributeObject{
 								Attributes: map[string]rsschema.Attribute{
 									// property: name=from, type=INTEGER macro=rss_schema
 									"from": rsschema.Int64Attribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "From. Value: between 1 and 65535.",
 									},
 									// key name holder for attribute: name=from, type=INTEGER macro=rss_schema
 									// property: name=to, type=INTEGER macro=rss_schema
 									"to": rsschema.Int64Attribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "To. Value: between 1 and 65535.",
 									},
 									// key name holder for attribute: name=to, type=INTEGER macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=to, type=INTEGER macro=rss_schema
+						// key name holder for attribute: name=destination_ports, type=ARRAY_REFERENCE macro=rss_schema
 						// property: name=protocol, type=INTEGER macro=rss_schema
 						"protocol": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Protocol.",
 						},
 						// key name holder for attribute: name=protocol, type=INTEGER macro=rss_schema
 						// property: name=source_ports, type=ARRAY_REFERENCE macro=rss_schema
 						"source_ports": rsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Source ports.",
 							NestedObject: rsschema.NestedAttributeObject{
 								Attributes: map[string]rsschema.Attribute{
 									// property: name=from, type=INTEGER macro=rss_schema
 									"from": rsschema.Int64Attribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "From. Value: between 1 and 65535.",
 									},
 									// key name holder for attribute: name=from, type=INTEGER macro=rss_schema
 									// property: name=to, type=INTEGER macro=rss_schema
 									"to": rsschema.Int64Attribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "To. Value: between 1 and 65535.",
 									},
 									// key name holder for attribute: name=to, type=INTEGER macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=to, type=INTEGER macro=rss_schema
+						// key name holder for attribute: name=source_ports, type=ARRAY_REFERENCE macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=to, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=services, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=source_prefix_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 			"source_prefix_ids": rsschema.ListAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Source prefix ids. At most 16 items.",
+				Validators:  ListMaxItems(16),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=source_prefix_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -273,6 +308,8 @@ func (r *securityPolicyRuleResource) Schema(_ context.Context, _ resource.Schema
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Source zone ids. At most 16 items.",
+				Validators:  ListMaxItems(16),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=source_zone_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -282,6 +319,8 @@ func (r *securityPolicyRuleResource) Schema(_ context.Context, _ resource.Schema
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Src device ids. At most 256 items.",
+				Validators:  ListMaxItems(256),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=src_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -291,15 +330,18 @@ func (r *securityPolicyRuleResource) Schema(_ context.Context, _ resource.Schema
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=user_or_group, type=REFERENCE macro=rss_schema
 			"user_or_group": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "User or group.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=user_group_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 					"user_group_ids": rsschema.ListAttribute{
@@ -307,6 +349,7 @@ func (r *securityPolicyRuleResource) Schema(_ context.Context, _ resource.Schema
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "User group ids.",
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=user_group_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -316,12 +359,13 @@ func (r *securityPolicyRuleResource) Schema(_ context.Context, _ resource.Schema
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "User ids.",
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=user_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=user_ids, type=ARRAY_PRIMITIVE macro=rss_schema
+			// key name holder for attribute: name=user_or_group, type=REFERENCE macro=rss_schema
 		},
 	}
 }
@@ -385,14 +429,26 @@ func (r *securityPolicyRuleResource) doPost(ctx context.Context, plan *rsModelSe
 	body.Action = StringValueOrNil(plan.Action)
 	// property: name=app_def_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
 	body.AppDefIds = ListStringValueOrNil(ctx, plan.AppDefIds)
+	// api does not accept empty list as missing value
+	if len(body.AppDefIds) == 0 {
+		body.AppDefIds = nil
+	}
 	// property: name=description, type=STRING macro=copy_from_plan
 	body.Description = StringValueOrNil(plan.Description)
 	// property: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
 	body.DestDeviceIds = ListStringValueOrNil(ctx, plan.DestDeviceIds)
 	// property: name=destination_prefix_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
 	body.DestinationPrefixIds = ListStringValueOrNil(ctx, plan.DestinationPrefixIds)
+	// api does not accept empty list as missing value
+	if len(body.DestinationPrefixIds) == 0 {
+		body.DestinationPrefixIds = nil
+	}
 	// property: name=destination_zone_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
 	body.DestinationZoneIds = ListStringValueOrNil(ctx, plan.DestinationZoneIds)
+	// api does not accept empty list as missing value
+	if len(body.DestinationZoneIds) == 0 {
+		body.DestinationZoneIds = nil
+	}
 	// property: name=enabled, type=BOOLEAN macro=copy_from_plan
 	body.Enabled = BoolValueOrNil(plan.Enabled)
 	// property: name=id, type=STRING macro=copy_from_plan
@@ -405,7 +461,8 @@ func (r *securityPolicyRuleResource) doPost(ctx context.Context, plan *rsModelSe
 	if plan.Services == nil {
 		body.Services = nil
 	} else if len(plan.Services) == 0 {
-		body.Services = []sdwan_schema.Service{}
+		// api does not accept empty list as missing value
+		body.Services = nil
 	} else {
 		body.Services = make([]sdwan_schema.Service, 0, len(plan.Services))
 		for varLoopServicesIndex, varLoopServices := range plan.Services {
@@ -455,8 +512,16 @@ func (r *securityPolicyRuleResource) doPost(ctx context.Context, plan *rsModelSe
 	}
 	// property: name=source_prefix_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
 	body.SourcePrefixIds = ListStringValueOrNil(ctx, plan.SourcePrefixIds)
+	// api does not accept empty list as missing value
+	if len(body.SourcePrefixIds) == 0 {
+		body.SourcePrefixIds = nil
+	}
 	// property: name=source_zone_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
 	body.SourceZoneIds = ListStringValueOrNil(ctx, plan.SourceZoneIds)
+	// api does not accept empty list as missing value
+	if len(body.SourceZoneIds) == 0 {
+		body.SourceZoneIds = nil
+	}
 	// property: name=src_device_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
 	body.SrcDeviceIds = ListStringValueOrNil(ctx, plan.SrcDeviceIds)
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan
@@ -561,6 +626,14 @@ func (r *securityPolicyRuleResource) doPost(ctx context.Context, plan *rsModelSe
 	varAppDefIds, errAppDefIds := types.ListValueFrom(ctx, types.StringType, ans.AppDefIds)
 	state.AppDefIds = varAppDefIds
 	resp.Diagnostics.Append(errAppDefIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.AppDefIds) == 0 {
+		state.AppDefIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.AppDefIds) == 0 && !plan.AppDefIds.IsNull() && !plan.AppDefIds.IsUnknown() && len(plan.AppDefIds.Elements()) == 0 {
+		state.AppDefIds = plan.AppDefIds
+	}
 	// property: name=description, type=STRING macro=copy_to_state
 	state.Description = types.StringPointerValue(ans.Description)
 	// property: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
@@ -571,10 +644,26 @@ func (r *securityPolicyRuleResource) doPost(ctx context.Context, plan *rsModelSe
 	varDestinationPrefixIds, errDestinationPrefixIds := types.ListValueFrom(ctx, types.StringType, ans.DestinationPrefixIds)
 	state.DestinationPrefixIds = varDestinationPrefixIds
 	resp.Diagnostics.Append(errDestinationPrefixIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.DestinationPrefixIds) == 0 {
+		state.DestinationPrefixIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.DestinationPrefixIds) == 0 && !plan.DestinationPrefixIds.IsNull() && !plan.DestinationPrefixIds.IsUnknown() && len(plan.DestinationPrefixIds.Elements()) == 0 {
+		state.DestinationPrefixIds = plan.DestinationPrefixIds
+	}
 	// property: name=destination_zone_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 	varDestinationZoneIds, errDestinationZoneIds := types.ListValueFrom(ctx, types.StringType, ans.DestinationZoneIds)
 	state.DestinationZoneIds = varDestinationZoneIds
 	resp.Diagnostics.Append(errDestinationZoneIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.DestinationZoneIds) == 0 {
+		state.DestinationZoneIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.DestinationZoneIds) == 0 && !plan.DestinationZoneIds.IsNull() && !plan.DestinationZoneIds.IsUnknown() && len(plan.DestinationZoneIds.Elements()) == 0 {
+		state.DestinationZoneIds = plan.DestinationZoneIds
+	}
 	// property: name=enabled, type=BOOLEAN macro=copy_to_state
 	state.Enabled = types.BoolPointerValue(ans.Enabled)
 	// property: name=id, type=STRING macro=copy_to_state
@@ -587,7 +676,8 @@ func (r *securityPolicyRuleResource) doPost(ctx context.Context, plan *rsModelSe
 	if ans.Services == nil {
 		state.Services = nil
 	} else if len(ans.Services) == 0 {
-		state.Services = []rsModelService{}
+		// api does not accept empty list as missing value
+		state.Services = nil
 	} else {
 		state.Services = make([]rsModelService, 0, len(ans.Services))
 		for varLoopServicesIndex, varLoopServices := range ans.Services {
@@ -635,14 +725,34 @@ func (r *securityPolicyRuleResource) doPost(ctx context.Context, plan *rsModelSe
 			}
 		}
 	}
+	// the configuration states an empty list: keep it
+	if len(ans.Services) == 0 && plan.Services != nil && len(plan.Services) == 0 {
+		state.Services = plan.Services
+	}
 	// property: name=source_prefix_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 	varSourcePrefixIds, errSourcePrefixIds := types.ListValueFrom(ctx, types.StringType, ans.SourcePrefixIds)
 	state.SourcePrefixIds = varSourcePrefixIds
 	resp.Diagnostics.Append(errSourcePrefixIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.SourcePrefixIds) == 0 {
+		state.SourcePrefixIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.SourcePrefixIds) == 0 && !plan.SourcePrefixIds.IsNull() && !plan.SourcePrefixIds.IsUnknown() && len(plan.SourcePrefixIds.Elements()) == 0 {
+		state.SourcePrefixIds = plan.SourcePrefixIds
+	}
 	// property: name=source_zone_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 	varSourceZoneIds, errSourceZoneIds := types.ListValueFrom(ctx, types.StringType, ans.SourceZoneIds)
 	state.SourceZoneIds = varSourceZoneIds
 	resp.Diagnostics.Append(errSourceZoneIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.SourceZoneIds) == 0 {
+		state.SourceZoneIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.SourceZoneIds) == 0 && !plan.SourceZoneIds.IsNull() && !plan.SourceZoneIds.IsUnknown() && len(plan.SourceZoneIds.Elements()) == 0 {
+		state.SourceZoneIds = plan.SourceZoneIds
+	}
 	// property: name=src_device_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 	varSrcDeviceIds, errSrcDeviceIds := types.ListValueFrom(ctx, types.StringType, ans.SrcDeviceIds)
 	state.SrcDeviceIds = varSrcDeviceIds
@@ -651,6 +761,14 @@ func (r *securityPolicyRuleResource) doPost(ctx context.Context, plan *rsModelSe
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=user_or_group, type=REFERENCE macro=copy_to_state
 	if ans.UserOrGroup == nil {
 		state.UserOrGroup = nil
@@ -738,7 +856,23 @@ func (r *securityPolicyRuleResource) doGet(ctx context.Context, state *rsModelSe
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -764,6 +898,14 @@ func (r *securityPolicyRuleResource) doGet(ctx context.Context, state *rsModelSe
 	varAppDefIds, errAppDefIds := types.ListValueFrom(ctx, types.StringType, ans.AppDefIds)
 	state.AppDefIds = varAppDefIds
 	resp.Diagnostics.Append(errAppDefIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.AppDefIds) == 0 {
+		state.AppDefIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.AppDefIds) == 0 && !savestate.AppDefIds.IsNull() && !savestate.AppDefIds.IsUnknown() && len(savestate.AppDefIds.Elements()) == 0 {
+		state.AppDefIds = savestate.AppDefIds
+	}
 	// property: name=description, type=STRING macro=copy_to_state
 	state.Description = types.StringPointerValue(ans.Description)
 	// property: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
@@ -774,10 +916,26 @@ func (r *securityPolicyRuleResource) doGet(ctx context.Context, state *rsModelSe
 	varDestinationPrefixIds, errDestinationPrefixIds := types.ListValueFrom(ctx, types.StringType, ans.DestinationPrefixIds)
 	state.DestinationPrefixIds = varDestinationPrefixIds
 	resp.Diagnostics.Append(errDestinationPrefixIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.DestinationPrefixIds) == 0 {
+		state.DestinationPrefixIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.DestinationPrefixIds) == 0 && !savestate.DestinationPrefixIds.IsNull() && !savestate.DestinationPrefixIds.IsUnknown() && len(savestate.DestinationPrefixIds.Elements()) == 0 {
+		state.DestinationPrefixIds = savestate.DestinationPrefixIds
+	}
 	// property: name=destination_zone_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 	varDestinationZoneIds, errDestinationZoneIds := types.ListValueFrom(ctx, types.StringType, ans.DestinationZoneIds)
 	state.DestinationZoneIds = varDestinationZoneIds
 	resp.Diagnostics.Append(errDestinationZoneIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.DestinationZoneIds) == 0 {
+		state.DestinationZoneIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.DestinationZoneIds) == 0 && !savestate.DestinationZoneIds.IsNull() && !savestate.DestinationZoneIds.IsUnknown() && len(savestate.DestinationZoneIds.Elements()) == 0 {
+		state.DestinationZoneIds = savestate.DestinationZoneIds
+	}
 	// property: name=enabled, type=BOOLEAN macro=copy_to_state
 	state.Enabled = types.BoolPointerValue(ans.Enabled)
 	// property: name=id, type=STRING macro=copy_to_state
@@ -790,7 +948,8 @@ func (r *securityPolicyRuleResource) doGet(ctx context.Context, state *rsModelSe
 	if ans.Services == nil {
 		state.Services = nil
 	} else if len(ans.Services) == 0 {
-		state.Services = []rsModelService{}
+		// api does not accept empty list as missing value
+		state.Services = nil
 	} else {
 		state.Services = make([]rsModelService, 0, len(ans.Services))
 		for varLoopServicesIndex, varLoopServices := range ans.Services {
@@ -838,14 +997,34 @@ func (r *securityPolicyRuleResource) doGet(ctx context.Context, state *rsModelSe
 			}
 		}
 	}
+	// the configuration states an empty list: keep it
+	if len(ans.Services) == 0 && savestate.Services != nil && len(savestate.Services) == 0 {
+		state.Services = savestate.Services
+	}
 	// property: name=source_prefix_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 	varSourcePrefixIds, errSourcePrefixIds := types.ListValueFrom(ctx, types.StringType, ans.SourcePrefixIds)
 	state.SourcePrefixIds = varSourcePrefixIds
 	resp.Diagnostics.Append(errSourcePrefixIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.SourcePrefixIds) == 0 {
+		state.SourcePrefixIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.SourcePrefixIds) == 0 && !savestate.SourcePrefixIds.IsNull() && !savestate.SourcePrefixIds.IsUnknown() && len(savestate.SourcePrefixIds.Elements()) == 0 {
+		state.SourcePrefixIds = savestate.SourcePrefixIds
+	}
 	// property: name=source_zone_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 	varSourceZoneIds, errSourceZoneIds := types.ListValueFrom(ctx, types.StringType, ans.SourceZoneIds)
 	state.SourceZoneIds = varSourceZoneIds
 	resp.Diagnostics.Append(errSourceZoneIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.SourceZoneIds) == 0 {
+		state.SourceZoneIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.SourceZoneIds) == 0 && !savestate.SourceZoneIds.IsNull() && !savestate.SourceZoneIds.IsUnknown() && len(savestate.SourceZoneIds.Elements()) == 0 {
+		state.SourceZoneIds = savestate.SourceZoneIds
+	}
 	// property: name=src_device_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 	varSrcDeviceIds, errSrcDeviceIds := types.ListValueFrom(ctx, types.StringType, ans.SrcDeviceIds)
 	state.SrcDeviceIds = varSrcDeviceIds
@@ -854,6 +1033,14 @@ func (r *securityPolicyRuleResource) doGet(ctx context.Context, state *rsModelSe
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=user_or_group, type=REFERENCE macro=copy_to_state
 	if ans.UserOrGroup == nil {
 		state.UserOrGroup = nil
@@ -945,7 +1132,12 @@ func (r *securityPolicyRuleResource) doPut(ctx context.Context, plan *rsModelSec
 		body.Action = StringValueOrNil(plan.Action)
 	}
 	// property: name=app_def_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.AppDefIds = ListStringValueOrNil(ctx, plan.AppDefIds)
+	if state != nil && plan.AppDefIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.AppDefIds = ListStringValueOrNil(ctx, state.AppDefIds)
+	} else {
+		body.AppDefIds = ListStringValueOrNil(ctx, plan.AppDefIds)
+	}
 	// property: name=description, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.Description = ValueStringPointerFromPlanOrState(plan.Description, state.Description)
@@ -953,11 +1145,26 @@ func (r *securityPolicyRuleResource) doPut(ctx context.Context, plan *rsModelSec
 		body.Description = StringValueOrNil(plan.Description)
 	}
 	// property: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.DestDeviceIds = ListStringValueOrNil(ctx, plan.DestDeviceIds)
+	if state != nil && plan.DestDeviceIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.DestDeviceIds = ListStringValueOrNil(ctx, state.DestDeviceIds)
+	} else {
+		body.DestDeviceIds = ListStringValueOrNil(ctx, plan.DestDeviceIds)
+	}
 	// property: name=destination_prefix_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.DestinationPrefixIds = ListStringValueOrNil(ctx, plan.DestinationPrefixIds)
+	if state != nil && plan.DestinationPrefixIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.DestinationPrefixIds = ListStringValueOrNil(ctx, state.DestinationPrefixIds)
+	} else {
+		body.DestinationPrefixIds = ListStringValueOrNil(ctx, plan.DestinationPrefixIds)
+	}
 	// property: name=destination_zone_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.DestinationZoneIds = ListStringValueOrNil(ctx, plan.DestinationZoneIds)
+	if state != nil && plan.DestinationZoneIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.DestinationZoneIds = ListStringValueOrNil(ctx, state.DestinationZoneIds)
+	} else {
+		body.DestinationZoneIds = ListStringValueOrNil(ctx, plan.DestinationZoneIds)
+	}
 	// property: name=enabled, type=BOOLEAN macro=copy_from_plan_or_state
 	if state != nil {
 		body.Enabled = ValueBoolPointerFromPlanOrState(plan.Enabled, state.Enabled)
@@ -983,10 +1190,11 @@ func (r *securityPolicyRuleResource) doPut(ctx context.Context, plan *rsModelSec
 		body.SecurityProfileGroupId = StringValueOrNil(plan.SecurityProfileGroupId)
 	}
 	// property: name=services, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.Services == nil && (state == nil || state.Services == nil) {
+	if plan.Services == nil && (!(state != nil) || state.Services == nil) {
 		body.Services = nil
-	} else if len(plan.Services) == 0 && (state == nil || len(state.Services) == 0) {
-		body.Services = []sdwan_schema.Service{}
+	} else if len(plan.Services) == 0 && (!(state != nil) || len(state.Services) == 0) {
+		// api does not accept empty list as missing value
+		body.Services = nil
 	} else if len(plan.Services) != 0 || (state != nil && len(state.Services) != 0) {
 		ServicesToUse := plan.Services
 		if len(plan.Services) == 0 {
@@ -1040,13 +1248,33 @@ func (r *securityPolicyRuleResource) doPut(ctx context.Context, plan *rsModelSec
 		}
 	}
 	// property: name=source_prefix_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.SourcePrefixIds = ListStringValueOrNil(ctx, plan.SourcePrefixIds)
+	if state != nil && plan.SourcePrefixIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.SourcePrefixIds = ListStringValueOrNil(ctx, state.SourcePrefixIds)
+	} else {
+		body.SourcePrefixIds = ListStringValueOrNil(ctx, plan.SourcePrefixIds)
+	}
 	// property: name=source_zone_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.SourceZoneIds = ListStringValueOrNil(ctx, plan.SourceZoneIds)
+	if state != nil && plan.SourceZoneIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.SourceZoneIds = ListStringValueOrNil(ctx, state.SourceZoneIds)
+	} else {
+		body.SourceZoneIds = ListStringValueOrNil(ctx, plan.SourceZoneIds)
+	}
 	// property: name=src_device_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.SrcDeviceIds = ListStringValueOrNil(ctx, plan.SrcDeviceIds)
+	if state != nil && plan.SrcDeviceIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.SrcDeviceIds = ListStringValueOrNil(ctx, state.SrcDeviceIds)
+	} else {
+		body.SrcDeviceIds = ListStringValueOrNil(ctx, plan.SrcDeviceIds)
+	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=user_or_group, type=REFERENCE macro=copy_from_plan_or_state
 	if plan.UserOrGroup == nil {
 		body.UserOrGroup = nil
@@ -1055,9 +1283,19 @@ func (r *securityPolicyRuleResource) doPut(ctx context.Context, plan *rsModelSec
 		// copy_from_plan_or_state: body=body.UserOrGroup prefix=rsModel state=state.UserOrGroup plan=plan.UserOrGroup properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.UserOrGroup prefix=rsModel state=state.UserOrGroup plan=plan.UserOrGroup")
 		// property: name=user_group_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.UserOrGroup.UserGroupIds = ListStringValueOrNil(ctx, plan.UserOrGroup.UserGroupIds)
+		if state != nil && state.UserOrGroup != nil && plan.UserOrGroup.UserGroupIds.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.UserOrGroup.UserGroupIds = ListStringValueOrNil(ctx, state.UserOrGroup.UserGroupIds)
+		} else {
+			body.UserOrGroup.UserGroupIds = ListStringValueOrNil(ctx, plan.UserOrGroup.UserGroupIds)
+		}
 		// property: name=user_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.UserOrGroup.UserIds = ListStringValueOrNil(ctx, plan.UserOrGroup.UserIds)
+		if state != nil && state.UserOrGroup != nil && plan.UserOrGroup.UserIds.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.UserOrGroup.UserIds = ListStringValueOrNil(ctx, state.UserOrGroup.UserIds)
+		} else {
+			body.UserOrGroup.UserIds = ListStringValueOrNil(ctx, plan.UserOrGroup.UserIds)
+		}
 	}
 
 	// convert body to map
@@ -1108,6 +1346,12 @@ func (r *securityPolicyRuleResource) doPut(ctx context.Context, plan *rsModelSec
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=SecurityPolicyV2RuleScreenV2N3
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=18
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -1121,6 +1365,14 @@ func (r *securityPolicyRuleResource) doPut(ctx context.Context, plan *rsModelSec
 	varAppDefIds, errAppDefIds := types.ListValueFrom(ctx, types.StringType, ans.AppDefIds)
 	state.AppDefIds = varAppDefIds
 	resp.Diagnostics.Append(errAppDefIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.AppDefIds) == 0 {
+		state.AppDefIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.AppDefIds) == 0 && !plan.AppDefIds.IsNull() && !plan.AppDefIds.IsUnknown() && len(plan.AppDefIds.Elements()) == 0 {
+		state.AppDefIds = plan.AppDefIds
+	}
 	// property: name=description, type=STRING macro=copy_to_state
 	state.Description = types.StringPointerValue(ans.Description)
 	// property: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
@@ -1131,10 +1383,26 @@ func (r *securityPolicyRuleResource) doPut(ctx context.Context, plan *rsModelSec
 	varDestinationPrefixIds, errDestinationPrefixIds := types.ListValueFrom(ctx, types.StringType, ans.DestinationPrefixIds)
 	state.DestinationPrefixIds = varDestinationPrefixIds
 	resp.Diagnostics.Append(errDestinationPrefixIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.DestinationPrefixIds) == 0 {
+		state.DestinationPrefixIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.DestinationPrefixIds) == 0 && !plan.DestinationPrefixIds.IsNull() && !plan.DestinationPrefixIds.IsUnknown() && len(plan.DestinationPrefixIds.Elements()) == 0 {
+		state.DestinationPrefixIds = plan.DestinationPrefixIds
+	}
 	// property: name=destination_zone_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 	varDestinationZoneIds, errDestinationZoneIds := types.ListValueFrom(ctx, types.StringType, ans.DestinationZoneIds)
 	state.DestinationZoneIds = varDestinationZoneIds
 	resp.Diagnostics.Append(errDestinationZoneIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.DestinationZoneIds) == 0 {
+		state.DestinationZoneIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.DestinationZoneIds) == 0 && !plan.DestinationZoneIds.IsNull() && !plan.DestinationZoneIds.IsUnknown() && len(plan.DestinationZoneIds.Elements()) == 0 {
+		state.DestinationZoneIds = plan.DestinationZoneIds
+	}
 	// property: name=enabled, type=BOOLEAN macro=copy_to_state
 	state.Enabled = types.BoolPointerValue(ans.Enabled)
 	// property: name=id, type=STRING macro=copy_to_state
@@ -1147,7 +1415,8 @@ func (r *securityPolicyRuleResource) doPut(ctx context.Context, plan *rsModelSec
 	if ans.Services == nil {
 		state.Services = nil
 	} else if len(ans.Services) == 0 {
-		state.Services = []rsModelService{}
+		// api does not accept empty list as missing value
+		state.Services = nil
 	} else {
 		state.Services = make([]rsModelService, 0, len(ans.Services))
 		for varLoopServicesIndex, varLoopServices := range ans.Services {
@@ -1195,14 +1464,34 @@ func (r *securityPolicyRuleResource) doPut(ctx context.Context, plan *rsModelSec
 			}
 		}
 	}
+	// the configuration states an empty list: keep it
+	if len(ans.Services) == 0 && plan.Services != nil && len(plan.Services) == 0 {
+		state.Services = plan.Services
+	}
 	// property: name=source_prefix_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 	varSourcePrefixIds, errSourcePrefixIds := types.ListValueFrom(ctx, types.StringType, ans.SourcePrefixIds)
 	state.SourcePrefixIds = varSourcePrefixIds
 	resp.Diagnostics.Append(errSourcePrefixIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.SourcePrefixIds) == 0 {
+		state.SourcePrefixIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.SourcePrefixIds) == 0 && !plan.SourcePrefixIds.IsNull() && !plan.SourcePrefixIds.IsUnknown() && len(plan.SourcePrefixIds.Elements()) == 0 {
+		state.SourcePrefixIds = plan.SourcePrefixIds
+	}
 	// property: name=source_zone_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 	varSourceZoneIds, errSourceZoneIds := types.ListValueFrom(ctx, types.StringType, ans.SourceZoneIds)
 	state.SourceZoneIds = varSourceZoneIds
 	resp.Diagnostics.Append(errSourceZoneIds.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.SourceZoneIds) == 0 {
+		state.SourceZoneIds = types.ListNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.SourceZoneIds) == 0 && !plan.SourceZoneIds.IsNull() && !plan.SourceZoneIds.IsUnknown() && len(plan.SourceZoneIds.Elements()) == 0 {
+		state.SourceZoneIds = plan.SourceZoneIds
+	}
 	// property: name=src_device_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 	varSrcDeviceIds, errSrcDeviceIds := types.ListValueFrom(ctx, types.StringType, ans.SrcDeviceIds)
 	state.SrcDeviceIds = varSrcDeviceIds
@@ -1211,6 +1500,14 @@ func (r *securityPolicyRuleResource) doPut(ctx context.Context, plan *rsModelSec
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=user_or_group, type=REFERENCE macro=copy_to_state
 	if ans.UserOrGroup == nil {
 		state.UserOrGroup = nil

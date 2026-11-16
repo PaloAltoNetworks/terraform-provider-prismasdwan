@@ -27,14 +27,15 @@ import (
 // | Schema Map Summary (size=goLangStructMap=1)
 // | Computed Resource Name=ipfixtemplates
 // +-----------------------------------------------------------------
-// | IPFixTemplateScreen HasID=true
+// | IPFixTemplate HasID=true
 // +-----------------------------------------------------------------
 
 // Resource.
 var (
-	_ resource.Resource                = &ipfixTemplateResource{}
-	_ resource.ResourceWithConfigure   = &ipfixTemplateResource{}
-	_ resource.ResourceWithImportState = &ipfixTemplateResource{}
+	_ resource.Resource                   = &ipfixTemplateResource{}
+	_ resource.ResourceWithConfigure      = &ipfixTemplateResource{}
+	_ resource.ResourceWithImportState    = &ipfixTemplateResource{}
+	_ resource.ResourceWithValidateConfig = &ipfixTemplateResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -55,6 +56,12 @@ type ipfixTemplateResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *ipfixTemplateResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{})...)
+}
+
 // Metadata returns the data source type name.
 func (r *ipfixTemplateResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_ipfix_template"
@@ -63,44 +70,49 @@ func (r *ipfixTemplateResource) Metadata(_ context.Context, req resource.Metadat
 // Schema defines the schema for this data source.
 func (r *ipfixTemplateResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Ipfix Template.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
-			// rest all properties to be read from GET API Schema schema=IPFixTemplateScreen
+			// rest all properties to be read from GET API Schema schema=IPFixTemplate
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=flow_fields, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -109,39 +121,44 @@ func (r *ipfixTemplateResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Flow fields. Each item: one of INTERFACES, TIME_STAMPS, DST_IPV4_ADDRESS, DST_PORT, SRC_IPV4_ADDRESS, SRC_PORT, PROTOCOL, DSCP_MAP, DSCP_LAST, QOS_QUEUE, WAN_PATH, APP_DEF_ID, RTP_TRANSPORT_TYPE, TRANSPORT_TCP_WINDOWSIZE, CONNECTION_UNIFLOW_BYTES, CONNECTION_UNIFLOW_PACKETS, CONNECTION_BIFLOW_BYTES, CONNECTION_BIFLOW_PACKETS, CONNECTION_RTT, CONNECTION_NTT, CONNECTION_SRT, APPLICATION_HOST, CONNECTION_INIT, CONNECTION_XACT, CONNECTION_UDPTRT, MEDIA_CODEC, MEDIA_JITTER, MEDIA_LOSS, MEDIA_MOS, TROUBLESHOOT_TCP, TROUBLESHOOT_DECISION_MAP, VRF_NAME.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=flow_fields, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=generate_biflow, type=BOOLEAN macro=rss_schema
 			"generate_biflow": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Generate biflow.",
 			},
 			// key name holder for attribute: name=generate_biflow, type=BOOLEAN macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=option_export_timeout, type=INTEGER macro=rss_schema
 			"option_export_timeout": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Option export timeout.",
 			},
 			// key name holder for attribute: name=option_export_timeout, type=INTEGER macro=rss_schema
 			// property: name=options, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -150,6 +167,7 @@ func (r *ipfixTemplateResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Options. Each item: one of APP_DEF_ID_TABLE, LINK_QUALITY_METRICS, WAN_PATH_ID_TABLE, TYPE_INFO_FOR_IPFIX_IE, DEVICE_IDENTIFICATION.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=options, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -159,15 +177,17 @@ func (r *ipfixTemplateResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=template_export_timeout, type=INTEGER macro=rss_schema
 			"template_export_timeout": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Template export timeout.",
 			},
 			// key name holder for attribute: name=template_export_timeout, type=INTEGER macro=rss_schema
 		},
@@ -196,7 +216,7 @@ func (r *ipfixTemplateResource) GetHttpStatusCode(request *sdwan_client.SdwanCli
 	}
 }
 
-func (r *ipfixTemplateResource) doPost(ctx context.Context, plan *rsModelIPFixTemplateScreen, state *rsModelIPFixTemplateScreen, resp *resource.CreateResponse) bool {
+func (r *ipfixTemplateResource) doPost(ctx context.Context, plan *rsModelIPFixTemplate, state *rsModelIPFixTemplate, resp *resource.CreateResponse) bool {
 	tflog.Info(ctx, "executing http post for prismasdwan_ipfix_template")
 	// Basic logging.
 	tflog.Info(ctx, "performing resource create", map[string]any{
@@ -218,7 +238,7 @@ func (r *ipfixTemplateResource) doPost(ctx context.Context, plan *rsModelIPFixTe
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.IPFixTemplateScreen{}
+	var body = &sdwan_schema.IPFixTemplate{}
 
 	// copy from plan to body
 	// copy_from_plan: body=body prefix=rsModel plan=plan properties=11
@@ -249,7 +269,7 @@ func (r *ipfixTemplateResource) doPost(ctx context.Context, plan *rsModelIPFixTe
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct IPFixTemplateScreen to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct IPFixTemplate to JSON:", err.Error())
 		return false
 	}
 
@@ -292,12 +312,12 @@ func (r *ipfixTemplateResource) doPost(ctx context.Context, plan *rsModelIPFixTe
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.IPFixTemplateScreen
+	var ans sdwan_schema.IPFixTemplate
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to IPFixTemplateScreen in create", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to IPFixTemplate in create", json_err.Error())
 		return false
 	}
 
@@ -322,7 +342,7 @@ func (r *ipfixTemplateResource) doPost(ctx context.Context, plan *rsModelIPFixTe
 	state.TfParameters = plan.TfParameters
 	tflog.Info(ctx, "created prismasdwan_ipfix_template with ID", map[string]any{"tfid": state.Tfid.ValueString()})
 
-	// Store the answer to state. schema=IPFixTemplateScreen
+	// Store the answer to state. schema=IPFixTemplate
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=11
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -335,6 +355,10 @@ func (r *ipfixTemplateResource) doPost(ctx context.Context, plan *rsModelIPFixTe
 	varFlowFields, errFlowFields := types.ListValueFrom(ctx, types.StringType, ans.FlowFields)
 	state.FlowFields = varFlowFields
 	resp.Diagnostics.Append(errFlowFields.Errors()...)
+	// the api adds some items to this list on its own; keep the configured list when those are the only difference
+	if ListEqualIgnoringAdditions(state.FlowFields, plan.FlowFields, "VRF_NAME") {
+		state.FlowFields = plan.FlowFields
+	}
 	// property: name=generate_biflow, type=BOOLEAN macro=copy_to_state
 	state.GenerateBiflow = types.BoolPointerValue(ans.GenerateBiflow)
 	// property: name=id, type=STRING macro=copy_to_state
@@ -351,12 +375,20 @@ func (r *ipfixTemplateResource) doPost(ctx context.Context, plan *rsModelIPFixTe
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=template_export_timeout, type=INTEGER macro=copy_to_state
 	state.TemplateExportTimeout = types.Int64PointerValue(ans.TemplateExportTimeout)
 	return true
 }
 
-func (r *ipfixTemplateResource) doGet(ctx context.Context, state *rsModelIPFixTemplateScreen, savestate *rsModelIPFixTemplateScreen, State *tfsdk.State, resp *resource.ReadResponse) bool {
+func (r *ipfixTemplateResource) doGet(ctx context.Context, state *rsModelIPFixTemplate, savestate *rsModelIPFixTemplate, State *tfsdk.State, resp *resource.ReadResponse) bool {
 	// Basic logging.
 	tfid := savestate.Tfid.ValueString()
 	tflog.Info(ctx, "performing resource read", map[string]any{
@@ -420,21 +452,37 @@ func (r *ipfixTemplateResource) doGet(ctx context.Context, state *rsModelIPFixTe
 	tflog.Debug(ctx, "http json override: set response_body_string::_schema")
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
-	// Store the answer to state. schema=IPFixTemplateScreen
+	// Store the answer to state. schema=IPFixTemplate
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
 	// start copying attributes
-	var ans sdwan_schema.IPFixTemplateScreen
+	var ans sdwan_schema.IPFixTemplate
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to IPFixTemplateScreen in read", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to IPFixTemplate in read", json_err.Error())
 		return false
 	}
 	// lets copy all items into state
@@ -450,6 +498,10 @@ func (r *ipfixTemplateResource) doGet(ctx context.Context, state *rsModelIPFixTe
 	varFlowFields, errFlowFields := types.ListValueFrom(ctx, types.StringType, ans.FlowFields)
 	state.FlowFields = varFlowFields
 	resp.Diagnostics.Append(errFlowFields.Errors()...)
+	// the api adds some items to this list on its own; keep the configured list when those are the only difference
+	if ListEqualIgnoringAdditions(state.FlowFields, savestate.FlowFields, "VRF_NAME") {
+		state.FlowFields = savestate.FlowFields
+	}
 	// property: name=generate_biflow, type=BOOLEAN macro=copy_to_state
 	state.GenerateBiflow = types.BoolPointerValue(ans.GenerateBiflow)
 	// property: name=id, type=STRING macro=copy_to_state
@@ -466,12 +518,20 @@ func (r *ipfixTemplateResource) doGet(ctx context.Context, state *rsModelIPFixTe
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=template_export_timeout, type=INTEGER macro=copy_to_state
 	state.TemplateExportTimeout = types.Int64PointerValue(ans.TemplateExportTimeout)
 	return true
 }
 
-func (r *ipfixTemplateResource) doPut(ctx context.Context, plan *rsModelIPFixTemplateScreen, state *rsModelIPFixTemplateScreen, State *tfsdk.State, resp *resource.UpdateResponse) bool {
+func (r *ipfixTemplateResource) doPut(ctx context.Context, plan *rsModelIPFixTemplate, state *rsModelIPFixTemplate, State *tfsdk.State, resp *resource.UpdateResponse) bool {
 	state_tfid := state.Tfid.ValueString()
 	plan_tfid := plan.Tfid.ValueString()
 	// Basic logging.
@@ -518,7 +578,7 @@ func (r *ipfixTemplateResource) doPut(ctx context.Context, plan *rsModelIPFixTem
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.IPFixTemplateScreen{}
+	var body = &sdwan_schema.IPFixTemplate{}
 
 	// now we create the JSON request from the state/plan created by TF
 	// below copy code generated from macro copy_from_plan_or_state
@@ -543,7 +603,12 @@ func (r *ipfixTemplateResource) doPut(ctx context.Context, plan *rsModelIPFixTem
 		body.Description = StringValueOrNil(plan.Description)
 	}
 	// property: name=flow_fields, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.FlowFields = ListStringValueOrNil(ctx, plan.FlowFields)
+	if state != nil && plan.FlowFields.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.FlowFields = ListStringValueOrNil(ctx, state.FlowFields)
+	} else {
+		body.FlowFields = ListStringValueOrNil(ctx, plan.FlowFields)
+	}
 	// property: name=generate_biflow, type=BOOLEAN macro=copy_from_plan_or_state
 	if state != nil {
 		body.GenerateBiflow = ValueBoolPointerFromPlanOrState(plan.GenerateBiflow, state.GenerateBiflow)
@@ -569,9 +634,19 @@ func (r *ipfixTemplateResource) doPut(ctx context.Context, plan *rsModelIPFixTem
 		body.OptionExportTimeout = Int64ValueOrNil(plan.OptionExportTimeout)
 	}
 	// property: name=options, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.Options = ListStringValueOrNil(ctx, plan.Options)
+	if state != nil && plan.Options.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Options = ListStringValueOrNil(ctx, state.Options)
+	} else {
+		body.Options = ListStringValueOrNil(ctx, plan.Options)
+	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=template_export_timeout, type=INTEGER macro=copy_from_plan_or_state
 	if state != nil {
 		body.TemplateExportTimeout = ValueInt64PointerFromPlanOrState(plan.TemplateExportTimeout, state.TemplateExportTimeout)
@@ -582,7 +657,7 @@ func (r *ipfixTemplateResource) doPut(ctx context.Context, plan *rsModelIPFixTem
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct IPFixTemplateScreen to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct IPFixTemplate to JSON:", err.Error())
 		return false
 	}
 
@@ -618,16 +693,22 @@ func (r *ipfixTemplateResource) doPut(ctx context.Context, plan *rsModelIPFixTem
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.IPFixTemplateScreen
+	var ans sdwan_schema.IPFixTemplate
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to IPFixTemplateScreen in update", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to IPFixTemplate in update", json_err.Error())
 		return false
 	}
 
-	// Store the answer to state. schema=IPFixTemplateScreen
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
+	// Store the answer to state. schema=IPFixTemplate
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=11
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -640,6 +721,10 @@ func (r *ipfixTemplateResource) doPut(ctx context.Context, plan *rsModelIPFixTem
 	varFlowFields, errFlowFields := types.ListValueFrom(ctx, types.StringType, ans.FlowFields)
 	state.FlowFields = varFlowFields
 	resp.Diagnostics.Append(errFlowFields.Errors()...)
+	// the api adds some items to this list on its own; keep the configured list when those are the only difference
+	if ListEqualIgnoringAdditions(state.FlowFields, plan.FlowFields, "VRF_NAME") {
+		state.FlowFields = plan.FlowFields
+	}
 	// property: name=generate_biflow, type=BOOLEAN macro=copy_to_state
 	state.GenerateBiflow = types.BoolPointerValue(ans.GenerateBiflow)
 	// property: name=id, type=STRING macro=copy_to_state
@@ -656,12 +741,20 @@ func (r *ipfixTemplateResource) doPut(ctx context.Context, plan *rsModelIPFixTem
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=template_export_timeout, type=INTEGER macro=copy_to_state
 	state.TemplateExportTimeout = types.Int64PointerValue(ans.TemplateExportTimeout)
 	return true
 }
 
-func (r *ipfixTemplateResource) doDelete(ctx context.Context, state *rsModelIPFixTemplateScreen, resp *resource.DeleteResponse) bool {
+func (r *ipfixTemplateResource) doDelete(ctx context.Context, state *rsModelIPFixTemplate, resp *resource.DeleteResponse) bool {
 	// read object id
 	tfid := state.Tfid.ValueString()
 	// Basic logging.
@@ -716,14 +809,14 @@ func (r *ipfixTemplateResource) doDelete(ctx context.Context, state *rsModelIPFi
 // Path Parameters are encoded into TfID itself
 func (r *ipfixTemplateResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "executing resource create for prismasdwan_ipfix_template")
-	var plan rsModelIPFixTemplateScreen
+	var plan rsModelIPFixTemplate
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// make post call
-	var state rsModelIPFixTemplateScreen
+	var state rsModelIPFixTemplate
 	if r.doPost(ctx, &plan, &state, resp) {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	}
@@ -735,7 +828,7 @@ func (r *ipfixTemplateResource) Create(ctx context.Context, req resource.CreateR
 func (r *ipfixTemplateResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 	tflog.Info(ctx, "executing resource read for prismasdwan_ipfix_template")
-	var savestate, state rsModelIPFixTemplateScreen
+	var savestate, state rsModelIPFixTemplate
 	resp.Diagnostics.Append(req.State.Get(ctx, &savestate)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -754,7 +847,7 @@ func (r *ipfixTemplateResource) Read(ctx context.Context, req resource.ReadReque
 func (r *ipfixTemplateResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
 	tflog.Info(ctx, "executing resource update for prismasdwan_ipfix_template")
-	var plan, state rsModelIPFixTemplateScreen
+	var plan, state rsModelIPFixTemplate
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -778,7 +871,7 @@ func (r *ipfixTemplateResource) Update(ctx context.Context, req resource.UpdateR
 func (r *ipfixTemplateResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 
 	tflog.Info(ctx, "executing resource delete for prismasdwan_ipfix_template")
-	var state rsModelIPFixTemplateScreen
+	var state rsModelIPFixTemplate
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {

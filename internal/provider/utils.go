@@ -6,16 +6,33 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
+	"math"
+	"reflect"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 func ValueStringPointerFromPlanOrState(planVal, stateVal types.String) *string {
-	if !planVal.IsNull() && !planVal.IsUnknown() {
+	// null: removed from the config, so send null and let the api clear it
+	if planVal.IsNull() {
+		return nil
+	}
+	// unknown: computed and not configured, so fall back to what the server has
+	if !planVal.IsUnknown() {
 		return planVal.ValueStringPointer()
 	}
 	if stateVal.IsNull() || stateVal.IsUnknown() {
@@ -25,7 +42,12 @@ func ValueStringPointerFromPlanOrState(planVal, stateVal types.String) *string {
 }
 
 func ValueBoolPointerFromPlanOrState(planVal, stateVal types.Bool) *bool {
-	if !planVal.IsNull() && !planVal.IsUnknown() {
+	// null: removed from the config, so send null and let the api clear it
+	if planVal.IsNull() {
+		return nil
+	}
+	// unknown: computed and not configured, so fall back to what the server has
+	if !planVal.IsUnknown() {
 		value := planVal.ValueBool()
 		return &value
 	}
@@ -57,7 +79,12 @@ func ValueBoolFromPlanOrState(planVal, stateVal types.Bool) bool {
 }
 
 func ValueInt64PointerFromPlanOrState(planVal, stateVal types.Int64) *int64 {
-	if !planVal.IsNull() && !planVal.IsUnknown() {
+	// null: removed from the config, so send null and let the api clear it
+	if planVal.IsNull() {
+		return nil
+	}
+	// unknown: computed and not configured, so fall back to what the server has
+	if !planVal.IsUnknown() {
 		value := planVal.ValueInt64()
 		return &value
 	}
@@ -79,7 +106,12 @@ func ValueInt64FromPlanOrState(planVal, stateVal types.Int64) int64 {
 }
 
 func ValueFloat64PointerFromPlanOrState(planVal, stateVal types.Float64) *float64 {
-	if !planVal.IsNull() && !planVal.IsUnknown() {
+	// null: removed from the config, so send null and let the api clear it
+	if planVal.IsNull() {
+		return nil
+	}
+	// unknown: computed and not configured, so fall back to what the server has
+	if !planVal.IsUnknown() {
 		value := planVal.ValueFloat64()
 		return &value
 	}
@@ -171,6 +203,41 @@ func ListStringValueOrNil(ctx context.Context, v types.List) []string {
 	var result []string
 	v.ElementsAs(ctx, &result, false)
 	return result
+}
+
+// ListEqualIgnoringAdditions reports whether have holds exactly the elements of want plus, optionally, some of
+// additions (items the API adds on its own). Order is ignored. A null or unknown list never matches, so callers
+// fall back to the value the API returned.
+func ListEqualIgnoringAdditions(have, want types.List, additions ...string) bool {
+	if want.IsNull() || want.IsUnknown() || have.IsNull() || have.IsUnknown() {
+		return false
+	}
+	wanted := make(map[string]bool, len(want.Elements()))
+	for _, v := range want.Elements() {
+		wanted[listElementKey(v)] = true
+	}
+	allowed := make(map[string]bool, len(additions))
+	for _, a := range additions {
+		allowed[a] = true
+	}
+	found := make(map[string]bool, len(wanted))
+	for _, v := range have.Elements() {
+		key := listElementKey(v)
+		if wanted[key] {
+			found[key] = true
+		} else if !allowed[key] {
+			return false
+		}
+	}
+	return len(found) == len(wanted)
+}
+
+// listElementKey compares string elements by their raw value; String() would quote them.
+func listElementKey(v attr.Value) string {
+	if s, ok := v.(types.String); ok {
+		return s.ValueString()
+	}
+	return v.String()
 }
 
 func SetStringValueOrNil(ctx context.Context, v types.Set) []string {
@@ -271,4 +338,153 @@ func TfidFromParams(params *map[string]*string) types.String {
 		idBuilder.WriteString(*v)
 	}
 	return types.StringValue(idBuilder.String())
+}
+
+// ValidateRequiredXParameters reports each path parameter the resource needs that is missing from x_parameters.
+// An unknown x_parameters (built from values known only after apply) is checked again when the request is sent.
+func ValidateRequiredXParameters(ctx context.Context, config tfsdk.Config, required []string) diag.Diagnostics {
+	var params types.Map
+	diags := config.GetAttribute(ctx, path.Root("x_parameters"), &params)
+	if diags.HasError() || params.IsUnknown() {
+		return diags
+	}
+	elements := params.Elements()
+	for _, name := range required {
+		if v, ok := elements[name]; !ok || v.IsNull() {
+			diags.AddAttributeError(path.Root("x_parameters"), "Missing path parameter",
+				fmt.Sprintf("path parameter %q is required; set x_parameters.%s", name, name))
+		}
+	}
+	return diags
+}
+
+// TenantIdFromScope returns the tenant id from a provider scope such as "tsg_id:1234567890", or nil.
+func TenantIdFromScope(scope string) *string {
+	for _, part := range strings.Fields(scope) {
+		if id, ok := strings.CutPrefix(part, "tsg_id:"); ok && id != "" {
+			return &id
+		}
+	}
+	return nil
+}
+
+// DeleteIfNull removes path from a JSON body when its value is null or absent, for APIs that reject null for an
+// optional field. A real value is left alone.
+func DeleteIfNull(body, path string) string {
+	// "list.#.key" applies to every element of list
+	if i := strings.Index(path, ".#."); i >= 0 {
+		count := int(gjson.Get(body, path[:i]+".#").Int())
+		for index := 0; index < count; index++ {
+			body = DeleteIfNull(body, fmt.Sprintf("%s.%d.%s", path[:i], index, path[i+3:]))
+		}
+		return body
+	}
+	if gjson.Get(body, path).Type == gjson.Null {
+		if out, err := sjson.Delete(body, path); err == nil {
+			return out
+		}
+	}
+	return body
+}
+
+// SetIfNull sets path in a JSON body to value when the path is null or absent; a real value is left alone.
+func SetIfNull(body, path string, value interface{}) string {
+	// "list.#.key" applies to every element of list
+	if i := strings.Index(path, ".#."); i >= 0 {
+		count := int(gjson.Get(body, path[:i]+".#").Int())
+		for index := 0; index < count; index++ {
+			body = SetIfNull(body, fmt.Sprintf("%s.%d.%s", path[:i], index, path[i+3:]), value)
+		}
+		return body
+	}
+	if gjson.Get(body, path).Type == gjson.Null {
+		if out, err := sjson.Set(body, path, value); err == nil {
+			return out
+		}
+	}
+	return body
+}
+
+// JSONStringToMap turns a JSON text attribute (x_flag_json_string) into the object sent to the API. A null, unknown or
+// empty value is no object; text that is not a JSON object is an error on the response.
+func JSONStringToMap(v types.String, diags *diag.Diagnostics) *map[string]interface{} {
+	if v.IsNull() || v.IsUnknown() || strings.TrimSpace(v.ValueString()) == "" {
+		return nil
+	}
+	var object map[string]interface{}
+	if err := json.Unmarshal([]byte(v.ValueString()), &object); err != nil || object == nil {
+		detail := "the value must be a JSON object, for example jsonencode({ key = \"value\" })"
+		if err != nil {
+			detail = err.Error() + ": " + detail
+		}
+		diags.AddError("invalid JSON object", detail)
+		return nil
+	}
+	return &object
+}
+
+// JSONStringFromMap is the reverse: the object the API returned as JSON text. When the text the user configured (prior)
+// holds the same object it is kept as written, so formatting or key order never shows up as a change.
+func JSONStringFromMap(object *map[string]interface{}, prior types.String) types.String {
+	if object == nil {
+		return types.StringNull()
+	}
+	if !prior.IsNull() && !prior.IsUnknown() {
+		var configured map[string]interface{}
+		if json.Unmarshal([]byte(prior.ValueString()), &configured) == nil && reflect.DeepEqual(configured, *object) {
+			return prior
+		}
+	}
+	text, err := json.Marshal(*object)
+	if err != nil {
+		return types.StringNull()
+	}
+	return types.StringValue(string(text))
+}
+
+// ListMaxItems is the validator of a list attribute whose spec says maxItems (the generated schema calls it), so that
+// plan fails with a message when the configuration has more items than the API accepts.
+func ListMaxItems(limit int) []validator.List {
+	return []validator.List{listvalidator.SizeAtMost(limit)}
+}
+
+// NotSettable rejects a configured value of a list attribute that the provider never sends to the API.
+func NotSettable(name string) []validator.List {
+	return []validator.List{notSettableValidator{name: name}}
+}
+
+type notSettableValidator struct{ name string }
+
+func (v notSettableValidator) Description(context.Context) string {
+	return v.name + " cannot be set here; manage it with its own resource"
+}
+
+func (v notSettableValidator) MarkdownDescription(ctx context.Context) string {
+	return v.Description(ctx)
+}
+
+func (v notSettableValidator) ValidateList(_ context.Context, req validator.ListRequest, resp *validator.ListResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+		return
+	}
+	resp.Diagnostics.AddAttributeError(req.Path, "Attribute cannot be set",
+		v.name+" is not sent to the API: the rules are separate objects. Remove this attribute and create the rules "+
+			"with the matching prismasdwan_*_policy_rule resources.")
+}
+
+// SetMaxItems is the same for a set attribute.
+func SetMaxItems(limit int) []validator.Set {
+	return []validator.Set{setvalidator.SizeAtMost(limit)}
+}
+
+// Float64KeepPlanWhenNear is the state value of a floating point attribute: the configured value when the API's answer
+// is the same number to six decimals (the API rounds, so -98.497408 is read back as -98.497406), otherwise the answer.
+func Float64KeepPlanWhenNear(answer *float64, plan types.Float64) types.Float64 {
+	if answer == nil || plan.IsNull() || plan.IsUnknown() {
+		return types.Float64PointerValue(answer)
+	}
+	if math.Abs(plan.ValueFloat64()-*answer) <= 0.000005 {
+		return plan
+	}
+	return types.Float64PointerValue(answer)
 }

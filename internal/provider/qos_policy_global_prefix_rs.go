@@ -32,9 +32,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &qosPolicyGlobalPrefixResource{}
-	_ resource.ResourceWithConfigure   = &qosPolicyGlobalPrefixResource{}
-	_ resource.ResourceWithImportState = &qosPolicyGlobalPrefixResource{}
+	_ resource.Resource                   = &qosPolicyGlobalPrefixResource{}
+	_ resource.ResourceWithConfigure      = &qosPolicyGlobalPrefixResource{}
+	_ resource.ResourceWithImportState    = &qosPolicyGlobalPrefixResource{}
+	_ resource.ResourceWithValidateConfig = &qosPolicyGlobalPrefixResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -55,6 +56,12 @@ type qosPolicyGlobalPrefixResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *qosPolicyGlobalPrefixResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{})...)
+}
+
 // Metadata returns the data source type name.
 func (r *qosPolicyGlobalPrefixResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_qos_policy_global_prefix"
@@ -63,13 +70,14 @@ func (r *qosPolicyGlobalPrefixResource) Metadata(_ context.Context, req resource
 // Schema defines the schema for this data source.
 func (r *qosPolicyGlobalPrefixResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Qos Policy Global Prefix.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=PriorityPolicyGlobalPrefixV2N1
 			// generic x_parameters is added to accomodate path parameters
@@ -78,37 +86,42 @@ func (r *qosPolicyGlobalPrefixResource) Schema(_ context.Context, _ resource.Sch
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=ipv4_prefixes, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -117,6 +130,7 @@ func (r *qosPolicyGlobalPrefixResource) Schema(_ context.Context, _ resource.Sch
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Ipv4 prefixes.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=ipv4_prefixes, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -126,15 +140,17 @@ func (r *qosPolicyGlobalPrefixResource) Schema(_ context.Context, _ resource.Sch
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Ipv6 prefixes.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=ipv6_prefixes, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -143,6 +159,8 @@ func (r *qosPolicyGlobalPrefixResource) Schema(_ context.Context, _ resource.Sch
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -319,6 +337,14 @@ func (r *qosPolicyGlobalPrefixResource) doPost(ctx context.Context, plan *rsMode
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
@@ -390,7 +416,23 @@ func (r *qosPolicyGlobalPrefixResource) doGet(ctx context.Context, state *rsMode
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -428,6 +470,14 @@ func (r *qosPolicyGlobalPrefixResource) doGet(ctx context.Context, state *rsMode
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	return true
 }
 
@@ -509,9 +559,19 @@ func (r *qosPolicyGlobalPrefixResource) doPut(ctx context.Context, plan *rsModel
 		body.Id = StringValueOrNil(plan.Id)
 	}
 	// property: name=ipv4_prefixes, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.Ipv4Prefixes = ListStringValueOrNil(ctx, plan.Ipv4Prefixes)
+	if state != nil && plan.Ipv4Prefixes.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Ipv4Prefixes = ListStringValueOrNil(ctx, state.Ipv4Prefixes)
+	} else {
+		body.Ipv4Prefixes = ListStringValueOrNil(ctx, plan.Ipv4Prefixes)
+	}
 	// property: name=ipv6_prefixes, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.Ipv6Prefixes = ListStringValueOrNil(ctx, plan.Ipv6Prefixes)
+	if state != nil && plan.Ipv6Prefixes.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Ipv6Prefixes = ListStringValueOrNil(ctx, state.Ipv6Prefixes)
+	} else {
+		body.Ipv6Prefixes = ListStringValueOrNil(ctx, plan.Ipv6Prefixes)
+	}
 	// property: name=name, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.Name = ValueStringPointerFromPlanOrState(plan.Name, state.Name)
@@ -519,7 +579,12 @@ func (r *qosPolicyGlobalPrefixResource) doPut(ctx context.Context, plan *rsModel
 		body.Name = StringValueOrNil(plan.Name)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
@@ -569,6 +634,12 @@ func (r *qosPolicyGlobalPrefixResource) doPut(ctx context.Context, plan *rsModel
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=PriorityPolicyGlobalPrefixV2N1
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=8
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -594,6 +665,14 @@ func (r *qosPolicyGlobalPrefixResource) doPut(ctx context.Context, plan *rsModel
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 

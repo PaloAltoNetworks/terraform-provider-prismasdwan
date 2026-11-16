@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	sdwan "github.com/paloaltonetworks/terraform-provider-prismasdwan/sdk"
@@ -69,13 +70,14 @@ func (d *eventCorrelationPolicyRuleDataSource) Metadata(_ context.Context, req d
 // Schema defines the schema for this data source.
 func (d *eventCorrelationPolicyRuleDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Retrieves a list of Prisma SD-WAN Event Correlation Policy Rule items.",
 		Attributes: map[string]dsschema.Attribute{
 			"filters": dsschema.MapAttribute{
 				Required:    true,
 				Computed:    false,
 				Optional:    false,
 				ElementType: types.StringType,
+				Description: "Path parameters used to locate the items to retrieve.",
 			},
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": dsschema.MapAttribute{
@@ -83,216 +85,243 @@ func (d *eventCorrelationPolicyRuleDataSource) Schema(_ context.Context, _ datas
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Additional path parameters for the data source, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": dsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Entity tag returned by the API, managed automatically by the provider.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": dsschema.Int64Attribute{
-				Required: false,
-				Computed: true,
-				Optional: true,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Description: "Schema version returned by the API, managed automatically by the provider.",
 			},
 			"items": dsschema.ListNestedAttribute{
-				Computed: true,
+				Computed:    true,
+				Description: "The list of items returned by the data source.",
 				NestedObject: dsschema.NestedAttributeObject{
 					Attributes: map[string]dsschema.Attribute{
 						// rest all properties to be read from GET API Schema schema=EventCorrelationPolicyRuleScreenV2N1
 						// property: name=_etag, type=INTEGER macro=rss_schema
 						"x_etag": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 						// property: name=_schema, type=INTEGER macro=rss_schema
 						"x_schema": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 						// property: name=dampening_duration, type=INTEGER macro=rss_schema
 						"dampening_duration": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Dampening duration. Value: between 5 and 10080.",
 						},
 						// key name holder for attribute: name=dampening_duration, type=INTEGER macro=rss_schema
 						// property: name=description, type=STRING macro=rss_schema
 						"description": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Description. Value: at most 256 characters.",
 						},
 						// key name holder for attribute: name=description, type=STRING macro=rss_schema
 						// property: name=enabled, type=BOOLEAN macro=rss_schema
 						"enabled": dsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Enabled.",
 						},
 						// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 						// property: name=end_time, type=INTEGER macro=rss_schema
 						"end_time": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "End time.",
 						},
 						// key name holder for attribute: name=end_time, type=INTEGER macro=rss_schema
 						// property: name=escalation_rules, type=REFERENCE macro=rss_schema
 						"escalation_rules": dsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Escalation rules.",
 							Attributes: map[string]dsschema.Attribute{
 								// property: name=flap_rule, type=REFERENCE macro=rss_schema
 								"flap_rule": dsschema.SingleNestedAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Flap rule.",
 									Attributes: map[string]dsschema.Attribute{
 										// property: name=flap_duration, type=INTEGER macro=rss_schema
 										"flap_duration": dsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Flap duration. Value: between 5 and 10080.",
 										},
 										// key name holder for attribute: name=flap_duration, type=INTEGER macro=rss_schema
 										// property: name=flap_rate, type=INTEGER macro=rss_schema
 										"flap_rate": dsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Flap rate. Value: between 2 and 512.",
 										},
 										// key name holder for attribute: name=flap_rate, type=INTEGER macro=rss_schema
 									},
 								},
-								// key name holder for attribute: name=flap_rate, type=INTEGER macro=rss_schema
+								// key name holder for attribute: name=flap_rule, type=REFERENCE macro=rss_schema
 								// property: name=standing_rule, type=REFERENCE macro=rss_schema
 								"standing_rule": dsschema.SingleNestedAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Standing rule.",
 									Attributes: map[string]dsschema.Attribute{
 										// property: name=priority, type=STRING macro=rss_schema
 										"priority": dsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Priority. Value: one of p1, p2, p3, p4, p5, none.",
 										},
 										// key name holder for attribute: name=priority, type=STRING macro=rss_schema
 										// property: name=standing_for, type=INTEGER macro=rss_schema
 										"standing_for": dsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Standing for. Value: between 5 and 10080.",
 										},
 										// key name holder for attribute: name=standing_for, type=INTEGER macro=rss_schema
 									},
 								},
-								// key name holder for attribute: name=standing_for, type=INTEGER macro=rss_schema
+								// key name holder for attribute: name=standing_rule, type=REFERENCE macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=standing_for, type=INTEGER macro=rss_schema
+						// key name holder for attribute: name=escalation_rules, type=REFERENCE macro=rss_schema
 						// property: name=event_codes, type=ARRAY_PRIMITIVE macro=rss_schema
 						"event_codes": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Event codes. Each item: one of DEVICEHW_POWER_LOST, DEVICEHW_INTERFACE_DOWN, DEVICEHW_INTERFACE_HALFDUPLEX, DEVICEHW_INTERFACE_ERRORS, DEVICEHW_DISKUTIL_PARTITIONSPACE, DEVICEHW_DISKENC_SYSTEM, DEVICEHW_MEMUTIL_SWAPSPACE, DEVICESW_GENERAL_PROCESSRESTART, DEVICESW_GENERAL_PROCESSSTOP, DEVICESW_CRITICAL_PROCESSRESTART, DEVICESW_CRITICAL_PROCESSSTOP, DEVICESW_LICENSE_VERIFICATION_FAILED, DEVICESW_MONITOR_DISABLED, DEVICESW_SYSTEM_BOOT, DEVICESW_TOKEN_VERIFICATION_FAILED, DEVICESW_IMAGE_UNSUPPORTED, DEVICESW_DHCPSERVER_RESTART, DEVICESW_DHCPRELAY_RESTART, DEVICESW_DHCPSERVER_ERRORS, DEVICESW_SNMP_AGENT_RESTART, DEVICESW_SNMP_AGENT_FAILED_TO_START, DEVICESW_SYSLOGSERVERS_DOWN, DEVICESW_NTP_NO_SYNC, DEVICEIF_ADDRESS_DUPLICATE, DEVICEIF_IPV6_ADDRESS_DUPLICATE, NETWORK_VPNLINK_DOWN, NETWORK_VPNPEER_UNAVAILABLE, NETWORK_VPNPEER_UNREACHABLE, NETWORK_VPNSS_MISMATCH, NETWORK_VPNSS_UNAVAILABLE, NETWORK_VPNBFD_DOWN, NETWORK_VPNLINKCIPHERS_INCOMPATIBLE, NETWORK_DIRECTPRIVATE_DOWN, NETWORK_DIRECTINTERNET_DOWN, NETWORK_PRIVATEWAN_UNREACHABLE, NETWORK_PRIVATEWAN_DEGRADED, PEERING_EDGE_DOWN, PEERING_CORE_DOWN, PEERING_BGP_DOWN, APPLICATION_APP_UNREACHABLE, APPLICATION_IP_COLLISION, APPLICATION_UNKNOWNS_HIGH, APPLICATION_FLOWCTRL_APPUNREACHABLE, APPLICATION_FLOWCTRL_APPREACHABLE, APPLICATION_FLOWCTRL_APPWITHINSLA, APPLICATION_FLOWCTRL_APPOUTSIDESLA, OPERATOR_SIGNUP_TOKEN_DISABLED, DEVICESW_FPS_LIMIT_EXCEEDED, DEVICESW_CONCURRENT_FLOW_SOFTLIMIT_EXCEEDED, DEVICESW_CONCURRENT_FLOWLIMIT_EXCEEDED, SITE_CIRCUIT_ABSENT_FOR_POLICY, NETWORK_POLICY_RULE_CONFLICT, PRIORITY_POLICY_RULE_CONFLICT, APPLICATION_CUSTOM_RULE_CONFLICT, NETWORK_POLICY_RULE_DROPPED, PRIORITY_POLICY_RULE_DROPPED, DEVICESW_DISCONNECTED_FROM_CONTROLLER, DEVICESW_USERIDAGENTS_DOWN, SPOKEHA_STATE_UPDATE, SPOKEHA_MULTIPLE_ACTIVE_DEVICES, SPOKEHA_CLUSTER_DEGRADED, SPOKEHA_CLUSTER_DOWN, NAT_POLICY_LEGACY_ALG_CONFIG_OVERRIDE, NAT_POLICY_STATIC_NATPOOL_OVERRUN, DEVICESW_CONNTRACK_FLOWLIMIT_EXCEEDED, DEVICESW_INITIATED_CONNECTION_ON_EXCLUDED_PATH, NETWORK_ANYNETLINK_DEGRADED, NETWORK_ANYNETLINK_DOWN, CLAIMCERT_RENEWAL_RETRY_LIMIT_EXCEEDED, CLAIMCERT_RENEWAL_FAILED, CLAIMCERT_AUTO_RENEWAL_DISABLED, CLAIMCERT_RENEWALS_TOO_FREQUENT, FLAP_RATE_EXCEEDED, DEVICESW_ANALYTICS_DISCONNECTED_FROM_CONTROLLER, DEVICESW_FLOWS_DISCONNECTED_FROM_CONTROLLER, APPLICATION_PROBE_DISABLED, SITE_CONNECTIVITY_DOWN, NETWORK_STANDARD_VPN_ENDPOINT_DOWN, SECURITY_POLICY_RULE_INCOMPLETE, SITE_NETWORK_SERVICE_ABSENT_FOR_POLICY, DEVICESW_IPFIX_COLLECTORS_DOWN, SITE_CONNECTIVITY_DEGRADED, CLAIMCERT_EXPIRY_WARNING, DEVICE_CELLULAR_ROAMING, DEVICE_CELLULAR_SIM_REMOVAL, DEVICE_CELLULAR_SIM_SWITCHOVER, DEVICE_CELLULAR_SIGNAL_STRENGTH_THRESH, DEVICE_CELLULAR_INTERNAL_MODEM_ERROR, DEVICE_CELLULAR_TECH_CHANGE, DEVICE_CELLULAR_SIM_PIN_ERROR, DEVICE_CELLULAR_SIM_PUK_NEEDED, DEVICE_CELLULAR_MODEM_TEMP_HIGH, DEVICE_CELLULAR_MTU_MISMATCH, DEVICE_CELLULAR_MODEM_DETECTION_ERROR, DEVICE_CELLULAR_SIM_SECURITY_ERROR, DEVICE_CELLULAR_FIRMWARE_NOT_AVAILABLE, DEVICE_CELLULAR_MODEM_GPS_DC_BIOS_FAULT, DEVICEHW_ION9000X722FW_OUTOFDATE, DEVICESW_APPDEF_SIGFILE_MISMATCH, SECURITY_POLICY_LIMITS_EXCEEDED, SASE_SERVICEENDPOINT_BANDWIDTH_LIMIT_EXCEEDED, SASE_SERVICEENDPOINT_BANDWIDTH_SOFT_LIMIT_EXCEEDED, VION_BANDWIDTH_LIMIT_EXCEEDED, VION_BANDWIDTH_SOFT_LIMIT_EXCEEDED, SPN_BANDWIDTH_LIMIT_EXCEEDED, SPN_BANDWIDTH_SOFT_LIMIT_EXCEEDED, DEVICE_POE_PORT_POWER_STATUS, DEVICE_POE_PORT_POWER_OVER_THRESHOLD, DEVICE_POE_MAIN_POWER_OVER_THRESHOLD, DEVICE_POE_MAIN_POWER_FAULT, DOT1X_RADIUS_SERVER_UNREACHABLE, DOT1X_DYNAMIC_VLAN_NOT_CONFIGURED, DOT1X_CLIENT_AUTH_FAIL, HUB_CLUSTER_SITE_COUNT_THRESHOLD_EXCEEDED, DEVICEHW_DISKUTIL_FRUSSD, DEVICEHW_TEMPERATURE_SENSOR, USER_ID_DIRECTORY_SYNC_FAILED, USER_ID_HUB_SELECTION_FAILED, CUID_SYNC_FAILED, DEVICE_POE_SHUT_CPU_TEMP_OVER_THRESHOLD, DEVICESW_INTERFACE_CONFIG_OUTOFSYNC, DEVICE_CELLULAR_INTERFACE_CONFIG_OUTOFSYNC, DEVICE_CELLULAR_MODULE_CONFIG_OUTOFSYNC, CARRIER_PERFORMANCE_DEGRADED, CIRCUIT_PERFORMANCE_DEGRADED, APPLICATION_PERFORMANCE_DEGRADED, DEVICE_ID_HUB_SELECTION_FAILED, NETWORK_VPNKEK_UNAVAILABLE, DEVICEHW_FAN_LOST, DEVICESW_MFGCERT_RENEWAL_FAILED, DEVICESW_MFGCERT_EXPIRY_WARNING, DEVICEHW_POWER_MISSING, SYSTEM_CIRCUIT_UTILIZATION_THRESHOLD_EXCEEDED, SYSTEM_CPU_THRESHOLD_EXCEEDED, SYSTEM_MEMORY_THRESHOLD_EXCEEDED, SYSTEM_DISK_THRESHOLD_EXCEEDED, SYSTEM_CONCURRENT_FLOW_THRESHOLD_EXCEEDED, DEVICESW_MCTD_INITIALIZATION_FAILURE, DEVICESW_MCTD_CONTENT_LOAD_FAILURE, DEVICESW_MCTD_LOG_BUFFER_FULL, DEVICESW_URLCLOUDSERVER_DOWN, DEVICESW_DNSSECCLOUDSERVER_DOWN, DEVICESW_SLSCONNECTION_DOWN, ALL_INCIDENTS, ALL_ALERTS, DEVICESW_TACACS_SERVERS_DOWN, BRANCH_GATEWAY_CLUSTER_SITE_COUNT_THRESHOLD_EXCEEDED, FLOW_LIMIT_PER_SOURCE_EXCEEDED, SECURITY_POLICY_RULES_FAILED, NPNSPN_INSUFFICIENT_VALID_GENEVE_KEYS, INCONSISTENT_IPSEC_TUNNEL_HA_STATE, NPN_MP_CPU_HIGH.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=event_codes, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=id, type=STRING macro=rss_schema
 						"id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=id, type=STRING macro=rss_schema
 						// property: name=name, type=STRING macro=rss_schema
 						"name": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Name. Value: at most 128 characters.",
 						},
 						// key name holder for attribute: name=name, type=STRING macro=rss_schema
 						// property: name=priority, type=STRING macro=rss_schema
 						"priority": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Priority. Value: one of p1, p2, p3, p4, p5, none.",
 						},
 						// key name holder for attribute: name=priority, type=STRING macro=rss_schema
 						// property: name=resource_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"resource_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Resource ids. At most 2000 items. Each item: matching `[0-9]{1,20}`.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=resource_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=resource_type, type=STRING macro=rss_schema
 						"resource_type": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Resource type. Value: one of site, element, anynetlink, bgppeer, interface, waninterface, wannetwork, networkpolicyset, prioritypolicyset, natpolicyset, securitypolicyset, appdef, serviceendpoint, cellular_module, hubcluster, useridagent, directoryservice, cuid, deviceidconfig, machine, spokecluster, user_id.",
 						},
 						// key name holder for attribute: name=resource_type, type=STRING macro=rss_schema
 						// property: name=start_time, type=INTEGER macro=rss_schema
 						"start_time": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Start time.",
 						},
 						// key name holder for attribute: name=start_time, type=INTEGER macro=rss_schema
 						// property: name=sub_resource_type, type=STRING macro=rss_schema
 						"sub_resource_type": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Sub resource type. Value: one of spoke, hub, public, private.",
 						},
 						// key name holder for attribute: name=sub_resource_type, type=STRING macro=rss_schema
 						// property: name=suppress, type=STRING macro=rss_schema
 						"suppress": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Suppress. Value: one of yes, no, none.",
 						},
 						// key name holder for attribute: name=suppress, type=STRING macro=rss_schema
 						// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 						"tags": dsschema.SetAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -343,17 +372,25 @@ func (d *eventCorrelationPolicyRuleDataSource) Read(ctx context.Context, req dat
 
 	// Perform the operation.
 	svc.ExecuteSdwanRequest(ctx, list_request)
+	response_body_string := `{"items":[]}`
 	if list_request.ResponseErr != nil {
-		if IsObjectNotFound(*list_request.ResponseErr) {
-			resp.State.RemoveResource(ctx)
-		} else {
-			resp.Diagnostics.AddError("error reading prismasdwan_event_correlation_policy_rule", (*list_request.ResponseErr).Error())
+		// a 404 here means the list endpoint itself is missing, which must not look like "no matches"
+		{
+			resp.Diagnostics.AddError("error reading prismasdwan_event_correlation_policy_rule",
+				fmt.Sprintf("%s (GET %s)", (*list_request.ResponseErr).Error(), *list_request.FinalPath))
+			return
 		}
-		return
+	} else {
+		response_body_string = string(*list_request.ResponseBytes)
+		// some endpoints return the one object itself instead of {"items": [...]}: treat it as the only item
+		var body map[string]interface{}
+		if err := json.Unmarshal([]byte(response_body_string), &body); err == nil {
+			if _, isList := body["items"]; !isList && body["id"] != nil {
+				wrapped, _ := json.Marshal(map[string]interface{}{"items": []map[string]interface{}{body}})
+				response_body_string = string(wrapped)
+			}
+		}
 	}
-
-	// read json string from http response
-	response_body_string := string(*list_request.ResponseBytes)
 	tflog.Info(ctx, "lookup response from server", map[string]any{
 		"path": response_body_string,
 	})
@@ -366,7 +403,9 @@ func (d *eventCorrelationPolicyRuleDataSource) Read(ctx context.Context, req dat
 		resp.Diagnostics.AddError("error in json unmarshal to generic map in lookup", json_err.Error())
 		return
 	}
-	// ensure its as array
+
+	// no match is an empty list, not null: items[0] and length(items) must work on a miss
+	state_with_filter.Items = []*dsModelEventCorrelationPolicyRuleScreenV2N1{} // ensure its as array
 	for _, item := range response.Items {
 		// create json from item
 		item_json, item_err := json.Marshal(item)
@@ -488,6 +527,10 @@ func (d *eventCorrelationPolicyRuleDataSource) Read(ctx context.Context, req dat
 		varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 		state.Tags = varTags
 		resp.Diagnostics.Append(errTags.Errors()...)
+		// api does not accept empty list as missing value
+		if len(ans.Tags) == 0 {
+			state.Tags = types.SetNull(types.StringType)
+		}
 
 		// append the item scanned
 		state_with_filter.Items = append(state_with_filter.Items, &state)

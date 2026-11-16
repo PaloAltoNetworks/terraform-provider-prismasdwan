@@ -34,9 +34,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &siteHubPrefixFilterProfileResource{}
-	_ resource.ResourceWithConfigure   = &siteHubPrefixFilterProfileResource{}
-	_ resource.ResourceWithImportState = &siteHubPrefixFilterProfileResource{}
+	_ resource.Resource                   = &siteHubPrefixFilterProfileResource{}
+	_ resource.ResourceWithConfigure      = &siteHubPrefixFilterProfileResource{}
+	_ resource.ResourceWithImportState    = &siteHubPrefixFilterProfileResource{}
+	_ resource.ResourceWithValidateConfig = &siteHubPrefixFilterProfileResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -57,6 +58,12 @@ type siteHubPrefixFilterProfileResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *siteHubPrefixFilterProfileResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *siteHubPrefixFilterProfileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_site_hub_prefix_filter_profile"
@@ -65,13 +72,14 @@ func (r *siteHubPrefixFilterProfileResource) Metadata(_ context.Context, req res
 // Schema defines the schema for this data source.
 func (r *siteHubPrefixFilterProfileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Site Hub Prefix Filter Profile.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=PathPrefixDistributionFilters
 			// generic x_parameters is added to accomodate path parameters
@@ -80,117 +88,131 @@ func (r *siteHubPrefixFilterProfileResource) Schema(_ context.Context, _ resourc
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=path_prefix_filter_list, type=ARRAY_REFERENCE macro=rss_schema
 			"path_prefix_filter_list": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Path prefix filter list.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=path_prefix_filters, type=ARRAY_REFERENCE macro=rss_schema
 						"path_prefix_filters": rsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Path prefix filters.",
 							NestedObject: rsschema.NestedAttributeObject{
 								Attributes: map[string]rsschema.Attribute{
 									// property: name=ipv4_prefix, type=STRING macro=rss_schema
 									"ipv4_prefix": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Ipv4 prefix.",
 									},
 									// key name holder for attribute: name=ipv4_prefix, type=STRING macro=rss_schema
 									// property: name=ipv6_prefix, type=STRING macro=rss_schema
 									"ipv6_prefix": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Ipv6 prefix.",
 									},
 									// key name holder for attribute: name=ipv6_prefix, type=STRING macro=rss_schema
 									// property: name=order, type=INTEGER macro=rss_schema
 									"order": rsschema.Int64Attribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Order. Value: between 1 and 65535.",
 									},
 									// key name holder for attribute: name=order, type=INTEGER macro=rss_schema
 									// property: name=permit, type=BOOLEAN macro=rss_schema
 									"permit": rsschema.BoolAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Permit.",
 									},
 									// key name holder for attribute: name=permit, type=BOOLEAN macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=permit, type=BOOLEAN macro=rss_schema
+						// key name holder for attribute: name=path_prefix_filters, type=ARRAY_REFERENCE macro=rss_schema
 						// property: name=vrf_context_id, type=STRING macro=rss_schema
 						"vrf_context_id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Vrf context id.",
 						},
 						// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
+			// key name holder for attribute: name=path_prefix_filter_list, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			"tags": rsschema.SetAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -429,6 +451,14 @@ func (r *siteHubPrefixFilterProfileResource) doPost(ctx context.Context, plan *r
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
@@ -454,13 +484,13 @@ func (r *siteHubPrefixFilterProfileResource) doGet(ctx context.Context, state *r
 	read_request := &sdwan_client.SdwanClientRequestResponse{}
 	read_request.ResourceType = "prismasdwan_site_hub_prefix_filter_profile"
 	read_request.Method = "GET"
-	read_request.Path = "/sdwan/v2.0/api/sites/{site_id}/pathprefixdistributionfilters/{id}"
+	read_request.Path = "/sdwan/v2.0/api/sites/{site_id}/pathprefixdistributionfilters/{pathprefixdistributionfilter_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, savestate.TfParameters)
 	read_request.PathParameters = &params
 	// add last parameter as ObjectID
-	(*read_request.PathParameters)["id"] = &tokens[0]
+	(*read_request.PathParameters)["pathprefixdistributionfilter_id"] = &tokens[0]
 	// add other parameters by splitting on `=`
 	for _, token := range tokens[0:] {
 		param := strings.Split(token, "=")
@@ -500,7 +530,23 @@ func (r *siteHubPrefixFilterProfileResource) doGet(ctx context.Context, state *r
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -568,6 +614,14 @@ func (r *siteHubPrefixFilterProfileResource) doGet(ctx context.Context, state *r
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	return true
 }
 
@@ -599,13 +653,13 @@ func (r *siteHubPrefixFilterProfileResource) doPut(ctx context.Context, plan *rs
 	put_request := &sdwan_client.SdwanClientRequestResponse{}
 	put_request.ResourceType = "prismasdwan_site_hub_prefix_filter_profile"
 	put_request.Method = "PUT"
-	put_request.Path = "/sdwan/v2.0/api/sites/{site_id}/pathprefixdistributionfilters/{id}"
+	put_request.Path = "/sdwan/v2.0/api/sites/{site_id}/pathprefixdistributionfilters/{pathprefixdistributionfilter_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
 	put_request.PathParameters = &params
 	// add last parameter as ObjectID
-	(*put_request.PathParameters)["id"] = &tokens[0]
+	(*put_request.PathParameters)["pathprefixdistributionfilter_id"] = &tokens[0]
 	// add other parameters by splitting on `=`
 	for _, token := range tokens[0:] {
 		param := strings.Split(token, "=")
@@ -655,9 +709,9 @@ func (r *siteHubPrefixFilterProfileResource) doPut(ctx context.Context, plan *rs
 		body.Name = StringValueOrNil(plan.Name)
 	}
 	// property: name=path_prefix_filter_list, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.PathPrefixFilterList == nil && (state == nil || state.PathPrefixFilterList == nil) {
+	if plan.PathPrefixFilterList == nil && (!(state != nil) || state.PathPrefixFilterList == nil) {
 		body.PathPrefixFilterList = nil
-	} else if len(plan.PathPrefixFilterList) == 0 && (state == nil || len(state.PathPrefixFilterList) == 0) {
+	} else if len(plan.PathPrefixFilterList) == 0 && (!(state != nil) || len(state.PathPrefixFilterList) == 0) {
 		body.PathPrefixFilterList = []sdwan_schema.PathPrefixFilterList{}
 	} else if len(plan.PathPrefixFilterList) != 0 || (state != nil && len(state.PathPrefixFilterList) != 0) {
 		PathPrefixFilterListToUse := plan.PathPrefixFilterList
@@ -698,7 +752,12 @@ func (r *siteHubPrefixFilterProfileResource) doPut(ctx context.Context, plan *rs
 		}
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
@@ -746,6 +805,12 @@ func (r *siteHubPrefixFilterProfileResource) doPut(ctx context.Context, plan *rs
 	if json_err != nil {
 		resp.Diagnostics.AddError("error in json unmarshal to PathPrefixDistributionFilters in update", json_err.Error())
 		return false
+	}
+
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
 	}
 
 	// Store the answer to state. schema=PathPrefixDistributionFilters
@@ -803,6 +868,14 @@ func (r *siteHubPrefixFilterProfileResource) doPut(ctx context.Context, plan *rs
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
@@ -827,13 +900,13 @@ func (r *siteHubPrefixFilterProfileResource) doDelete(ctx context.Context, state
 	delete_request := &sdwan_client.SdwanClientRequestResponse{}
 	delete_request.ResourceType = "prismasdwan_site_hub_prefix_filter_profile"
 	delete_request.Method = "DELETE"
-	delete_request.Path = "/sdwan/v2.0/api/sites/{site_id}/pathprefixdistributionfilters/{id}"
+	delete_request.Path = "/sdwan/v2.0/api/sites/{site_id}/pathprefixdistributionfilters/{pathprefixdistributionfilter_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
 	delete_request.PathParameters = &params
 	// add last parameter as ObjectID
-	(*delete_request.PathParameters)["id"] = &tokens[0]
+	(*delete_request.PathParameters)["pathprefixdistributionfilter_id"] = &tokens[0]
 	// add other parameters by splitting on `=`
 	for _, token := range tokens[0:] {
 		param := strings.Split(token, "=")

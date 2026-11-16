@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	sdwan "github.com/paloaltonetworks/terraform-provider-prismasdwan/sdk"
@@ -23,7 +24,7 @@ import (
 // | Schema Map Summary (size=goLangStructMap=1)
 // | Computed Resource Name=securityzones
 // +-----------------------------------------------------------------
-// | SecurityZoneV2N1 HasID=true
+// | SecurityZoneV2N2 HasID=true
 // +-----------------------------------------------------------------
 
 // Data source.
@@ -55,7 +56,7 @@ type dsModelWithFilterSecurityZone struct {
 	TfParameters types.Map                  `tfsdk:"x_parameters"` // Generic Map for Path Ids
 	Etag         types.Int64                `tfsdk:"x_etag"`       // propertyName=_etag type=INTEGER
 	Schema       types.Int64                `tfsdk:"x_schema"`     // propertyName=_schema type=INTEGER
-	Items        []*dsModelSecurityZoneV2N1 `tfsdk:"items"`
+	Items        []*dsModelSecurityZoneV2N2 `tfsdk:"items"`
 }
 
 // Metadata returns the data source type name.
@@ -66,13 +67,14 @@ func (d *securityZoneDataSource) Metadata(_ context.Context, req datasource.Meta
 // Schema defines the schema for this data source.
 func (d *securityZoneDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Retrieves a list of Prisma SD-WAN Security Zone items.",
 		Attributes: map[string]dsschema.Attribute{
 			"filters": dsschema.MapAttribute{
 				Required:    true,
 				Computed:    false,
 				Optional:    false,
 				ElementType: types.StringType,
+				Description: "Path parameters used to locate the items to retrieve.",
 			},
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": dsschema.MapAttribute{
@@ -80,72 +82,91 @@ func (d *securityZoneDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Additional path parameters for the data source, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": dsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Entity tag returned by the API, managed automatically by the provider.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": dsschema.Int64Attribute{
-				Required: false,
-				Computed: true,
-				Optional: true,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Description: "Schema version returned by the API, managed automatically by the provider.",
 			},
 			"items": dsschema.ListNestedAttribute{
-				Computed: true,
+				Computed:    true,
+				Description: "The list of items returned by the data source.",
 				NestedObject: dsschema.NestedAttributeObject{
 					Attributes: map[string]dsschema.Attribute{
-						// rest all properties to be read from GET API Schema schema=SecurityZoneV2N1
+						// rest all properties to be read from GET API Schema schema=SecurityZoneV2N2
 						// property: name=_etag, type=INTEGER macro=rss_schema
 						"x_etag": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 						// property: name=_schema, type=INTEGER macro=rss_schema
 						"x_schema": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 						// property: name=description, type=STRING macro=rss_schema
 						"description": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Description. Value: at most 256 characters.",
 						},
 						// key name holder for attribute: name=description, type=STRING macro=rss_schema
 						// property: name=id, type=STRING macro=rss_schema
 						"id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=id, type=STRING macro=rss_schema
+						// property: name=is_l2, type=BOOLEAN macro=rss_schema
+						"is_l2": dsschema.BoolAttribute{
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Is l2. Filled in by the server when it is not set.",
+						},
+						// key name holder for attribute: name=is_l2, type=BOOLEAN macro=rss_schema
 						// property: name=name, type=STRING macro=rss_schema
 						"name": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Name. Value: at most 128 characters.",
 						},
 						// key name holder for attribute: name=name, type=STRING macro=rss_schema
 						// property: name=tcp_allow_non_syn, type=BOOLEAN macro=rss_schema
 						"tcp_allow_non_syn": dsschema.BoolAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Tcp allow non syn. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=tcp_allow_non_syn, type=BOOLEAN macro=rss_schema
 					},
@@ -184,7 +205,7 @@ func (d *securityZoneDataSource) Read(ctx context.Context, req datasource.ReadRe
 	svc := sdwan_client.NewClient(d.client)
 
 	// Prepare input for the API endpoint.
-	get_path := "/sdwan/v2.1/api/securityzones/{zone_id}"
+	get_path := "/sdwan/v2.2/api/securityzones/{zone_id}"
 	list_request := &sdwan_client.SdwanClientRequestResponse{}
 	list_request.Method = "GET"
 	list_request.Path = get_path[:strings.LastIndex(get_path, "/")]
@@ -195,17 +216,25 @@ func (d *securityZoneDataSource) Read(ctx context.Context, req datasource.ReadRe
 
 	// Perform the operation.
 	svc.ExecuteSdwanRequest(ctx, list_request)
+	response_body_string := `{"items":[]}`
 	if list_request.ResponseErr != nil {
-		if IsObjectNotFound(*list_request.ResponseErr) {
-			resp.State.RemoveResource(ctx)
-		} else {
-			resp.Diagnostics.AddError("error reading prismasdwan_security_zone", (*list_request.ResponseErr).Error())
+		// a 404 here means the list endpoint itself is missing, which must not look like "no matches"
+		{
+			resp.Diagnostics.AddError("error reading prismasdwan_security_zone",
+				fmt.Sprintf("%s (GET %s)", (*list_request.ResponseErr).Error(), *list_request.FinalPath))
+			return
 		}
-		return
+	} else {
+		response_body_string = string(*list_request.ResponseBytes)
+		// some endpoints return the one object itself instead of {"items": [...]}: treat it as the only item
+		var body map[string]interface{}
+		if err := json.Unmarshal([]byte(response_body_string), &body); err == nil {
+			if _, isList := body["items"]; !isList && body["id"] != nil {
+				wrapped, _ := json.Marshal(map[string]interface{}{"items": []map[string]interface{}{body}})
+				response_body_string = string(wrapped)
+			}
+		}
 	}
-
-	// read json string from http response
-	response_body_string := string(*list_request.ResponseBytes)
 	tflog.Info(ctx, "lookup response from server", map[string]any{
 		"path": response_body_string,
 	})
@@ -218,7 +247,9 @@ func (d *securityZoneDataSource) Read(ctx context.Context, req datasource.ReadRe
 		resp.Diagnostics.AddError("error in json unmarshal to generic map in lookup", json_err.Error())
 		return
 	}
-	// ensure its as array
+
+	// no match is an empty list, not null: items[0] and length(items) must work on a miss
+	state_with_filter.Items = []*dsModelSecurityZoneV2N2{} // ensure its as array
 	for _, item := range response.Items {
 		// create json from item
 		item_json, item_err := json.Marshal(item)
@@ -255,20 +286,20 @@ func (d *securityZoneDataSource) Read(ctx context.Context, req datasource.ReadRe
 		}
 
 		// Store the answer to state.
-		var state dsModelSecurityZoneV2N1
+		var state dsModelSecurityZoneV2N2
 
 		// start copying attributes
-		var ans sdwan_schema.SecurityZoneV2N1
+		var ans sdwan_schema.SecurityZoneV2N2
 		// copy from json response
 		json_err := json.Unmarshal(item_json, &ans)
 		// if found, exit
 		if json_err != nil {
-			resp.Diagnostics.AddError("error in json unmarshal to SecurityZoneV2N1", json_err.Error())
+			resp.Diagnostics.AddError("error in json unmarshal to SecurityZoneV2N2", json_err.Error())
 			return
 		}
 
-		// lets copy all items into state schema=SecurityZoneV2N1
-		// copy_to_state: state=state prefix=dsModel ans=ans properties=6
+		// lets copy all items into state schema=SecurityZoneV2N2
+		// copy_to_state: state=state prefix=dsModel ans=ans properties=7
 		tflog.Debug(ctx, "copy_to_state state=state prefix=dsModel ans=ans")
 		// property: name=_etag, type=INTEGER macro=copy_to_state
 		state.Etag = types.Int64PointerValue(ans.Etag)
@@ -278,6 +309,8 @@ func (d *securityZoneDataSource) Read(ctx context.Context, req datasource.ReadRe
 		state.Description = types.StringPointerValue(ans.Description)
 		// property: name=id, type=STRING macro=copy_to_state
 		state.Id = types.StringPointerValue(ans.Id)
+		// property: name=is_l2, type=BOOLEAN macro=copy_to_state
+		state.IsL2 = types.BoolPointerValue(ans.IsL2)
 		// property: name=name, type=STRING macro=copy_to_state
 		state.Name = types.StringPointerValue(ans.Name)
 		// property: name=tcp_allow_non_syn, type=BOOLEAN macro=copy_to_state

@@ -35,9 +35,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &siteDhcpServerResource{}
-	_ resource.ResourceWithConfigure   = &siteDhcpServerResource{}
-	_ resource.ResourceWithImportState = &siteDhcpServerResource{}
+	_ resource.Resource                   = &siteDhcpServerResource{}
+	_ resource.ResourceWithConfigure      = &siteDhcpServerResource{}
+	_ resource.ResourceWithImportState    = &siteDhcpServerResource{}
+	_ resource.ResourceWithValidateConfig = &siteDhcpServerResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -58,6 +59,12 @@ type siteDhcpServerResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *siteDhcpServerResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *siteDhcpServerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_site_dhcp_server"
@@ -66,13 +73,14 @@ func (r *siteDhcpServerResource) Metadata(_ context.Context, req resource.Metada
 // Schema defines the schema for this data source.
 func (r *siteDhcpServerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Site Dhcp Server.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=DHCPServerScreenV2N3
 			// generic x_parameters is added to accomodate path parameters
@@ -81,97 +89,109 @@ func (r *siteDhcpServerResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=address_family, type=STRING macro=rss_schema
 			"address_family": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Address family. Value: one of ipv4, ipv6.",
 			},
 			// key name holder for attribute: name=address_family, type=STRING macro=rss_schema
 			// property: name=broadcast_address, type=STRING macro=rss_schema
 			"broadcast_address": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Broadcast address.",
 			},
 			// key name holder for attribute: name=broadcast_address, type=STRING macro=rss_schema
 			// property: name=custom_options, type=ARRAY_REFERENCE macro=rss_schema
 			"custom_options": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Custom options.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=option_definition, type=STRING macro=rss_schema
 						"option_definition": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Option definition. Value: length 1 to 1024 characters.",
 						},
 						// key name holder for attribute: name=option_definition, type=STRING macro=rss_schema
 						// property: name=option_value, type=STRING macro=rss_schema
 						"option_value": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Option value. Value: length 1 to 8192 characters.",
 						},
 						// key name holder for attribute: name=option_value, type=STRING macro=rss_schema
 						// property: name=vendor_class_identifier, type=STRING macro=rss_schema
 						"vendor_class_identifier": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Vendor class identifier.",
 						},
 						// key name holder for attribute: name=vendor_class_identifier, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=vendor_class_identifier, type=STRING macro=rss_schema
+			// key name holder for attribute: name=custom_options, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=default_lease_time, type=INTEGER macro=rss_schema
 			"default_lease_time": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Default lease time. Value: between 300 and 4294967295.",
 			},
 			// key name holder for attribute: name=default_lease_time, type=INTEGER macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=disabled, type=BOOLEAN macro=rss_schema
 			"disabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Disabled. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=disabled, type=BOOLEAN macro=rss_schema
 			// property: name=dns_servers, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -180,127 +200,143 @@ func (r *siteDhcpServerResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Dns servers. At most 3 items.",
+				Validators:  ListMaxItems(3),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=dns_servers, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=domain_name, type=STRING macro=rss_schema
 			"domain_name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Domain name. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=domain_name, type=STRING macro=rss_schema
 			// property: name=gateway, type=STRING macro=rss_schema
 			"gateway": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Gateway.",
 			},
 			// key name holder for attribute: name=gateway, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=ip_ranges, type=ARRAY_REFERENCE macro=rss_schema
 			"ip_ranges": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ip ranges. At least 1 items.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=end_ip, type=STRING macro=rss_schema
 						"end_ip": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "End ip.",
 						},
 						// key name holder for attribute: name=end_ip, type=STRING macro=rss_schema
 						// property: name=start_ip, type=STRING macro=rss_schema
 						"start_ip": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Start ip.",
 						},
 						// key name holder for attribute: name=start_ip, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=start_ip, type=STRING macro=rss_schema
+			// key name holder for attribute: name=ip_ranges, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=max_lease_time, type=INTEGER macro=rss_schema
 			"max_lease_time": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Max lease time. Value: between 300 and 4294967295.",
 			},
 			// key name holder for attribute: name=max_lease_time, type=INTEGER macro=rss_schema
 			// property: name=network_context_id, type=STRING macro=rss_schema
 			"network_context_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Network context id. Value: at most 50 characters, matching `^-?[0-9]{1,50}$`.",
 			},
 			// key name holder for attribute: name=network_context_id, type=STRING macro=rss_schema
 			// property: name=static_mappings, type=ARRAY_REFERENCE macro=rss_schema
 			"static_mappings": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Static mappings.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=client_duid, type=STRING macro=rss_schema
 						"client_duid": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Client duid. Value: matching `([0-9a-fA-F]{1,2}:)*[0-9a-fA-F]{1,2}|([0-9a-fA-F]{1,2}:)*(:([0-9a-fA-F]{1,2}:)*)([0-9a-fA-F]{1,2})*`.",
 						},
 						// key name holder for attribute: name=client_duid, type=STRING macro=rss_schema
 						// property: name=ip_address, type=STRING macro=rss_schema
 						"ip_address": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Ip address.",
 						},
 						// key name holder for attribute: name=ip_address, type=STRING macro=rss_schema
 						// property: name=mac, type=STRING macro=rss_schema
 						"mac": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Mac. Value: matching `^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$`.",
 						},
 						// key name holder for attribute: name=mac, type=STRING macro=rss_schema
 						// property: name=name, type=STRING macro=rss_schema
 						"name": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Name. Value: at most 256 characters, matching `^[a-zA-Z0-9]+(([a-zA-Z0-9\\-_])|(\\.?[a-zA-Z0-9\\-]))*\\.?$`.",
 						},
 						// key name holder for attribute: name=name, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=name, type=STRING macro=rss_schema
+			// key name holder for attribute: name=static_mappings, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=subnet, type=STRING macro=rss_schema
 			"subnet": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Subnet.",
 			},
 			// key name holder for attribute: name=subnet, type=STRING macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -309,15 +345,18 @@ func (r *siteDhcpServerResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=vrf_context_id, type=STRING macro=rss_schema
 			"vrf_context_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Vrf context id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
 		},
@@ -639,6 +678,14 @@ func (r *siteDhcpServerResource) doPost(ctx context.Context, plan *rsModelDHCPSe
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=vrf_context_id, type=STRING macro=copy_to_state
 	state.VrfContextId = types.StringPointerValue(ans.VrfContextId)
 	return true
@@ -712,7 +759,23 @@ func (r *siteDhcpServerResource) doGet(ctx context.Context, state *rsModelDHCPSe
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -822,6 +885,14 @@ func (r *siteDhcpServerResource) doGet(ctx context.Context, state *rsModelDHCPSe
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=vrf_context_id, type=STRING macro=copy_to_state
 	state.VrfContextId = types.StringPointerValue(ans.VrfContextId)
 	return true
@@ -905,9 +976,9 @@ func (r *siteDhcpServerResource) doPut(ctx context.Context, plan *rsModelDHCPSer
 		body.BroadcastAddress = StringValueOrNil(plan.BroadcastAddress)
 	}
 	// property: name=custom_options, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.CustomOptions == nil && (state == nil || state.CustomOptions == nil) {
+	if plan.CustomOptions == nil && (!(state != nil) || state.CustomOptions == nil) {
 		body.CustomOptions = nil
-	} else if len(plan.CustomOptions) == 0 && (state == nil || len(state.CustomOptions) == 0) {
+	} else if len(plan.CustomOptions) == 0 && (!(state != nil) || len(state.CustomOptions) == 0) {
 		body.CustomOptions = []sdwan_schema.CustomDHCPOptions{}
 	} else if len(plan.CustomOptions) != 0 || (state != nil && len(state.CustomOptions) != 0) {
 		CustomOptionsToUse := plan.CustomOptions
@@ -948,7 +1019,12 @@ func (r *siteDhcpServerResource) doPut(ctx context.Context, plan *rsModelDHCPSer
 		body.Disabled = BoolValueOrNil(plan.Disabled)
 	}
 	// property: name=dns_servers, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.DnsServers = ListStringValueOrNil(ctx, plan.DnsServers)
+	if state != nil && plan.DnsServers.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.DnsServers = ListStringValueOrNil(ctx, state.DnsServers)
+	} else {
+		body.DnsServers = ListStringValueOrNil(ctx, plan.DnsServers)
+	}
 	// property: name=domain_name, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.DomainName = ValueStringPointerFromPlanOrState(plan.DomainName, state.DomainName)
@@ -968,9 +1044,9 @@ func (r *siteDhcpServerResource) doPut(ctx context.Context, plan *rsModelDHCPSer
 		body.Id = StringValueOrNil(plan.Id)
 	}
 	// property: name=ip_ranges, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.IpRanges == nil && (state == nil || state.IpRanges == nil) {
+	if plan.IpRanges == nil && (!(state != nil) || state.IpRanges == nil) {
 		body.IpRanges = nil
-	} else if len(plan.IpRanges) == 0 && (state == nil || len(state.IpRanges) == 0) {
+	} else if len(plan.IpRanges) == 0 && (!(state != nil) || len(state.IpRanges) == 0) {
 		body.IpRanges = []sdwan_schema.IPRange{}
 	} else if len(plan.IpRanges) != 0 || (state != nil && len(state.IpRanges) != 0) {
 		IpRangesToUse := plan.IpRanges
@@ -1003,9 +1079,9 @@ func (r *siteDhcpServerResource) doPut(ctx context.Context, plan *rsModelDHCPSer
 		body.NetworkContextId = StringValueOrNil(plan.NetworkContextId)
 	}
 	// property: name=static_mappings, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.StaticMappings == nil && (state == nil || state.StaticMappings == nil) {
+	if plan.StaticMappings == nil && (!(state != nil) || state.StaticMappings == nil) {
 		body.StaticMappings = nil
-	} else if len(plan.StaticMappings) == 0 && (state == nil || len(state.StaticMappings) == 0) {
+	} else if len(plan.StaticMappings) == 0 && (!(state != nil) || len(state.StaticMappings) == 0) {
 		body.StaticMappings = []sdwan_schema.StaticMappingV2{}
 	} else if len(plan.StaticMappings) != 0 || (state != nil && len(state.StaticMappings) != 0) {
 		StaticMappingsToUse := plan.StaticMappings
@@ -1036,7 +1112,12 @@ func (r *siteDhcpServerResource) doPut(ctx context.Context, plan *rsModelDHCPSer
 		body.Subnet = StringValueOrNil(plan.Subnet)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=vrf_context_id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.VrfContextId = ValueStringPointerFromPlanOrState(plan.VrfContextId, state.VrfContextId)
@@ -1090,6 +1171,12 @@ func (r *siteDhcpServerResource) doPut(ctx context.Context, plan *rsModelDHCPSer
 	if json_err != nil {
 		resp.Diagnostics.AddError("error in json unmarshal to DHCPServerScreenV2N3 in update", json_err.Error())
 		return false
+	}
+
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
 	}
 
 	// Store the answer to state. schema=DHCPServerScreenV2N3
@@ -1189,6 +1276,14 @@ func (r *siteDhcpServerResource) doPut(ctx context.Context, plan *rsModelDHCPSer
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=vrf_context_id, type=STRING macro=copy_to_state
 	state.VrfContextId = types.StringPointerValue(ans.VrfContextId)
 	return true

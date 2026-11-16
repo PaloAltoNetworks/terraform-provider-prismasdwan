@@ -33,9 +33,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &elementTacacsPlusServerResource{}
-	_ resource.ResourceWithConfigure   = &elementTacacsPlusServerResource{}
-	_ resource.ResourceWithImportState = &elementTacacsPlusServerResource{}
+	_ resource.Resource                   = &elementTacacsPlusServerResource{}
+	_ resource.ResourceWithConfigure      = &elementTacacsPlusServerResource{}
+	_ resource.ResourceWithImportState    = &elementTacacsPlusServerResource{}
+	_ resource.ResourceWithValidateConfig = &elementTacacsPlusServerResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -56,6 +57,12 @@ type elementTacacsPlusServerResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *elementTacacsPlusServerResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id", "element_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *elementTacacsPlusServerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_element_tacacs_plus_server"
@@ -64,13 +71,14 @@ func (r *elementTacacsPlusServerResource) Metadata(_ context.Context, req resour
 // Schema defines the schema for this data source.
 func (r *elementTacacsPlusServerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Element Tacacs Plus Server.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=TacacsPlusServerScreen
 			// generic x_parameters is added to accomodate path parameters
@@ -79,151 +87,172 @@ func (r *elementTacacsPlusServerResource) Schema(_ context.Context, _ resource.S
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=authentication_protocol, type=STRING macro=rss_schema
 			"authentication_protocol": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Authentication protocol. Value: one of chap, pap.",
 			},
 			// key name holder for attribute: name=authentication_protocol, type=STRING macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 1024 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=enabled, type=BOOLEAN macro=rss_schema
 			"enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Enabled.",
 			},
 			// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=source_interface_id, type=STRING macro=rss_schema
 			"source_interface_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Source interface id.",
 			},
 			// key name holder for attribute: name=source_interface_id, type=STRING macro=rss_schema
 			// property: name=tacacs_plus_profile_id, type=STRING macro=rss_schema
 			"tacacs_plus_profile_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Tacacs plus profile id.",
 			},
 			// key name holder for attribute: name=tacacs_plus_profile_id, type=STRING macro=rss_schema
 			// property: name=tacacs_plus_servers, type=ARRAY_REFERENCE macro=rss_schema
 			"tacacs_plus_servers": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Tacacs plus servers. At most 4 items.",
+				Validators:  ListMaxItems(4),
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=secret, type=STRING macro=rss_schema
 						"secret": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: true,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   true,
+							Description: "Secret.",
 						},
 						// key name holder for attribute: name=secret, type=STRING macro=rss_schema
 						"secret_internal_key_name": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Internal key name for the sensitive attribute secret, managed automatically by the provider.",
 						},
 						// property: name=server_fqdn, type=STRING macro=rss_schema
 						"server_fqdn": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Server fqdn.",
 						},
 						// key name holder for attribute: name=server_fqdn, type=STRING macro=rss_schema
 						// property: name=server_ip, type=STRING macro=rss_schema
 						"server_ip": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Server ip.",
 						},
 						// key name holder for attribute: name=server_ip, type=STRING macro=rss_schema
 						// property: name=server_ipv6, type=STRING macro=rss_schema
 						"server_ipv6": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Server ipv6.",
 						},
 						// key name holder for attribute: name=server_ipv6, type=STRING macro=rss_schema
 						// property: name=server_port, type=INTEGER macro=rss_schema
 						"server_port": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Server port.",
 						},
 						// key name holder for attribute: name=server_port, type=INTEGER macro=rss_schema
 						// property: name=timeout, type=INTEGER macro=rss_schema
 						"timeout": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Timeout.",
 						},
 						// key name holder for attribute: name=timeout, type=INTEGER macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=timeout, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=tacacs_plus_servers, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			"tags": rsschema.SetAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 1024 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -437,13 +466,19 @@ func (r *elementTacacsPlusServerResource) doPost(ctx context.Context, plan *rsMo
 			// copy_to_state: state=state.TacacsPlusServers[varLoopTacacsPlusServersIndex] prefix=rsModel ans=varLoopTacacsPlusServers properties=6
 			tflog.Debug(ctx, "copy_to_state state=state.TacacsPlusServers[varLoopTacacsPlusServersIndex] prefix=rsModel ans=varLoopTacacsPlusServers")
 			// property: name=secret, type=STRING macro=copy_to_state
-			state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret = types.StringPointerValue(plan.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.TacacsPlusServers[varLoopTacacsPlusServersIndex].SecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret = types.StringNull()
+			if len(plan.TacacsPlusServers) > varLoopTacacsPlusServersIndex {
+				state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret = types.StringPointerValue(plan.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret.IsNull() {
-				encryptedSecret, _ := Encrypt([]byte(state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret.String()))
-				resp.Private.SetKey(ctx, state.TacacsPlusServers[varLoopTacacsPlusServersIndex].SecretInternalKeyName.String(), []byte(encryptedSecret))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedSecret, _ := Encrypt([]byte(state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedSecretJson, _ := json.Marshal(encryptedSecret)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.TacacsPlusServers[varLoopTacacsPlusServersIndex].SecretInternalKeyName.String(), encryptedSecretJson)...)
 			}
 			// property: name=server_fqdn, type=STRING macro=copy_to_state
 			state.TacacsPlusServers[varLoopTacacsPlusServersIndex].ServerFqdn = types.StringPointerValue(varLoopTacacsPlusServers.ServerFqdn)
@@ -461,6 +496,14 @@ func (r *elementTacacsPlusServerResource) doPost(ctx context.Context, plan *rsMo
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
@@ -486,13 +529,13 @@ func (r *elementTacacsPlusServerResource) doGet(ctx context.Context, state *rsMo
 	read_request := &sdwan_client.SdwanClientRequestResponse{}
 	read_request.ResourceType = "prismasdwan_element_tacacs_plus_server"
 	read_request.Method = "GET"
-	read_request.Path = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/tacacs_plus_servers/{id}"
+	read_request.Path = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/tacacs_plus_servers/{tacacs_plus_server_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, savestate.TfParameters)
 	read_request.PathParameters = &params
 	// add last parameter as ObjectID
-	(*read_request.PathParameters)["id"] = &tokens[0]
+	(*read_request.PathParameters)["tacacs_plus_server_id"] = &tokens[0]
 	// add other parameters by splitting on `=`
 	for _, token := range tokens[0:] {
 		param := strings.Split(token, "=")
@@ -532,7 +575,23 @@ func (r *elementTacacsPlusServerResource) doGet(ctx context.Context, state *rsMo
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -579,10 +638,15 @@ func (r *elementTacacsPlusServerResource) doGet(ctx context.Context, state *rsMo
 			// copy_to_state: state=state.TacacsPlusServers[varLoopTacacsPlusServersIndex] prefix=rsModel ans=varLoopTacacsPlusServers properties=6
 			tflog.Debug(ctx, "copy_to_state state=state.TacacsPlusServers[varLoopTacacsPlusServersIndex] prefix=rsModel ans=varLoopTacacsPlusServers")
 			// property: name=secret, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if len(savestate.TacacsPlusServers) > varLoopTacacsPlusServersIndex {
+				state.TacacsPlusServers[varLoopTacacsPlusServersIndex].SecretInternalKeyName = savestate.TacacsPlusServers[varLoopTacacsPlusServersIndex].SecretInternalKeyName
+			}
 			encryptedSecretKeyName := state.TacacsPlusServers[varLoopTacacsPlusServersIndex].SecretInternalKeyName.String()
 			encryptedSecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedSecretKeyName)
-			if encryptedSecretValueBytes != nil {
-				decryptedSecret, _ := Decrypt(string(encryptedSecretValueBytes))
+			var encryptedSecretValue string
+			if encryptedSecretValueBytes != nil && json.Unmarshal(encryptedSecretValueBytes, &encryptedSecretValue) == nil {
+				decryptedSecret, _ := Decrypt(encryptedSecretValue)
 				state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret = types.StringValue(decryptedSecret)
 			}
 			// property: name=server_fqdn, type=STRING macro=copy_to_state
@@ -601,6 +665,14 @@ func (r *elementTacacsPlusServerResource) doGet(ctx context.Context, state *rsMo
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	return true
 }
 
@@ -632,13 +704,13 @@ func (r *elementTacacsPlusServerResource) doPut(ctx context.Context, plan *rsMod
 	put_request := &sdwan_client.SdwanClientRequestResponse{}
 	put_request.ResourceType = "prismasdwan_element_tacacs_plus_server"
 	put_request.Method = "PUT"
-	put_request.Path = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/tacacs_plus_servers/{id}"
+	put_request.Path = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/tacacs_plus_servers/{tacacs_plus_server_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
 	put_request.PathParameters = &params
 	// add last parameter as ObjectID
-	(*put_request.PathParameters)["id"] = &tokens[0]
+	(*put_request.PathParameters)["tacacs_plus_server_id"] = &tokens[0]
 	// add other parameters by splitting on `=`
 	for _, token := range tokens[0:] {
 		param := strings.Split(token, "=")
@@ -712,9 +784,9 @@ func (r *elementTacacsPlusServerResource) doPut(ctx context.Context, plan *rsMod
 		body.TacacsPlusProfileId = StringValueOrNil(plan.TacacsPlusProfileId)
 	}
 	// property: name=tacacs_plus_servers, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.TacacsPlusServers == nil && (state == nil || state.TacacsPlusServers == nil) {
+	if plan.TacacsPlusServers == nil && (!(state != nil) || state.TacacsPlusServers == nil) {
 		body.TacacsPlusServers = nil
-	} else if len(plan.TacacsPlusServers) == 0 && (state == nil || len(state.TacacsPlusServers) == 0) {
+	} else if len(plan.TacacsPlusServers) == 0 && (!(state != nil) || len(state.TacacsPlusServers) == 0) {
 		body.TacacsPlusServers = []sdwan_schema.TacacsPlusServerConfig{}
 	} else if len(plan.TacacsPlusServers) != 0 || (state != nil && len(state.TacacsPlusServers) != 0) {
 		TacacsPlusServersToUse := plan.TacacsPlusServers
@@ -743,7 +815,12 @@ func (r *elementTacacsPlusServerResource) doPut(ctx context.Context, plan *rsMod
 		}
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
@@ -793,6 +870,12 @@ func (r *elementTacacsPlusServerResource) doPut(ctx context.Context, plan *rsMod
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=TacacsPlusServerScreen
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=11
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -827,13 +910,19 @@ func (r *elementTacacsPlusServerResource) doPut(ctx context.Context, plan *rsMod
 			// copy_to_state: state=state.TacacsPlusServers[varLoopTacacsPlusServersIndex] prefix=rsModel ans=varLoopTacacsPlusServers properties=6
 			tflog.Debug(ctx, "copy_to_state state=state.TacacsPlusServers[varLoopTacacsPlusServersIndex] prefix=rsModel ans=varLoopTacacsPlusServers")
 			// property: name=secret, type=STRING macro=copy_to_state
-			state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret = types.StringPointerValue(plan.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.TacacsPlusServers[varLoopTacacsPlusServersIndex].SecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret = types.StringNull()
+			if len(plan.TacacsPlusServers) > varLoopTacacsPlusServersIndex {
+				state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret = types.StringPointerValue(plan.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret.IsNull() {
-				encryptedSecret, _ := Encrypt([]byte(state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret.String()))
-				resp.Private.SetKey(ctx, state.TacacsPlusServers[varLoopTacacsPlusServersIndex].SecretInternalKeyName.String(), []byte(encryptedSecret))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedSecret, _ := Encrypt([]byte(state.TacacsPlusServers[varLoopTacacsPlusServersIndex].Secret.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedSecretJson, _ := json.Marshal(encryptedSecret)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.TacacsPlusServers[varLoopTacacsPlusServersIndex].SecretInternalKeyName.String(), encryptedSecretJson)...)
 			}
 			// property: name=server_fqdn, type=STRING macro=copy_to_state
 			state.TacacsPlusServers[varLoopTacacsPlusServersIndex].ServerFqdn = types.StringPointerValue(varLoopTacacsPlusServers.ServerFqdn)
@@ -851,6 +940,14 @@ func (r *elementTacacsPlusServerResource) doPut(ctx context.Context, plan *rsMod
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
@@ -875,13 +972,13 @@ func (r *elementTacacsPlusServerResource) doDelete(ctx context.Context, state *r
 	delete_request := &sdwan_client.SdwanClientRequestResponse{}
 	delete_request.ResourceType = "prismasdwan_element_tacacs_plus_server"
 	delete_request.Method = "DELETE"
-	delete_request.Path = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/tacacs_plus_servers/{id}"
+	delete_request.Path = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/tacacs_plus_servers/{tacacs_plus_server_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
 	delete_request.PathParameters = &params
 	// add last parameter as ObjectID
-	(*delete_request.PathParameters)["id"] = &tokens[0]
+	(*delete_request.PathParameters)["tacacs_plus_server_id"] = &tokens[0]
 	// add other parameters by splitting on `=`
 	for _, token := range tokens[0:] {
 		param := strings.Split(token, "=")

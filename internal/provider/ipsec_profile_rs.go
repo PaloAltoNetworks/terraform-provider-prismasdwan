@@ -24,24 +24,27 @@ import (
 )
 
 // +-----------------------------------------------------------------
-// | Schema Map Summary (size=goLangStructMap=8)
+// | Schema Map Summary (size=goLangStructMap=10)
 // | Computed Resource Name=ipsecprofiles
 // +-----------------------------------------------------------------
+// | PPKConfig HasID=false
 // | IKEV1Params HasID=false
 // | IPSECAuthenticationV1 HasID=false
+// | PQCKEMConfig HasID=false
 // | Proposals HasID=false
 // | IKEGroup HasID=false
 // | Lifesize HasID=false
 // | ResponderSaseProposals HasID=false
 // | ESPGroup HasID=false
-// | IPSECProfileScreenV2N2 HasID=true
+// | IPSECProfileScreenV2N3 HasID=true
 // +-----------------------------------------------------------------
 
 // Resource.
 var (
-	_ resource.Resource                = &ipsecProfileResource{}
-	_ resource.ResourceWithConfigure   = &ipsecProfileResource{}
-	_ resource.ResourceWithImportState = &ipsecProfileResource{}
+	_ resource.Resource                   = &ipsecProfileResource{}
+	_ resource.ResourceWithConfigure      = &ipsecProfileResource{}
+	_ resource.ResourceWithImportState    = &ipsecProfileResource{}
+	_ resource.ResourceWithValidateConfig = &ipsecProfileResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -62,6 +65,12 @@ type ipsecProfileResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *ipsecProfileResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{})...)
+}
+
 // Metadata returns the data source type name.
 func (r *ipsecProfileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_ipsec_profile"
@@ -70,449 +79,744 @@ func (r *ipsecProfileResource) Metadata(_ context.Context, req resource.Metadata
 // Schema defines the schema for this data source.
 func (r *ipsecProfileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Ipsec Profile.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
-			// rest all properties to be read from GET API Schema schema=IPSECProfileScreenV2N2
+			// rest all properties to be read from GET API Schema schema=IPSECProfileScreenV2N3
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=authentication, type=REFERENCE macro=rss_schema
 			"authentication": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Authentication.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=certificate, type=STRING macro=rss_schema
 					"certificate": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Certificate.",
 					},
 					// key name holder for attribute: name=certificate, type=STRING macro=rss_schema
 					// property: name=certificate_profile_id, type=STRING macro=rss_schema
 					"certificate_profile_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Certificate profile id.",
 					},
 					// key name holder for attribute: name=certificate_profile_id, type=STRING macro=rss_schema
 					// property: name=comment, type=STRING macro=rss_schema
 					"comment": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Comment.",
 					},
 					// key name holder for attribute: name=comment, type=STRING macro=rss_schema
 					// property: name=ikev1_params, type=REFERENCE macro=rss_schema
 					"ikev1_params": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Ikev1 params.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=xauth_id, type=STRING macro=rss_schema
 							"xauth_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Xauth id.",
 							},
 							// key name holder for attribute: name=xauth_id, type=STRING macro=rss_schema
 							// property: name=xauth_secret, type=STRING macro=rss_schema
 							"xauth_secret": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: true,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   true,
+								Description: "Xauth secret. Value: length 4 to 128 characters.",
 							},
 							// key name holder for attribute: name=xauth_secret, type=STRING macro=rss_schema
 							"xauth_secret_internal_key_name": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  true,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    true,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Internal key name for the sensitive attribute xauth_secret, managed automatically by the provider.",
 							},
 							// property: name=xauth_secret_encrypted, type=STRING macro=rss_schema
 							"xauth_secret_encrypted": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: true,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   true,
+								Description: "Xauth secret encrypted.",
 							},
 							// key name holder for attribute: name=xauth_secret_encrypted, type=STRING macro=rss_schema
 							"xauth_secret_encrypted_internal_key_name": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  true,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    true,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Internal key name for the sensitive attribute xauth_secret_encrypted, managed automatically by the provider.",
 							},
 							// property: name=xauth_secret_hash, type=STRING macro=rss_schema
 							"xauth_secret_hash": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: true,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   true,
+								Description: "Xauth secret hash.",
 							},
 							// key name holder for attribute: name=xauth_secret_hash, type=STRING macro=rss_schema
 							"xauth_secret_hash_internal_key_name": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  true,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    true,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Internal key name for the sensitive attribute xauth_secret_hash, managed automatically by the provider.",
 							},
 							// property: name=xauth_type, type=STRING macro=rss_schema
 							"xauth_type": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Xauth type. Value: one of none, secret.",
 							},
 							// key name holder for attribute: name=xauth_type, type=STRING macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=xauth_type, type=STRING macro=rss_schema
+					// key name holder for attribute: name=ikev1_params, type=REFERENCE macro=rss_schema
 					// property: name=local_ca_certificate, type=STRING macro=rss_schema
 					"local_ca_certificate": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Local ca certificate.",
 					},
 					// key name holder for attribute: name=local_ca_certificate, type=STRING macro=rss_schema
 					// property: name=local_id, type=STRING macro=rss_schema
 					"local_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Local id. Value: one of local_ip, dn, hostname, custom, none.",
 					},
 					// key name holder for attribute: name=local_id, type=STRING macro=rss_schema
 					// property: name=local_id_custom, type=STRING macro=rss_schema
 					"local_id_custom": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Local id custom. Value: length 2 to 255 characters.",
 					},
 					// key name holder for attribute: name=local_id_custom, type=STRING macro=rss_schema
 					// property: name=local_pa_certificate_id, type=STRING macro=rss_schema
 					"local_pa_certificate_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Local pa certificate id.",
 					},
 					// key name holder for attribute: name=local_pa_certificate_id, type=STRING macro=rss_schema
 					// property: name=pa_master_key_id, type=STRING macro=rss_schema
 					"pa_master_key_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Pa master key id.",
 					},
 					// key name holder for attribute: name=pa_master_key_id, type=STRING macro=rss_schema
 					// property: name=passphrase, type=STRING macro=rss_schema
 					"passphrase": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Passphrase.",
 					},
 					// key name holder for attribute: name=passphrase, type=STRING macro=rss_schema
+					"passphrase_internal_key_name": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute passphrase, managed automatically by the provider.",
+					},
 					// property: name=passphrase_encrypted, type=STRING macro=rss_schema
 					"passphrase_encrypted": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Passphrase encrypted.",
 					},
 					// key name holder for attribute: name=passphrase_encrypted, type=STRING macro=rss_schema
+					"passphrase_encrypted_internal_key_name": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute passphrase_encrypted, managed automatically by the provider.",
+					},
 					// property: name=peer_id_check, type=STRING macro=rss_schema
 					"peer_id_check": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Peer id check. Value: one of Exact, Wildcard.",
 					},
 					// key name holder for attribute: name=peer_id_check, type=STRING macro=rss_schema
 					// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=rss_schema
 					"permit_peer_id_mismatch": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Permit peer id mismatch.",
 					},
 					// key name holder for attribute: name=permit_peer_id_mismatch, type=BOOLEAN macro=rss_schema
+					// property: name=ppk_config, type=REFERENCE macro=rss_schema
+					"ppk_config": rsschema.SingleNestedAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Ppk config.",
+						Attributes: map[string]rsschema.Attribute{
+							// property: name=enabled, type=BOOLEAN macro=rss_schema
+							"enabled": rsschema.BoolAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Enabled.",
+							},
+							// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
+							// property: name=key_enabled, type=BOOLEAN macro=rss_schema
+							"key_enabled": rsschema.BoolAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Key enabled.",
+							},
+							// key name holder for attribute: name=key_enabled, type=BOOLEAN macro=rss_schema
+							// property: name=mode, type=STRING macro=rss_schema
+							"mode": rsschema.StringAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Mode. Value: one of preferred, mandatory.",
+							},
+							// key name holder for attribute: name=mode, type=STRING macro=rss_schema
+							// property: name=ppk_key_id, type=STRING macro=rss_schema
+							"ppk_key_id": rsschema.StringAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Ppk key id.",
+							},
+							// key name holder for attribute: name=ppk_key_id, type=STRING macro=rss_schema
+							// property: name=ppk_secret, type=STRING macro=rss_schema
+							"ppk_secret": rsschema.StringAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   true,
+								Description: "Ppk secret.",
+							},
+							// key name holder for attribute: name=ppk_secret, type=STRING macro=rss_schema
+							"ppk_secret_internal_key_name": rsschema.StringAttribute{
+								Required:    false,
+								Computed:    true,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Internal key name for the sensitive attribute ppk_secret, managed automatically by the provider.",
+							},
+							// property: name=ppk_secret_configured, type=BOOLEAN macro=rss_schema
+							"ppk_secret_configured": rsschema.BoolAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   true,
+								Description: "Ppk secret configured.",
+							},
+							// key name holder for attribute: name=ppk_secret_configured, type=BOOLEAN macro=rss_schema
+							"ppk_secret_configured_internal_key_name": rsschema.BoolAttribute{
+								Required:    false,
+								Computed:    true,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Internal key name for the sensitive attribute ppk_secret_configured, managed automatically by the provider.",
+							},
+							// property: name=ppk_secret_encrypted, type=STRING macro=rss_schema
+							"ppk_secret_encrypted": rsschema.StringAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   true,
+								Description: "Ppk secret encrypted.",
+							},
+							// key name holder for attribute: name=ppk_secret_encrypted, type=STRING macro=rss_schema
+							"ppk_secret_encrypted_internal_key_name": rsschema.StringAttribute{
+								Required:    false,
+								Computed:    true,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Internal key name for the sensitive attribute ppk_secret_encrypted, managed automatically by the provider.",
+							},
+							// property: name=ppk_secret_hash, type=STRING macro=rss_schema
+							"ppk_secret_hash": rsschema.StringAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   true,
+								Description: "Ppk secret hash.",
+							},
+							// key name holder for attribute: name=ppk_secret_hash, type=STRING macro=rss_schema
+							"ppk_secret_hash_internal_key_name": rsschema.StringAttribute{
+								Required:    false,
+								Computed:    true,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Internal key name for the sensitive attribute ppk_secret_hash, managed automatically by the provider.",
+							},
+						},
+					},
+					// key name holder for attribute: name=ppk_config, type=REFERENCE macro=rss_schema
 					// property: name=private_key, type=STRING macro=rss_schema
 					"private_key": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Private key.",
 					},
 					// key name holder for attribute: name=private_key, type=STRING macro=rss_schema
+					"private_key_internal_key_name": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute private_key, managed automatically by the provider.",
+					},
 					// property: name=private_key_encrypted, type=STRING macro=rss_schema
 					"private_key_encrypted": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Private key encrypted.",
 					},
 					// key name holder for attribute: name=private_key_encrypted, type=STRING macro=rss_schema
+					"private_key_encrypted_internal_key_name": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute private_key_encrypted, managed automatically by the provider.",
+					},
 					// property: name=remote_ca_certificate, type=STRING macro=rss_schema
 					"remote_ca_certificate": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Remote ca certificate.",
 					},
 					// key name holder for attribute: name=remote_ca_certificate, type=STRING macro=rss_schema
 					// property: name=remote_id, type=STRING macro=rss_schema
 					"remote_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Remote id. Value: length 2 to 255 characters.",
 					},
 					// key name holder for attribute: name=remote_id, type=STRING macro=rss_schema
 					// property: name=secret, type=STRING macro=rss_schema
 					"secret": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: true,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Secret.",
 					},
 					// key name holder for attribute: name=secret, type=STRING macro=rss_schema
 					"secret_internal_key_name": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  true,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute secret, managed automatically by the provider.",
 					},
 					// property: name=secret_encrypted, type=STRING macro=rss_schema
 					"secret_encrypted": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: true,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Secret encrypted.",
 					},
 					// key name holder for attribute: name=secret_encrypted, type=STRING macro=rss_schema
 					"secret_encrypted_internal_key_name": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  true,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute secret_encrypted, managed automatically by the provider.",
 					},
 					// property: name=secret_hash, type=STRING macro=rss_schema
 					"secret_hash": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: true,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Secret hash.",
 					},
 					// key name holder for attribute: name=secret_hash, type=STRING macro=rss_schema
 					"secret_hash_internal_key_name": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  true,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute secret_hash, managed automatically by the provider.",
 					},
 					// property: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=rss_schema
 					"strict_validation_peer_extended_key_use": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Strict validation peer extended key use.",
 					},
 					// key name holder for attribute: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=rss_schema
 					// property: name=type, type=STRING macro=rss_schema
 					"type": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Type. Value: one of none, psk, x509.",
 					},
 					// key name holder for attribute: name=type, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=type, type=STRING macro=rss_schema
+			// key name holder for attribute: name=authentication, type=REFERENCE macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=dpd_delay, type=INTEGER macro=rss_schema
 			"dpd_delay": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Dpd delay. Value: between 1 and 60.",
 			},
 			// key name holder for attribute: name=dpd_delay, type=INTEGER macro=rss_schema
 			// property: name=dpd_enable, type=BOOLEAN macro=rss_schema
 			"dpd_enable": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Dpd enable.",
 			},
 			// key name holder for attribute: name=dpd_enable, type=BOOLEAN macro=rss_schema
 			// property: name=dpd_timeout, type=INTEGER macro=rss_schema
 			"dpd_timeout": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Dpd timeout. Value: between 2 and 300.",
 			},
 			// key name holder for attribute: name=dpd_timeout, type=INTEGER macro=rss_schema
 			// property: name=esp_group, type=REFERENCE macro=rss_schema
 			"esp_group": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Esp group.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=force_encapsulation, type=BOOLEAN macro=rss_schema
 					"force_encapsulation": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Force encapsulation.",
 					},
 					// key name holder for attribute: name=force_encapsulation, type=BOOLEAN macro=rss_schema
 					// property: name=lifesize, type=REFERENCE macro=rss_schema
 					"lifesize": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Lifesize.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=units, type=STRING macro=rss_schema
 							"units": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Units.",
 							},
 							// key name holder for attribute: name=units, type=STRING macro=rss_schema
 							// property: name=value, type=INTEGER macro=rss_schema
 							"value": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Value.",
 							},
 							// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+					// key name holder for attribute: name=lifesize, type=REFERENCE macro=rss_schema
 					// property: name=lifetime, type=INTEGER macro=rss_schema
 					"lifetime": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Lifetime. Value: between 1 and 72.",
 					},
 					// key name holder for attribute: name=lifetime, type=INTEGER macro=rss_schema
 					// property: name=lifetime_units, type=STRING macro=rss_schema
 					"lifetime_units": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Lifetime units.",
 					},
 					// key name holder for attribute: name=lifetime_units, type=STRING macro=rss_schema
 					// property: name=mode, type=STRING macro=rss_schema
 					"mode": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Mode. Value: one of tunnel, transport.",
 					},
 					// key name holder for attribute: name=mode, type=STRING macro=rss_schema
+					// property: name=pqc_kem_config, type=REFERENCE macro=rss_schema
+					"pqc_kem_config": rsschema.SingleNestedAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Pqc kem config.",
+						Attributes: map[string]rsschema.Attribute{
+							// property: name=block_vulnerable_cipher, type=BOOLEAN macro=rss_schema
+							"block_vulnerable_cipher": rsschema.BoolAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Block vulnerable cipher.",
+							},
+							// key name holder for attribute: name=block_vulnerable_cipher, type=BOOLEAN macro=rss_schema
+							// property: name=enabled, type=BOOLEAN macro=rss_schema
+							"enabled": rsschema.BoolAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Enabled.",
+							},
+							// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
+							// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_1_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_1 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_2_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_2 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_3_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_3 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_4_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_4 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_5_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_5 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_6_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_6 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_7_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_7 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+						},
+					},
+					// key name holder for attribute: name=pqc_kem_config, type=REFERENCE macro=rss_schema
 					// property: name=proposals, type=ARRAY_REFERENCE macro=rss_schema
 					"proposals": rsschema.ListNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Proposals. At most 1 items. At least 1 items.",
+						Validators:  ListMaxItems(1),
 						NestedObject: rsschema.NestedAttributeObject{
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=dh_groups, type=STRING macro=rss_schema
 								"dh_groups": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Dh groups. Value: one of modp768, ecp384bp, modp6144, modp3072, modp2048s224, none, ecp512bp, ecp521, ecp192, ecp256, ecp384, ecp224, modp1024s160, modp4096, modp1536, ecp224bp, modp1024, curve25519, modp8192, modp2048, ecp256bp, modp2048s256.",
 								},
 								// key name holder for attribute: name=dh_groups, type=STRING macro=rss_schema
 								// property: name=encryption, type=STRING macro=rss_schema
 								"encryption": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Encryption. Value: one of aes256gcm16, aes256, aes128ccm128, aes128ccm16, twofish192, aes128, aes192, aes192gcm64, camellia256, aes256gcm96, aes192gcm128, aes256ctr, camellia192, aes192gmac, aes128gcm96, blowfish256, aes192ccm128, 3des, aes256ccm64, aes192ccm96, aes192ccm64, aes128ccm96, twofish256, camellia128, blowfish128, serpent256, blowfish192, aes128ctr, twofish128, aes192gcm96, aes128ccm64, aes128gmac, serpent128, aes256gcm64, aes256ccm96, aes192ctr, aes128gcm128, serpent192, aes256gmac, aes128gcm64, aes256ccm128, none, aes128gcm16, aes256gcm128.",
 								},
 								// key name holder for attribute: name=encryption, type=STRING macro=rss_schema
 								// property: name=hash, type=STRING macro=rss_schema
 								"hash": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Hash. Value: one of sha256, md5, sha384, aesxcbc, aes128gmac, none, sha1, aes192gmac, sha512, sha256_96, aes256gmac.",
 								},
 								// key name holder for attribute: name=hash, type=STRING macro=rss_schema
 								// property: name=prf, type=STRING macro=rss_schema
 								"prf": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Prf. Value: one of md5, sha1, sha256, sha384, sha512, sha256_96, aesxcbc, aes128gmac, aes192gmac, aes256gmac, none.",
 								},
 								// key name holder for attribute: name=prf, type=STRING macro=rss_schema
 							},
 						},
 					},
-					// key name holder for attribute: name=prf, type=STRING macro=rss_schema
+					// key name holder for attribute: name=proposals, type=ARRAY_REFERENCE macro=rss_schema
 					// property: name=responder_sase_proposals, type=REFERENCE macro=rss_schema
 					"responder_sase_proposals": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Responder sase proposals.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=dh_group, type=ARRAY_PRIMITIVE macro=rss_schema
 							"dh_group": rsschema.ListAttribute{
@@ -520,6 +824,7 @@ func (r *ipsecProfileResource) Schema(_ context.Context, _ resource.SchemaReques
 								Computed:    false,
 								Optional:    true,
 								Sensitive:   false,
+								Description: "Dh group. Each item: one of none, modp768, modp1024, modp1536, modp2048, modp3072, modp4096, modp6144, modp8192, modp1024s160, modp2048s224, modp2048s256, ecp192, ecp224, ecp256, ecp384, ecp521, ecp224bp, ecp256bp, ecp384bp, ecp512bp, curve25519.",
 								ElementType: types.StringType,
 							},
 							// key name holder for attribute: name=dh_group, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -529,6 +834,7 @@ func (r *ipsecProfileResource) Schema(_ context.Context, _ resource.SchemaReques
 								Computed:    false,
 								Optional:    true,
 								Sensitive:   false,
+								Description: "Encryption. Each item: one of none, aes128, aes192, aes256, aes128ctr, aes192ctr, aes256ctr, aes128ccm16, aes128ccm64, aes192ccm64, aes256ccm64, aes128ccm96, aes192ccm96, aes256ccm96, aes128ccm128, aes192ccm128, aes256ccm128, aes128gcm16, aes128gcm64, aes192gcm64, aes256gcm16, aes256gcm64, aes128gcm96, aes192gcm96, aes256gcm96, aes128gcm128, aes192gcm128, aes256gcm128, aes128gmac, aes192gmac, aes256gmac, 3des, blowfish128, blowfish192, blowfish256, camellia128, camellia192, camellia256, serpent128, serpent192, serpent256, twofish128, twofish192, twofish256.",
 								ElementType: types.StringType,
 							},
 							// key name holder for attribute: name=encryption, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -538,139 +844,255 @@ func (r *ipsecProfileResource) Schema(_ context.Context, _ resource.SchemaReques
 								Computed:    false,
 								Optional:    true,
 								Sensitive:   false,
+								Description: "Hash. Each item: one of md5, sha1, sha256, sha384, sha512, sha256_96, aesxcbc, aes128gmac, aes192gmac, aes256gmac, none.",
 								ElementType: types.StringType,
 							},
 							// key name holder for attribute: name=hash, type=ARRAY_PRIMITIVE macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=hash, type=ARRAY_PRIMITIVE macro=rss_schema
+					// key name holder for attribute: name=responder_sase_proposals, type=REFERENCE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=hash, type=ARRAY_PRIMITIVE macro=rss_schema
+			// key name holder for attribute: name=esp_group, type=REFERENCE macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=ike_group, type=REFERENCE macro=rss_schema
 			"ike_group": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ike group.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=aggressive, type=BOOLEAN macro=rss_schema
 					"aggressive": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Aggressive.",
 					},
 					// key name holder for attribute: name=aggressive, type=BOOLEAN macro=rss_schema
 					// property: name=authentication_multiple, type=INTEGER macro=rss_schema
 					"authentication_multiple": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Authentication multiple.",
 					},
 					// key name holder for attribute: name=authentication_multiple, type=INTEGER macro=rss_schema
 					// property: name=key_exchange, type=STRING macro=rss_schema
 					"key_exchange": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Key exchange. Value: one of ikev1, ikev2.",
 					},
 					// key name holder for attribute: name=key_exchange, type=STRING macro=rss_schema
 					// property: name=lifetime, type=INTEGER macro=rss_schema
 					"lifetime": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Lifetime. Value: between 1 and 72.",
 					},
 					// key name holder for attribute: name=lifetime, type=INTEGER macro=rss_schema
 					// property: name=lifetime_units, type=STRING macro=rss_schema
 					"lifetime_units": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Lifetime units.",
 					},
 					// key name holder for attribute: name=lifetime_units, type=STRING macro=rss_schema
 					// property: name=port, type=INTEGER macro=rss_schema
 					"port": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Port. Value: between 1 and 65535.",
 					},
 					// key name holder for attribute: name=port, type=INTEGER macro=rss_schema
+					// property: name=pqc_kem_config, type=REFERENCE macro=rss_schema
+					"pqc_kem_config": rsschema.SingleNestedAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Pqc kem config.",
+						Attributes: map[string]rsschema.Attribute{
+							// property: name=block_vulnerable_cipher, type=BOOLEAN macro=rss_schema
+							"block_vulnerable_cipher": rsschema.BoolAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Block vulnerable cipher.",
+							},
+							// key name holder for attribute: name=block_vulnerable_cipher, type=BOOLEAN macro=rss_schema
+							// property: name=enabled, type=BOOLEAN macro=rss_schema
+							"enabled": rsschema.BoolAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Enabled.",
+							},
+							// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
+							// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_1_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_1 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_2_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_2 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_3_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_3 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_4_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_4 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_5_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_5 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_6_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_6 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+							"round_7_algorithms": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Round_7 Algorithms.",
+								ElementType: types.StringType,
+							},
+							// key name holder for attribute: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+						},
+					},
+					// key name holder for attribute: name=pqc_kem_config, type=REFERENCE macro=rss_schema
 					// property: name=proposals, type=ARRAY_REFERENCE macro=rss_schema
 					"proposals": rsschema.ListNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Proposals. At most 1 items. At least 1 items.",
+						Validators:  ListMaxItems(1),
 						NestedObject: rsschema.NestedAttributeObject{
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=dh_groups, type=STRING macro=rss_schema
 								"dh_groups": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Dh groups. Value: one of modp768, ecp384bp, modp6144, modp3072, modp2048s224, none, ecp512bp, ecp521, ecp192, ecp256, ecp384, ecp224, modp1024s160, modp4096, modp1536, ecp224bp, modp1024, curve25519, modp8192, modp2048, ecp256bp, modp2048s256.",
 								},
 								// key name holder for attribute: name=dh_groups, type=STRING macro=rss_schema
 								// property: name=encryption, type=STRING macro=rss_schema
 								"encryption": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Encryption. Value: one of aes256gcm16, aes256, aes128ccm128, aes128ccm16, twofish192, aes128, aes192, aes192gcm64, camellia256, aes256gcm96, aes192gcm128, aes256ctr, camellia192, aes192gmac, aes128gcm96, blowfish256, aes192ccm128, 3des, aes256ccm64, aes192ccm96, aes192ccm64, aes128ccm96, twofish256, camellia128, blowfish128, serpent256, blowfish192, aes128ctr, twofish128, aes192gcm96, aes128ccm64, aes128gmac, serpent128, aes256gcm64, aes256ccm96, aes192ctr, aes128gcm128, serpent192, aes256gmac, aes128gcm64, aes256ccm128, none, aes128gcm16, aes256gcm128.",
 								},
 								// key name holder for attribute: name=encryption, type=STRING macro=rss_schema
 								// property: name=hash, type=STRING macro=rss_schema
 								"hash": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Hash. Value: one of sha256, md5, sha384, aesxcbc, aes128gmac, none, sha1, aes192gmac, sha512, sha256_96, aes256gmac.",
 								},
 								// key name holder for attribute: name=hash, type=STRING macro=rss_schema
 								// property: name=prf, type=STRING macro=rss_schema
 								"prf": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Prf. Value: one of md5, sha1, sha256, sha384, sha512, sha256_96, aesxcbc, aes128gmac, aes192gmac, aes256gmac, none.",
 								},
 								// key name holder for attribute: name=prf, type=STRING macro=rss_schema
 							},
 						},
 					},
-					// key name holder for attribute: name=prf, type=STRING macro=rss_schema
+					// key name holder for attribute: name=proposals, type=ARRAY_REFERENCE macro=rss_schema
 					// property: name=reauth, type=BOOLEAN macro=rss_schema
 					"reauth": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Reauth.",
 					},
 					// key name holder for attribute: name=reauth, type=BOOLEAN macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=reauth, type=BOOLEAN macro=rss_schema
+			// key name holder for attribute: name=ike_group, type=REFERENCE macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -679,15 +1101,18 @@ func (r *ipsecProfileResource) Schema(_ context.Context, _ resource.SchemaReques
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=used_for, type=STRING macro=rss_schema
 			"used_for": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Used for. Value: one of fabric_vpn.",
 			},
 			// key name holder for attribute: name=used_for, type=STRING macro=rss_schema
 		},
@@ -716,7 +1141,7 @@ func (r *ipsecProfileResource) GetHttpStatusCode(request *sdwan_client.SdwanClie
 	}
 }
 
-func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECProfileScreenV2N2, state *rsModelIPSECProfileScreenV2N2, resp *resource.CreateResponse) bool {
+func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECProfileScreenV2N3, state *rsModelIPSECProfileScreenV2N3, resp *resource.CreateResponse) bool {
 	tflog.Info(ctx, "executing http post for prismasdwan_ipsec_profile")
 	// Basic logging.
 	tflog.Info(ctx, "performing resource create", map[string]any{
@@ -728,7 +1153,7 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 	create_request := &sdwan_client.SdwanClientRequestResponse{}
 	create_request.ResourceType = "prismasdwan_ipsec_profile"
 	create_request.Method = "POST"
-	create_request.Path = "/sdwan/v2.2/api/ipsecprofiles"
+	create_request.Path = "/sdwan/v2.3/api/ipsecprofiles"
 
 	// copy parameters from plan always
 	params := make(map[string]*string)
@@ -738,7 +1163,7 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.IPSECProfileScreenV2N2{}
+	var body = &sdwan_schema.IPSECProfileScreenV2N3{}
 
 	// copy from plan to body
 	// copy_from_plan: body=body prefix=rsModel plan=plan properties=13
@@ -750,7 +1175,7 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 	// property: name=authentication, type=REFERENCE macro=copy_from_plan
 	if plan.Authentication != nil {
 		body.Authentication = &sdwan_schema.IPSECAuthenticationV1{}
-		// copy_from_plan: body=body.Authentication prefix=rsModel plan=plan.Authentication properties=22
+		// copy_from_plan: body=body.Authentication prefix=rsModel plan=plan.Authentication properties=23
 		tflog.Debug(ctx, "copy_from_plan body=body.Authentication prefix=rsModel plan=plan.Authentication")
 		// property: name=certificate, type=STRING macro=copy_from_plan
 		body.Authentication.Certificate = StringValueOrNil(plan.Authentication.Certificate)
@@ -792,6 +1217,28 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 		body.Authentication.PeerIdCheck = StringValueOrNil(plan.Authentication.PeerIdCheck)
 		// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=copy_from_plan
 		body.Authentication.PermitPeerIdMismatch = BoolValueOrNil(plan.Authentication.PermitPeerIdMismatch)
+		// property: name=ppk_config, type=REFERENCE macro=copy_from_plan
+		if plan.Authentication.PpkConfig != nil {
+			body.Authentication.PpkConfig = &sdwan_schema.PPKConfig{}
+			// copy_from_plan: body=body.Authentication.PpkConfig prefix=rsModel plan=plan.Authentication.PpkConfig properties=8
+			tflog.Debug(ctx, "copy_from_plan body=body.Authentication.PpkConfig prefix=rsModel plan=plan.Authentication.PpkConfig")
+			// property: name=enabled, type=BOOLEAN macro=copy_from_plan
+			body.Authentication.PpkConfig.Enabled = BoolValueOrNil(plan.Authentication.PpkConfig.Enabled)
+			// property: name=key_enabled, type=BOOLEAN macro=copy_from_plan
+			body.Authentication.PpkConfig.KeyEnabled = BoolValueOrNil(plan.Authentication.PpkConfig.KeyEnabled)
+			// property: name=mode, type=STRING macro=copy_from_plan
+			body.Authentication.PpkConfig.Mode = StringValueOrNil(plan.Authentication.PpkConfig.Mode)
+			// property: name=ppk_key_id, type=STRING macro=copy_from_plan
+			body.Authentication.PpkConfig.PpkKeyId = StringValueOrNil(plan.Authentication.PpkConfig.PpkKeyId)
+			// property: name=ppk_secret, type=STRING macro=copy_from_plan
+			body.Authentication.PpkConfig.PpkSecret = StringValueOrNil(plan.Authentication.PpkConfig.PpkSecret)
+			// property: name=ppk_secret_configured, type=BOOLEAN macro=copy_from_plan
+			body.Authentication.PpkConfig.PpkSecretConfigured = BoolValueOrNil(plan.Authentication.PpkConfig.PpkSecretConfigured)
+			// property: name=ppk_secret_encrypted, type=STRING macro=copy_from_plan
+			body.Authentication.PpkConfig.PpkSecretEncrypted = StringValueOrNil(plan.Authentication.PpkConfig.PpkSecretEncrypted)
+			// property: name=ppk_secret_hash, type=STRING macro=copy_from_plan
+			body.Authentication.PpkConfig.PpkSecretHash = StringValueOrNil(plan.Authentication.PpkConfig.PpkSecretHash)
+		}
 		// property: name=private_key, type=STRING macro=copy_from_plan
 		body.Authentication.PrivateKey = StringValueOrNil(plan.Authentication.PrivateKey)
 		// property: name=private_key_encrypted, type=STRING macro=copy_from_plan
@@ -822,7 +1269,7 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 	// property: name=esp_group, type=REFERENCE macro=copy_from_plan
 	if plan.EspGroup != nil {
 		body.EspGroup = &sdwan_schema.ESPGroup{}
-		// copy_from_plan: body=body.EspGroup prefix=rsModel plan=plan.EspGroup properties=7
+		// copy_from_plan: body=body.EspGroup prefix=rsModel plan=plan.EspGroup properties=8
 		tflog.Debug(ctx, "copy_from_plan body=body.EspGroup prefix=rsModel plan=plan.EspGroup")
 		// property: name=force_encapsulation, type=BOOLEAN macro=copy_from_plan
 		body.EspGroup.ForceEncapsulation = BoolValueOrNil(plan.EspGroup.ForceEncapsulation)
@@ -842,6 +1289,30 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 		body.EspGroup.LifetimeUnits = StringValueOrNil(plan.EspGroup.LifetimeUnits)
 		// property: name=mode, type=STRING macro=copy_from_plan
 		body.EspGroup.Mode = StringValueOrNil(plan.EspGroup.Mode)
+		// property: name=pqc_kem_config, type=REFERENCE macro=copy_from_plan
+		if plan.EspGroup.PqcKemConfig != nil {
+			body.EspGroup.PqcKemConfig = &sdwan_schema.PQCKEMConfig{}
+			// copy_from_plan: body=body.EspGroup.PqcKemConfig prefix=rsModel plan=plan.EspGroup.PqcKemConfig properties=9
+			tflog.Debug(ctx, "copy_from_plan body=body.EspGroup.PqcKemConfig prefix=rsModel plan=plan.EspGroup.PqcKemConfig")
+			// property: name=block_vulnerable_cipher, type=BOOLEAN macro=copy_from_plan
+			body.EspGroup.PqcKemConfig.BlockVulnerableCipher = BoolValueOrNil(plan.EspGroup.PqcKemConfig.BlockVulnerableCipher)
+			// property: name=enabled, type=BOOLEAN macro=copy_from_plan
+			body.EspGroup.PqcKemConfig.Enabled = BoolValueOrNil(plan.EspGroup.PqcKemConfig.Enabled)
+			// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.EspGroup.PqcKemConfig.Round1Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round1Algorithms)
+			// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.EspGroup.PqcKemConfig.Round2Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round2Algorithms)
+			// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.EspGroup.PqcKemConfig.Round3Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round3Algorithms)
+			// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.EspGroup.PqcKemConfig.Round4Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round4Algorithms)
+			// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.EspGroup.PqcKemConfig.Round5Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round5Algorithms)
+			// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.EspGroup.PqcKemConfig.Round6Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round6Algorithms)
+			// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.EspGroup.PqcKemConfig.Round7Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round7Algorithms)
+		}
 		// property: name=proposals, type=ARRAY_REFERENCE macro=copy_from_plan
 		if plan.EspGroup.Proposals == nil {
 			body.EspGroup.Proposals = nil
@@ -882,7 +1353,7 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 	// property: name=ike_group, type=REFERENCE macro=copy_from_plan
 	if plan.IkeGroup != nil {
 		body.IkeGroup = &sdwan_schema.IKEGroup{}
-		// copy_from_plan: body=body.IkeGroup prefix=rsModel plan=plan.IkeGroup properties=8
+		// copy_from_plan: body=body.IkeGroup prefix=rsModel plan=plan.IkeGroup properties=9
 		tflog.Debug(ctx, "copy_from_plan body=body.IkeGroup prefix=rsModel plan=plan.IkeGroup")
 		// property: name=aggressive, type=BOOLEAN macro=copy_from_plan
 		body.IkeGroup.Aggressive = BoolValueOrNil(plan.IkeGroup.Aggressive)
@@ -896,6 +1367,30 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 		body.IkeGroup.LifetimeUnits = StringValueOrNil(plan.IkeGroup.LifetimeUnits)
 		// property: name=port, type=INTEGER macro=copy_from_plan
 		body.IkeGroup.Port = Int64ValueOrNil(plan.IkeGroup.Port)
+		// property: name=pqc_kem_config, type=REFERENCE macro=copy_from_plan
+		if plan.IkeGroup.PqcKemConfig != nil {
+			body.IkeGroup.PqcKemConfig = &sdwan_schema.PQCKEMConfig{}
+			// copy_from_plan: body=body.IkeGroup.PqcKemConfig prefix=rsModel plan=plan.IkeGroup.PqcKemConfig properties=9
+			tflog.Debug(ctx, "copy_from_plan body=body.IkeGroup.PqcKemConfig prefix=rsModel plan=plan.IkeGroup.PqcKemConfig")
+			// property: name=block_vulnerable_cipher, type=BOOLEAN macro=copy_from_plan
+			body.IkeGroup.PqcKemConfig.BlockVulnerableCipher = BoolValueOrNil(plan.IkeGroup.PqcKemConfig.BlockVulnerableCipher)
+			// property: name=enabled, type=BOOLEAN macro=copy_from_plan
+			body.IkeGroup.PqcKemConfig.Enabled = BoolValueOrNil(plan.IkeGroup.PqcKemConfig.Enabled)
+			// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.IkeGroup.PqcKemConfig.Round1Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round1Algorithms)
+			// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.IkeGroup.PqcKemConfig.Round2Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round2Algorithms)
+			// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.IkeGroup.PqcKemConfig.Round3Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round3Algorithms)
+			// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.IkeGroup.PqcKemConfig.Round4Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round4Algorithms)
+			// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.IkeGroup.PqcKemConfig.Round5Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round5Algorithms)
+			// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.IkeGroup.PqcKemConfig.Round6Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round6Algorithms)
+			// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.IkeGroup.PqcKemConfig.Round7Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round7Algorithms)
+		}
 		// property: name=proposals, type=ARRAY_REFERENCE macro=copy_from_plan
 		if plan.IkeGroup.Proposals == nil {
 			body.IkeGroup.Proposals = nil
@@ -931,7 +1426,7 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct IPSECProfileScreenV2N2 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct IPSECProfileScreenV2N3 to JSON:", err.Error())
 		return false
 	}
 
@@ -1013,12 +1508,12 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.IPSECProfileScreenV2N2
+	var ans sdwan_schema.IPSECProfileScreenV2N3
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to IPSECProfileScreenV2N2 in create", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to IPSECProfileScreenV2N3 in create", json_err.Error())
 		return false
 	}
 
@@ -1043,7 +1538,7 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 	state.TfParameters = plan.TfParameters
 	tflog.Info(ctx, "created prismasdwan_ipsec_profile with ID", map[string]any{"tfid": state.Tfid.ValueString()})
 
-	// Store the answer to state. schema=IPSECProfileScreenV2N2
+	// Store the answer to state. schema=IPSECProfileScreenV2N3
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=13
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -1055,7 +1550,7 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 		state.Authentication = nil
 	} else {
 		state.Authentication = &rsModelIPSECAuthenticationV1{}
-		// copy_to_state: state=state.Authentication prefix=rsModel ans=ans.Authentication properties=22
+		// copy_to_state: state=state.Authentication prefix=rsModel ans=ans.Authentication properties=23
 		tflog.Debug(ctx, "copy_to_state state=state.Authentication prefix=rsModel ans=ans.Authentication")
 		// property: name=certificate, type=STRING macro=copy_to_state
 		state.Authentication.Certificate = types.StringPointerValue(ans.Authentication.Certificate)
@@ -1073,31 +1568,49 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 			// property: name=xauth_id, type=STRING macro=copy_to_state
 			state.Authentication.Ikev1Params.XauthId = types.StringPointerValue(ans.Authentication.Ikev1Params.XauthId)
 			// property: name=xauth_secret, type=STRING macro=copy_to_state
-			state.Authentication.Ikev1Params.XauthSecret = types.StringPointerValue(plan.Authentication.Ikev1Params.XauthSecret.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.Authentication.Ikev1Params.XauthSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.Authentication.Ikev1Params.XauthSecret = types.StringNull()
+			if plan.Authentication != nil && plan.Authentication.Ikev1Params != nil {
+				state.Authentication.Ikev1Params.XauthSecret = types.StringPointerValue(plan.Authentication.Ikev1Params.XauthSecret.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.Authentication.Ikev1Params.XauthSecret.IsNull() {
-				encryptedXauthSecret, _ := Encrypt([]byte(state.Authentication.Ikev1Params.XauthSecret.String()))
-				resp.Private.SetKey(ctx, state.Authentication.Ikev1Params.XauthSecretInternalKeyName.String(), []byte(encryptedXauthSecret))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedXauthSecret, _ := Encrypt([]byte(state.Authentication.Ikev1Params.XauthSecret.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedXauthSecretJson, _ := json.Marshal(encryptedXauthSecret)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.Ikev1Params.XauthSecretInternalKeyName.String(), encryptedXauthSecretJson)...)
 			}
 			// property: name=xauth_secret_encrypted, type=STRING macro=copy_to_state
-			state.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringPointerValue(plan.Authentication.Ikev1Params.XauthSecretEncrypted.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringNull()
+			if plan.Authentication != nil && plan.Authentication.Ikev1Params != nil {
+				state.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringPointerValue(plan.Authentication.Ikev1Params.XauthSecretEncrypted.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.Authentication.Ikev1Params.XauthSecretEncrypted.IsNull() {
-				encryptedXauthSecretEncrypted, _ := Encrypt([]byte(state.Authentication.Ikev1Params.XauthSecretEncrypted.String()))
-				resp.Private.SetKey(ctx, state.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName.String(), []byte(encryptedXauthSecretEncrypted))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedXauthSecretEncrypted, _ := Encrypt([]byte(state.Authentication.Ikev1Params.XauthSecretEncrypted.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedXauthSecretEncryptedJson, _ := json.Marshal(encryptedXauthSecretEncrypted)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName.String(), encryptedXauthSecretEncryptedJson)...)
 			}
 			// property: name=xauth_secret_hash, type=STRING macro=copy_to_state
-			state.Authentication.Ikev1Params.XauthSecretHash = types.StringPointerValue(plan.Authentication.Ikev1Params.XauthSecretHash.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.Authentication.Ikev1Params.XauthSecretHashInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.Authentication.Ikev1Params.XauthSecretHash = types.StringNull()
+			if plan.Authentication != nil && plan.Authentication.Ikev1Params != nil {
+				state.Authentication.Ikev1Params.XauthSecretHash = types.StringPointerValue(plan.Authentication.Ikev1Params.XauthSecretHash.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.Authentication.Ikev1Params.XauthSecretHash.IsNull() {
-				encryptedXauthSecretHash, _ := Encrypt([]byte(state.Authentication.Ikev1Params.XauthSecretHash.String()))
-				resp.Private.SetKey(ctx, state.Authentication.Ikev1Params.XauthSecretHashInternalKeyName.String(), []byte(encryptedXauthSecretHash))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedXauthSecretHash, _ := Encrypt([]byte(state.Authentication.Ikev1Params.XauthSecretHash.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedXauthSecretHashJson, _ := json.Marshal(encryptedXauthSecretHash)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.Ikev1Params.XauthSecretHashInternalKeyName.String(), encryptedXauthSecretHashJson)...)
 			}
 			// property: name=xauth_type, type=STRING macro=copy_to_state
 			state.Authentication.Ikev1Params.XauthType = types.StringPointerValue(ans.Authentication.Ikev1Params.XauthType)
@@ -1113,47 +1626,180 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 		// property: name=pa_master_key_id, type=STRING macro=copy_to_state
 		state.Authentication.PaMasterKeyId = types.StringPointerValue(ans.Authentication.PaMasterKeyId)
 		// property: name=passphrase, type=STRING macro=copy_to_state
-		state.Authentication.Passphrase = types.StringPointerValue(ans.Authentication.Passphrase)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.Authentication.PassphraseInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.Passphrase = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.Passphrase = types.StringPointerValue(plan.Authentication.Passphrase.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.Authentication.Passphrase.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedPassphrase, _ := Encrypt([]byte(state.Authentication.Passphrase.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedPassphraseJson, _ := json.Marshal(encryptedPassphrase)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PassphraseInternalKeyName.String(), encryptedPassphraseJson)...)
+		}
 		// property: name=passphrase_encrypted, type=STRING macro=copy_to_state
-		state.Authentication.PassphraseEncrypted = types.StringPointerValue(ans.Authentication.PassphraseEncrypted)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.Authentication.PassphraseEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.PassphraseEncrypted = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.PassphraseEncrypted = types.StringPointerValue(plan.Authentication.PassphraseEncrypted.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.Authentication.PassphraseEncrypted.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedPassphraseEncrypted, _ := Encrypt([]byte(state.Authentication.PassphraseEncrypted.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedPassphraseEncryptedJson, _ := json.Marshal(encryptedPassphraseEncrypted)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PassphraseEncryptedInternalKeyName.String(), encryptedPassphraseEncryptedJson)...)
+		}
 		// property: name=peer_id_check, type=STRING macro=copy_to_state
 		state.Authentication.PeerIdCheck = types.StringPointerValue(ans.Authentication.PeerIdCheck)
 		// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=copy_to_state
 		state.Authentication.PermitPeerIdMismatch = types.BoolPointerValue(ans.Authentication.PermitPeerIdMismatch)
+		// property: name=ppk_config, type=REFERENCE macro=copy_to_state
+		if ans.Authentication.PpkConfig == nil {
+			state.Authentication.PpkConfig = nil
+		} else {
+			state.Authentication.PpkConfig = &rsModelPPKConfig{}
+			// copy_to_state: state=state.Authentication.PpkConfig prefix=rsModel ans=ans.Authentication.PpkConfig properties=8
+			tflog.Debug(ctx, "copy_to_state state=state.Authentication.PpkConfig prefix=rsModel ans=ans.Authentication.PpkConfig")
+			// property: name=enabled, type=BOOLEAN macro=copy_to_state
+			state.Authentication.PpkConfig.Enabled = types.BoolPointerValue(ans.Authentication.PpkConfig.Enabled)
+			// property: name=key_enabled, type=BOOLEAN macro=copy_to_state
+			state.Authentication.PpkConfig.KeyEnabled = types.BoolPointerValue(ans.Authentication.PpkConfig.KeyEnabled)
+			// property: name=mode, type=STRING macro=copy_to_state
+			state.Authentication.PpkConfig.Mode = types.StringPointerValue(ans.Authentication.PpkConfig.Mode)
+			// property: name=ppk_key_id, type=STRING macro=copy_to_state
+			state.Authentication.PpkConfig.PpkKeyId = types.StringPointerValue(ans.Authentication.PpkConfig.PpkKeyId)
+			// property: name=ppk_secret, type=STRING macro=copy_to_state
+			// this property is sensitive and will be stored in the state's internal key name
+			state.Authentication.PpkConfig.PpkSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.Authentication.PpkConfig.PpkSecret = types.StringNull()
+			if plan.Authentication != nil && plan.Authentication.PpkConfig != nil {
+				state.Authentication.PpkConfig.PpkSecret = types.StringPointerValue(plan.Authentication.PpkConfig.PpkSecret.ValueStringPointer())
+			}
+			// store value if needed
+			if !state.Authentication.PpkConfig.PpkSecret.IsNull() {
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedPpkSecret, _ := Encrypt([]byte(state.Authentication.PpkConfig.PpkSecret.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedPpkSecretJson, _ := json.Marshal(encryptedPpkSecret)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PpkConfig.PpkSecretInternalKeyName.String(), encryptedPpkSecretJson)...)
+			}
+			// property: name=ppk_secret_configured, type=BOOLEAN macro=copy_to_state
+			state.Authentication.PpkConfig.PpkSecretConfigured = types.BoolPointerValue(ans.Authentication.PpkConfig.PpkSecretConfigured)
+			// property: name=ppk_secret_encrypted, type=STRING macro=copy_to_state
+			// this property is sensitive and will be stored in the state's internal key name
+			state.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.Authentication.PpkConfig.PpkSecretEncrypted = types.StringNull()
+			if plan.Authentication != nil && plan.Authentication.PpkConfig != nil {
+				state.Authentication.PpkConfig.PpkSecretEncrypted = types.StringPointerValue(plan.Authentication.PpkConfig.PpkSecretEncrypted.ValueStringPointer())
+			}
+			// store value if needed
+			if !state.Authentication.PpkConfig.PpkSecretEncrypted.IsNull() {
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedPpkSecretEncrypted, _ := Encrypt([]byte(state.Authentication.PpkConfig.PpkSecretEncrypted.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedPpkSecretEncryptedJson, _ := json.Marshal(encryptedPpkSecretEncrypted)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName.String(), encryptedPpkSecretEncryptedJson)...)
+			}
+			// property: name=ppk_secret_hash, type=STRING macro=copy_to_state
+			// this property is sensitive and will be stored in the state's internal key name
+			state.Authentication.PpkConfig.PpkSecretHashInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.Authentication.PpkConfig.PpkSecretHash = types.StringNull()
+			if plan.Authentication != nil && plan.Authentication.PpkConfig != nil {
+				state.Authentication.PpkConfig.PpkSecretHash = types.StringPointerValue(plan.Authentication.PpkConfig.PpkSecretHash.ValueStringPointer())
+			}
+			// store value if needed
+			if !state.Authentication.PpkConfig.PpkSecretHash.IsNull() {
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedPpkSecretHash, _ := Encrypt([]byte(state.Authentication.PpkConfig.PpkSecretHash.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedPpkSecretHashJson, _ := json.Marshal(encryptedPpkSecretHash)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PpkConfig.PpkSecretHashInternalKeyName.String(), encryptedPpkSecretHashJson)...)
+			}
+		}
 		// property: name=private_key, type=STRING macro=copy_to_state
-		state.Authentication.PrivateKey = types.StringPointerValue(ans.Authentication.PrivateKey)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.Authentication.PrivateKeyInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.PrivateKey = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.PrivateKey = types.StringPointerValue(plan.Authentication.PrivateKey.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.Authentication.PrivateKey.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedPrivateKey, _ := Encrypt([]byte(state.Authentication.PrivateKey.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedPrivateKeyJson, _ := json.Marshal(encryptedPrivateKey)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PrivateKeyInternalKeyName.String(), encryptedPrivateKeyJson)...)
+		}
 		// property: name=private_key_encrypted, type=STRING macro=copy_to_state
-		state.Authentication.PrivateKeyEncrypted = types.StringPointerValue(ans.Authentication.PrivateKeyEncrypted)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.Authentication.PrivateKeyEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.PrivateKeyEncrypted = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.PrivateKeyEncrypted = types.StringPointerValue(plan.Authentication.PrivateKeyEncrypted.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.Authentication.PrivateKeyEncrypted.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedPrivateKeyEncrypted, _ := Encrypt([]byte(state.Authentication.PrivateKeyEncrypted.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedPrivateKeyEncryptedJson, _ := json.Marshal(encryptedPrivateKeyEncrypted)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PrivateKeyEncryptedInternalKeyName.String(), encryptedPrivateKeyEncryptedJson)...)
+		}
 		// property: name=remote_ca_certificate, type=STRING macro=copy_to_state
 		state.Authentication.RemoteCaCertificate = types.StringPointerValue(ans.Authentication.RemoteCaCertificate)
 		// property: name=remote_id, type=STRING macro=copy_to_state
 		state.Authentication.RemoteId = types.StringPointerValue(ans.Authentication.RemoteId)
 		// property: name=secret, type=STRING macro=copy_to_state
-		state.Authentication.Secret = types.StringPointerValue(plan.Authentication.Secret.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.Authentication.SecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.Secret = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.Secret = types.StringPointerValue(plan.Authentication.Secret.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.Authentication.Secret.IsNull() {
-			encryptedSecret, _ := Encrypt([]byte(state.Authentication.Secret.String()))
-			resp.Private.SetKey(ctx, state.Authentication.SecretInternalKeyName.String(), []byte(encryptedSecret))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSecret, _ := Encrypt([]byte(state.Authentication.Secret.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSecretJson, _ := json.Marshal(encryptedSecret)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.SecretInternalKeyName.String(), encryptedSecretJson)...)
 		}
 		// property: name=secret_encrypted, type=STRING macro=copy_to_state
-		state.Authentication.SecretEncrypted = types.StringPointerValue(plan.Authentication.SecretEncrypted.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.Authentication.SecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.SecretEncrypted = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.SecretEncrypted = types.StringPointerValue(plan.Authentication.SecretEncrypted.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.Authentication.SecretEncrypted.IsNull() {
-			encryptedSecretEncrypted, _ := Encrypt([]byte(state.Authentication.SecretEncrypted.String()))
-			resp.Private.SetKey(ctx, state.Authentication.SecretEncryptedInternalKeyName.String(), []byte(encryptedSecretEncrypted))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSecretEncrypted, _ := Encrypt([]byte(state.Authentication.SecretEncrypted.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSecretEncryptedJson, _ := json.Marshal(encryptedSecretEncrypted)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.SecretEncryptedInternalKeyName.String(), encryptedSecretEncryptedJson)...)
 		}
 		// property: name=secret_hash, type=STRING macro=copy_to_state
-		state.Authentication.SecretHash = types.StringPointerValue(plan.Authentication.SecretHash.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.Authentication.SecretHashInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.SecretHash = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.SecretHash = types.StringPointerValue(plan.Authentication.SecretHash.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.Authentication.SecretHash.IsNull() {
-			encryptedSecretHash, _ := Encrypt([]byte(state.Authentication.SecretHash.String()))
-			resp.Private.SetKey(ctx, state.Authentication.SecretHashInternalKeyName.String(), []byte(encryptedSecretHash))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSecretHash, _ := Encrypt([]byte(state.Authentication.SecretHash.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSecretHashJson, _ := json.Marshal(encryptedSecretHash)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.SecretHashInternalKeyName.String(), encryptedSecretHashJson)...)
 		}
 		// property: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=copy_to_state
 		state.Authentication.StrictValidationPeerExtendedKeyUse = types.BoolPointerValue(ans.Authentication.StrictValidationPeerExtendedKeyUse)
@@ -1173,7 +1819,7 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 		state.EspGroup = nil
 	} else {
 		state.EspGroup = &rsModelESPGroup{}
-		// copy_to_state: state=state.EspGroup prefix=rsModel ans=ans.EspGroup properties=7
+		// copy_to_state: state=state.EspGroup prefix=rsModel ans=ans.EspGroup properties=8
 		tflog.Debug(ctx, "copy_to_state state=state.EspGroup prefix=rsModel ans=ans.EspGroup")
 		// property: name=force_encapsulation, type=BOOLEAN macro=copy_to_state
 		state.EspGroup.ForceEncapsulation = types.BoolPointerValue(ans.EspGroup.ForceEncapsulation)
@@ -1195,6 +1841,46 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 		state.EspGroup.LifetimeUnits = types.StringPointerValue(ans.EspGroup.LifetimeUnits)
 		// property: name=mode, type=STRING macro=copy_to_state
 		state.EspGroup.Mode = types.StringPointerValue(ans.EspGroup.Mode)
+		// property: name=pqc_kem_config, type=REFERENCE macro=copy_to_state
+		if ans.EspGroup.PqcKemConfig == nil {
+			state.EspGroup.PqcKemConfig = nil
+		} else {
+			state.EspGroup.PqcKemConfig = &rsModelPQCKEMConfig{}
+			// copy_to_state: state=state.EspGroup.PqcKemConfig prefix=rsModel ans=ans.EspGroup.PqcKemConfig properties=9
+			tflog.Debug(ctx, "copy_to_state state=state.EspGroup.PqcKemConfig prefix=rsModel ans=ans.EspGroup.PqcKemConfig")
+			// property: name=block_vulnerable_cipher, type=BOOLEAN macro=copy_to_state
+			state.EspGroup.PqcKemConfig.BlockVulnerableCipher = types.BoolPointerValue(ans.EspGroup.PqcKemConfig.BlockVulnerableCipher)
+			// property: name=enabled, type=BOOLEAN macro=copy_to_state
+			state.EspGroup.PqcKemConfig.Enabled = types.BoolPointerValue(ans.EspGroup.PqcKemConfig.Enabled)
+			// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound1Algorithms, errRound1Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round1Algorithms)
+			state.EspGroup.PqcKemConfig.Round1Algorithms = varRound1Algorithms
+			resp.Diagnostics.Append(errRound1Algorithms.Errors()...)
+			// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound2Algorithms, errRound2Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round2Algorithms)
+			state.EspGroup.PqcKemConfig.Round2Algorithms = varRound2Algorithms
+			resp.Diagnostics.Append(errRound2Algorithms.Errors()...)
+			// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound3Algorithms, errRound3Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round3Algorithms)
+			state.EspGroup.PqcKemConfig.Round3Algorithms = varRound3Algorithms
+			resp.Diagnostics.Append(errRound3Algorithms.Errors()...)
+			// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound4Algorithms, errRound4Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round4Algorithms)
+			state.EspGroup.PqcKemConfig.Round4Algorithms = varRound4Algorithms
+			resp.Diagnostics.Append(errRound4Algorithms.Errors()...)
+			// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound5Algorithms, errRound5Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round5Algorithms)
+			state.EspGroup.PqcKemConfig.Round5Algorithms = varRound5Algorithms
+			resp.Diagnostics.Append(errRound5Algorithms.Errors()...)
+			// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound6Algorithms, errRound6Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round6Algorithms)
+			state.EspGroup.PqcKemConfig.Round6Algorithms = varRound6Algorithms
+			resp.Diagnostics.Append(errRound6Algorithms.Errors()...)
+			// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound7Algorithms, errRound7Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round7Algorithms)
+			state.EspGroup.PqcKemConfig.Round7Algorithms = varRound7Algorithms
+			resp.Diagnostics.Append(errRound7Algorithms.Errors()...)
+		}
 		// property: name=proposals, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.EspGroup.Proposals == nil {
 			state.EspGroup.Proposals = nil
@@ -1245,7 +1931,7 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 		state.IkeGroup = nil
 	} else {
 		state.IkeGroup = &rsModelIKEGroup{}
-		// copy_to_state: state=state.IkeGroup prefix=rsModel ans=ans.IkeGroup properties=8
+		// copy_to_state: state=state.IkeGroup prefix=rsModel ans=ans.IkeGroup properties=9
 		tflog.Debug(ctx, "copy_to_state state=state.IkeGroup prefix=rsModel ans=ans.IkeGroup")
 		// property: name=aggressive, type=BOOLEAN macro=copy_to_state
 		state.IkeGroup.Aggressive = types.BoolPointerValue(ans.IkeGroup.Aggressive)
@@ -1259,6 +1945,46 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 		state.IkeGroup.LifetimeUnits = types.StringPointerValue(ans.IkeGroup.LifetimeUnits)
 		// property: name=port, type=INTEGER macro=copy_to_state
 		state.IkeGroup.Port = types.Int64PointerValue(ans.IkeGroup.Port)
+		// property: name=pqc_kem_config, type=REFERENCE macro=copy_to_state
+		if ans.IkeGroup.PqcKemConfig == nil {
+			state.IkeGroup.PqcKemConfig = nil
+		} else {
+			state.IkeGroup.PqcKemConfig = &rsModelPQCKEMConfig{}
+			// copy_to_state: state=state.IkeGroup.PqcKemConfig prefix=rsModel ans=ans.IkeGroup.PqcKemConfig properties=9
+			tflog.Debug(ctx, "copy_to_state state=state.IkeGroup.PqcKemConfig prefix=rsModel ans=ans.IkeGroup.PqcKemConfig")
+			// property: name=block_vulnerable_cipher, type=BOOLEAN macro=copy_to_state
+			state.IkeGroup.PqcKemConfig.BlockVulnerableCipher = types.BoolPointerValue(ans.IkeGroup.PqcKemConfig.BlockVulnerableCipher)
+			// property: name=enabled, type=BOOLEAN macro=copy_to_state
+			state.IkeGroup.PqcKemConfig.Enabled = types.BoolPointerValue(ans.IkeGroup.PqcKemConfig.Enabled)
+			// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound1Algorithms, errRound1Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round1Algorithms)
+			state.IkeGroup.PqcKemConfig.Round1Algorithms = varRound1Algorithms
+			resp.Diagnostics.Append(errRound1Algorithms.Errors()...)
+			// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound2Algorithms, errRound2Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round2Algorithms)
+			state.IkeGroup.PqcKemConfig.Round2Algorithms = varRound2Algorithms
+			resp.Diagnostics.Append(errRound2Algorithms.Errors()...)
+			// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound3Algorithms, errRound3Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round3Algorithms)
+			state.IkeGroup.PqcKemConfig.Round3Algorithms = varRound3Algorithms
+			resp.Diagnostics.Append(errRound3Algorithms.Errors()...)
+			// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound4Algorithms, errRound4Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round4Algorithms)
+			state.IkeGroup.PqcKemConfig.Round4Algorithms = varRound4Algorithms
+			resp.Diagnostics.Append(errRound4Algorithms.Errors()...)
+			// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound5Algorithms, errRound5Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round5Algorithms)
+			state.IkeGroup.PqcKemConfig.Round5Algorithms = varRound5Algorithms
+			resp.Diagnostics.Append(errRound5Algorithms.Errors()...)
+			// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound6Algorithms, errRound6Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round6Algorithms)
+			state.IkeGroup.PqcKemConfig.Round6Algorithms = varRound6Algorithms
+			resp.Diagnostics.Append(errRound6Algorithms.Errors()...)
+			// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound7Algorithms, errRound7Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round7Algorithms)
+			state.IkeGroup.PqcKemConfig.Round7Algorithms = varRound7Algorithms
+			resp.Diagnostics.Append(errRound7Algorithms.Errors()...)
+		}
 		// property: name=proposals, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.IkeGroup.Proposals == nil {
 			state.IkeGroup.Proposals = nil
@@ -1290,12 +2016,20 @@ func (r *ipsecProfileResource) doPost(ctx context.Context, plan *rsModelIPSECPro
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=used_for, type=STRING macro=copy_to_state
 	state.UsedFor = types.StringPointerValue(ans.UsedFor)
 	return true
 }
 
-func (r *ipsecProfileResource) doGet(ctx context.Context, state *rsModelIPSECProfileScreenV2N2, savestate *rsModelIPSECProfileScreenV2N2, State *tfsdk.State, resp *resource.ReadResponse) bool {
+func (r *ipsecProfileResource) doGet(ctx context.Context, state *rsModelIPSECProfileScreenV2N3, savestate *rsModelIPSECProfileScreenV2N3, State *tfsdk.State, resp *resource.ReadResponse) bool {
 	// Basic logging.
 	tfid := savestate.Tfid.ValueString()
 	tflog.Info(ctx, "performing resource read", map[string]any{
@@ -1317,7 +2051,7 @@ func (r *ipsecProfileResource) doGet(ctx context.Context, state *rsModelIPSECPro
 	read_request := &sdwan_client.SdwanClientRequestResponse{}
 	read_request.ResourceType = "prismasdwan_ipsec_profile"
 	read_request.Method = "GET"
-	read_request.Path = "/sdwan/v2.2/api/ipsecprofiles/{profile_id}"
+	read_request.Path = "/sdwan/v2.3/api/ipsecprofiles/{profile_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, savestate.TfParameters)
@@ -1359,21 +2093,37 @@ func (r *ipsecProfileResource) doGet(ctx context.Context, state *rsModelIPSECPro
 	tflog.Debug(ctx, "http json override: set response_body_string::_schema")
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
-	// Store the answer to state. schema=IPSECProfileScreenV2N2
+	// Store the answer to state. schema=IPSECProfileScreenV2N3
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
 	// start copying attributes
-	var ans sdwan_schema.IPSECProfileScreenV2N2
+	var ans sdwan_schema.IPSECProfileScreenV2N3
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to IPSECProfileScreenV2N2 in read", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to IPSECProfileScreenV2N3 in read", json_err.Error())
 		return false
 	}
 	// lets copy all items into state
@@ -1388,7 +2138,7 @@ func (r *ipsecProfileResource) doGet(ctx context.Context, state *rsModelIPSECPro
 		state.Authentication = nil
 	} else {
 		state.Authentication = &rsModelIPSECAuthenticationV1{}
-		// copy_to_state: state=state.Authentication prefix=rsModel ans=ans.Authentication properties=22
+		// copy_to_state: state=state.Authentication prefix=rsModel ans=ans.Authentication properties=23
 		tflog.Debug(ctx, "copy_to_state state=state.Authentication prefix=rsModel ans=ans.Authentication")
 		// property: name=certificate, type=STRING macro=copy_to_state
 		state.Authentication.Certificate = types.StringPointerValue(ans.Authentication.Certificate)
@@ -1406,24 +2156,39 @@ func (r *ipsecProfileResource) doGet(ctx context.Context, state *rsModelIPSECPro
 			// property: name=xauth_id, type=STRING macro=copy_to_state
 			state.Authentication.Ikev1Params.XauthId = types.StringPointerValue(ans.Authentication.Ikev1Params.XauthId)
 			// property: name=xauth_secret, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if savestate.Authentication != nil && savestate.Authentication.Ikev1Params != nil {
+				state.Authentication.Ikev1Params.XauthSecretInternalKeyName = savestate.Authentication.Ikev1Params.XauthSecretInternalKeyName
+			}
 			encryptedXauthSecretKeyName := state.Authentication.Ikev1Params.XauthSecretInternalKeyName.String()
 			encryptedXauthSecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedXauthSecretKeyName)
-			if encryptedXauthSecretValueBytes != nil {
-				decryptedXauthSecret, _ := Decrypt(string(encryptedXauthSecretValueBytes))
+			var encryptedXauthSecretValue string
+			if encryptedXauthSecretValueBytes != nil && json.Unmarshal(encryptedXauthSecretValueBytes, &encryptedXauthSecretValue) == nil {
+				decryptedXauthSecret, _ := Decrypt(encryptedXauthSecretValue)
 				state.Authentication.Ikev1Params.XauthSecret = types.StringValue(decryptedXauthSecret)
 			}
 			// property: name=xauth_secret_encrypted, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if savestate.Authentication != nil && savestate.Authentication.Ikev1Params != nil {
+				state.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName = savestate.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName
+			}
 			encryptedXauthSecretEncryptedKeyName := state.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName.String()
 			encryptedXauthSecretEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedXauthSecretEncryptedKeyName)
-			if encryptedXauthSecretEncryptedValueBytes != nil {
-				decryptedXauthSecretEncrypted, _ := Decrypt(string(encryptedXauthSecretEncryptedValueBytes))
+			var encryptedXauthSecretEncryptedValue string
+			if encryptedXauthSecretEncryptedValueBytes != nil && json.Unmarshal(encryptedXauthSecretEncryptedValueBytes, &encryptedXauthSecretEncryptedValue) == nil {
+				decryptedXauthSecretEncrypted, _ := Decrypt(encryptedXauthSecretEncryptedValue)
 				state.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringValue(decryptedXauthSecretEncrypted)
 			}
 			// property: name=xauth_secret_hash, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if savestate.Authentication != nil && savestate.Authentication.Ikev1Params != nil {
+				state.Authentication.Ikev1Params.XauthSecretHashInternalKeyName = savestate.Authentication.Ikev1Params.XauthSecretHashInternalKeyName
+			}
 			encryptedXauthSecretHashKeyName := state.Authentication.Ikev1Params.XauthSecretHashInternalKeyName.String()
 			encryptedXauthSecretHashValueBytes, _ := resp.Private.GetKey(ctx, encryptedXauthSecretHashKeyName)
-			if encryptedXauthSecretHashValueBytes != nil {
-				decryptedXauthSecretHash, _ := Decrypt(string(encryptedXauthSecretHashValueBytes))
+			var encryptedXauthSecretHashValue string
+			if encryptedXauthSecretHashValueBytes != nil && json.Unmarshal(encryptedXauthSecretHashValueBytes, &encryptedXauthSecretHashValue) == nil {
+				decryptedXauthSecretHash, _ := Decrypt(encryptedXauthSecretHashValue)
 				state.Authentication.Ikev1Params.XauthSecretHash = types.StringValue(decryptedXauthSecretHash)
 			}
 			// property: name=xauth_type, type=STRING macro=copy_to_state
@@ -1440,40 +2205,149 @@ func (r *ipsecProfileResource) doGet(ctx context.Context, state *rsModelIPSECPro
 		// property: name=pa_master_key_id, type=STRING macro=copy_to_state
 		state.Authentication.PaMasterKeyId = types.StringPointerValue(ans.Authentication.PaMasterKeyId)
 		// property: name=passphrase, type=STRING macro=copy_to_state
-		state.Authentication.Passphrase = types.StringPointerValue(ans.Authentication.Passphrase)
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.Authentication != nil {
+			state.Authentication.PassphraseInternalKeyName = savestate.Authentication.PassphraseInternalKeyName
+		}
+		encryptedPassphraseKeyName := state.Authentication.PassphraseInternalKeyName.String()
+		encryptedPassphraseValueBytes, _ := resp.Private.GetKey(ctx, encryptedPassphraseKeyName)
+		var encryptedPassphraseValue string
+		if encryptedPassphraseValueBytes != nil && json.Unmarshal(encryptedPassphraseValueBytes, &encryptedPassphraseValue) == nil {
+			decryptedPassphrase, _ := Decrypt(encryptedPassphraseValue)
+			state.Authentication.Passphrase = types.StringValue(decryptedPassphrase)
+		}
 		// property: name=passphrase_encrypted, type=STRING macro=copy_to_state
-		state.Authentication.PassphraseEncrypted = types.StringPointerValue(ans.Authentication.PassphraseEncrypted)
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.Authentication != nil {
+			state.Authentication.PassphraseEncryptedInternalKeyName = savestate.Authentication.PassphraseEncryptedInternalKeyName
+		}
+		encryptedPassphraseEncryptedKeyName := state.Authentication.PassphraseEncryptedInternalKeyName.String()
+		encryptedPassphraseEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedPassphraseEncryptedKeyName)
+		var encryptedPassphraseEncryptedValue string
+		if encryptedPassphraseEncryptedValueBytes != nil && json.Unmarshal(encryptedPassphraseEncryptedValueBytes, &encryptedPassphraseEncryptedValue) == nil {
+			decryptedPassphraseEncrypted, _ := Decrypt(encryptedPassphraseEncryptedValue)
+			state.Authentication.PassphraseEncrypted = types.StringValue(decryptedPassphraseEncrypted)
+		}
 		// property: name=peer_id_check, type=STRING macro=copy_to_state
 		state.Authentication.PeerIdCheck = types.StringPointerValue(ans.Authentication.PeerIdCheck)
 		// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=copy_to_state
 		state.Authentication.PermitPeerIdMismatch = types.BoolPointerValue(ans.Authentication.PermitPeerIdMismatch)
+		// property: name=ppk_config, type=REFERENCE macro=copy_to_state
+		if ans.Authentication.PpkConfig == nil {
+			state.Authentication.PpkConfig = nil
+		} else {
+			state.Authentication.PpkConfig = &rsModelPPKConfig{}
+			// copy_to_state: state=state.Authentication.PpkConfig prefix=rsModel ans=ans.Authentication.PpkConfig properties=8
+			tflog.Debug(ctx, "copy_to_state state=state.Authentication.PpkConfig prefix=rsModel ans=ans.Authentication.PpkConfig")
+			// property: name=enabled, type=BOOLEAN macro=copy_to_state
+			state.Authentication.PpkConfig.Enabled = types.BoolPointerValue(ans.Authentication.PpkConfig.Enabled)
+			// property: name=key_enabled, type=BOOLEAN macro=copy_to_state
+			state.Authentication.PpkConfig.KeyEnabled = types.BoolPointerValue(ans.Authentication.PpkConfig.KeyEnabled)
+			// property: name=mode, type=STRING macro=copy_to_state
+			state.Authentication.PpkConfig.Mode = types.StringPointerValue(ans.Authentication.PpkConfig.Mode)
+			// property: name=ppk_key_id, type=STRING macro=copy_to_state
+			state.Authentication.PpkConfig.PpkKeyId = types.StringPointerValue(ans.Authentication.PpkConfig.PpkKeyId)
+			// property: name=ppk_secret, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if savestate.Authentication != nil && savestate.Authentication.PpkConfig != nil {
+				state.Authentication.PpkConfig.PpkSecretInternalKeyName = savestate.Authentication.PpkConfig.PpkSecretInternalKeyName
+			}
+			encryptedPpkSecretKeyName := state.Authentication.PpkConfig.PpkSecretInternalKeyName.String()
+			encryptedPpkSecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedPpkSecretKeyName)
+			var encryptedPpkSecretValue string
+			if encryptedPpkSecretValueBytes != nil && json.Unmarshal(encryptedPpkSecretValueBytes, &encryptedPpkSecretValue) == nil {
+				decryptedPpkSecret, _ := Decrypt(encryptedPpkSecretValue)
+				state.Authentication.PpkConfig.PpkSecret = types.StringValue(decryptedPpkSecret)
+			}
+			// property: name=ppk_secret_configured, type=BOOLEAN macro=copy_to_state
+			state.Authentication.PpkConfig.PpkSecretConfigured = types.BoolPointerValue(ans.Authentication.PpkConfig.PpkSecretConfigured)
+			// property: name=ppk_secret_encrypted, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if savestate.Authentication != nil && savestate.Authentication.PpkConfig != nil {
+				state.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName = savestate.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName
+			}
+			encryptedPpkSecretEncryptedKeyName := state.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName.String()
+			encryptedPpkSecretEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedPpkSecretEncryptedKeyName)
+			var encryptedPpkSecretEncryptedValue string
+			if encryptedPpkSecretEncryptedValueBytes != nil && json.Unmarshal(encryptedPpkSecretEncryptedValueBytes, &encryptedPpkSecretEncryptedValue) == nil {
+				decryptedPpkSecretEncrypted, _ := Decrypt(encryptedPpkSecretEncryptedValue)
+				state.Authentication.PpkConfig.PpkSecretEncrypted = types.StringValue(decryptedPpkSecretEncrypted)
+			}
+			// property: name=ppk_secret_hash, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if savestate.Authentication != nil && savestate.Authentication.PpkConfig != nil {
+				state.Authentication.PpkConfig.PpkSecretHashInternalKeyName = savestate.Authentication.PpkConfig.PpkSecretHashInternalKeyName
+			}
+			encryptedPpkSecretHashKeyName := state.Authentication.PpkConfig.PpkSecretHashInternalKeyName.String()
+			encryptedPpkSecretHashValueBytes, _ := resp.Private.GetKey(ctx, encryptedPpkSecretHashKeyName)
+			var encryptedPpkSecretHashValue string
+			if encryptedPpkSecretHashValueBytes != nil && json.Unmarshal(encryptedPpkSecretHashValueBytes, &encryptedPpkSecretHashValue) == nil {
+				decryptedPpkSecretHash, _ := Decrypt(encryptedPpkSecretHashValue)
+				state.Authentication.PpkConfig.PpkSecretHash = types.StringValue(decryptedPpkSecretHash)
+			}
+		}
 		// property: name=private_key, type=STRING macro=copy_to_state
-		state.Authentication.PrivateKey = types.StringPointerValue(ans.Authentication.PrivateKey)
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.Authentication != nil {
+			state.Authentication.PrivateKeyInternalKeyName = savestate.Authentication.PrivateKeyInternalKeyName
+		}
+		encryptedPrivateKeyKeyName := state.Authentication.PrivateKeyInternalKeyName.String()
+		encryptedPrivateKeyValueBytes, _ := resp.Private.GetKey(ctx, encryptedPrivateKeyKeyName)
+		var encryptedPrivateKeyValue string
+		if encryptedPrivateKeyValueBytes != nil && json.Unmarshal(encryptedPrivateKeyValueBytes, &encryptedPrivateKeyValue) == nil {
+			decryptedPrivateKey, _ := Decrypt(encryptedPrivateKeyValue)
+			state.Authentication.PrivateKey = types.StringValue(decryptedPrivateKey)
+		}
 		// property: name=private_key_encrypted, type=STRING macro=copy_to_state
-		state.Authentication.PrivateKeyEncrypted = types.StringPointerValue(ans.Authentication.PrivateKeyEncrypted)
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.Authentication != nil {
+			state.Authentication.PrivateKeyEncryptedInternalKeyName = savestate.Authentication.PrivateKeyEncryptedInternalKeyName
+		}
+		encryptedPrivateKeyEncryptedKeyName := state.Authentication.PrivateKeyEncryptedInternalKeyName.String()
+		encryptedPrivateKeyEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedPrivateKeyEncryptedKeyName)
+		var encryptedPrivateKeyEncryptedValue string
+		if encryptedPrivateKeyEncryptedValueBytes != nil && json.Unmarshal(encryptedPrivateKeyEncryptedValueBytes, &encryptedPrivateKeyEncryptedValue) == nil {
+			decryptedPrivateKeyEncrypted, _ := Decrypt(encryptedPrivateKeyEncryptedValue)
+			state.Authentication.PrivateKeyEncrypted = types.StringValue(decryptedPrivateKeyEncrypted)
+		}
 		// property: name=remote_ca_certificate, type=STRING macro=copy_to_state
 		state.Authentication.RemoteCaCertificate = types.StringPointerValue(ans.Authentication.RemoteCaCertificate)
 		// property: name=remote_id, type=STRING macro=copy_to_state
 		state.Authentication.RemoteId = types.StringPointerValue(ans.Authentication.RemoteId)
 		// property: name=secret, type=STRING macro=copy_to_state
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.Authentication != nil {
+			state.Authentication.SecretInternalKeyName = savestate.Authentication.SecretInternalKeyName
+		}
 		encryptedSecretKeyName := state.Authentication.SecretInternalKeyName.String()
 		encryptedSecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedSecretKeyName)
-		if encryptedSecretValueBytes != nil {
-			decryptedSecret, _ := Decrypt(string(encryptedSecretValueBytes))
+		var encryptedSecretValue string
+		if encryptedSecretValueBytes != nil && json.Unmarshal(encryptedSecretValueBytes, &encryptedSecretValue) == nil {
+			decryptedSecret, _ := Decrypt(encryptedSecretValue)
 			state.Authentication.Secret = types.StringValue(decryptedSecret)
 		}
 		// property: name=secret_encrypted, type=STRING macro=copy_to_state
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.Authentication != nil {
+			state.Authentication.SecretEncryptedInternalKeyName = savestate.Authentication.SecretEncryptedInternalKeyName
+		}
 		encryptedSecretEncryptedKeyName := state.Authentication.SecretEncryptedInternalKeyName.String()
 		encryptedSecretEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedSecretEncryptedKeyName)
-		if encryptedSecretEncryptedValueBytes != nil {
-			decryptedSecretEncrypted, _ := Decrypt(string(encryptedSecretEncryptedValueBytes))
+		var encryptedSecretEncryptedValue string
+		if encryptedSecretEncryptedValueBytes != nil && json.Unmarshal(encryptedSecretEncryptedValueBytes, &encryptedSecretEncryptedValue) == nil {
+			decryptedSecretEncrypted, _ := Decrypt(encryptedSecretEncryptedValue)
 			state.Authentication.SecretEncrypted = types.StringValue(decryptedSecretEncrypted)
 		}
 		// property: name=secret_hash, type=STRING macro=copy_to_state
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.Authentication != nil {
+			state.Authentication.SecretHashInternalKeyName = savestate.Authentication.SecretHashInternalKeyName
+		}
 		encryptedSecretHashKeyName := state.Authentication.SecretHashInternalKeyName.String()
 		encryptedSecretHashValueBytes, _ := resp.Private.GetKey(ctx, encryptedSecretHashKeyName)
-		if encryptedSecretHashValueBytes != nil {
-			decryptedSecretHash, _ := Decrypt(string(encryptedSecretHashValueBytes))
+		var encryptedSecretHashValue string
+		if encryptedSecretHashValueBytes != nil && json.Unmarshal(encryptedSecretHashValueBytes, &encryptedSecretHashValue) == nil {
+			decryptedSecretHash, _ := Decrypt(encryptedSecretHashValue)
 			state.Authentication.SecretHash = types.StringValue(decryptedSecretHash)
 		}
 		// property: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=copy_to_state
@@ -1494,7 +2368,7 @@ func (r *ipsecProfileResource) doGet(ctx context.Context, state *rsModelIPSECPro
 		state.EspGroup = nil
 	} else {
 		state.EspGroup = &rsModelESPGroup{}
-		// copy_to_state: state=state.EspGroup prefix=rsModel ans=ans.EspGroup properties=7
+		// copy_to_state: state=state.EspGroup prefix=rsModel ans=ans.EspGroup properties=8
 		tflog.Debug(ctx, "copy_to_state state=state.EspGroup prefix=rsModel ans=ans.EspGroup")
 		// property: name=force_encapsulation, type=BOOLEAN macro=copy_to_state
 		state.EspGroup.ForceEncapsulation = types.BoolPointerValue(ans.EspGroup.ForceEncapsulation)
@@ -1516,6 +2390,46 @@ func (r *ipsecProfileResource) doGet(ctx context.Context, state *rsModelIPSECPro
 		state.EspGroup.LifetimeUnits = types.StringPointerValue(ans.EspGroup.LifetimeUnits)
 		// property: name=mode, type=STRING macro=copy_to_state
 		state.EspGroup.Mode = types.StringPointerValue(ans.EspGroup.Mode)
+		// property: name=pqc_kem_config, type=REFERENCE macro=copy_to_state
+		if ans.EspGroup.PqcKemConfig == nil {
+			state.EspGroup.PqcKemConfig = nil
+		} else {
+			state.EspGroup.PqcKemConfig = &rsModelPQCKEMConfig{}
+			// copy_to_state: state=state.EspGroup.PqcKemConfig prefix=rsModel ans=ans.EspGroup.PqcKemConfig properties=9
+			tflog.Debug(ctx, "copy_to_state state=state.EspGroup.PqcKemConfig prefix=rsModel ans=ans.EspGroup.PqcKemConfig")
+			// property: name=block_vulnerable_cipher, type=BOOLEAN macro=copy_to_state
+			state.EspGroup.PqcKemConfig.BlockVulnerableCipher = types.BoolPointerValue(ans.EspGroup.PqcKemConfig.BlockVulnerableCipher)
+			// property: name=enabled, type=BOOLEAN macro=copy_to_state
+			state.EspGroup.PqcKemConfig.Enabled = types.BoolPointerValue(ans.EspGroup.PqcKemConfig.Enabled)
+			// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound1Algorithms, errRound1Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round1Algorithms)
+			state.EspGroup.PqcKemConfig.Round1Algorithms = varRound1Algorithms
+			resp.Diagnostics.Append(errRound1Algorithms.Errors()...)
+			// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound2Algorithms, errRound2Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round2Algorithms)
+			state.EspGroup.PqcKemConfig.Round2Algorithms = varRound2Algorithms
+			resp.Diagnostics.Append(errRound2Algorithms.Errors()...)
+			// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound3Algorithms, errRound3Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round3Algorithms)
+			state.EspGroup.PqcKemConfig.Round3Algorithms = varRound3Algorithms
+			resp.Diagnostics.Append(errRound3Algorithms.Errors()...)
+			// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound4Algorithms, errRound4Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round4Algorithms)
+			state.EspGroup.PqcKemConfig.Round4Algorithms = varRound4Algorithms
+			resp.Diagnostics.Append(errRound4Algorithms.Errors()...)
+			// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound5Algorithms, errRound5Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round5Algorithms)
+			state.EspGroup.PqcKemConfig.Round5Algorithms = varRound5Algorithms
+			resp.Diagnostics.Append(errRound5Algorithms.Errors()...)
+			// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound6Algorithms, errRound6Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round6Algorithms)
+			state.EspGroup.PqcKemConfig.Round6Algorithms = varRound6Algorithms
+			resp.Diagnostics.Append(errRound6Algorithms.Errors()...)
+			// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound7Algorithms, errRound7Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round7Algorithms)
+			state.EspGroup.PqcKemConfig.Round7Algorithms = varRound7Algorithms
+			resp.Diagnostics.Append(errRound7Algorithms.Errors()...)
+		}
 		// property: name=proposals, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.EspGroup.Proposals == nil {
 			state.EspGroup.Proposals = nil
@@ -1566,7 +2480,7 @@ func (r *ipsecProfileResource) doGet(ctx context.Context, state *rsModelIPSECPro
 		state.IkeGroup = nil
 	} else {
 		state.IkeGroup = &rsModelIKEGroup{}
-		// copy_to_state: state=state.IkeGroup prefix=rsModel ans=ans.IkeGroup properties=8
+		// copy_to_state: state=state.IkeGroup prefix=rsModel ans=ans.IkeGroup properties=9
 		tflog.Debug(ctx, "copy_to_state state=state.IkeGroup prefix=rsModel ans=ans.IkeGroup")
 		// property: name=aggressive, type=BOOLEAN macro=copy_to_state
 		state.IkeGroup.Aggressive = types.BoolPointerValue(ans.IkeGroup.Aggressive)
@@ -1580,6 +2494,46 @@ func (r *ipsecProfileResource) doGet(ctx context.Context, state *rsModelIPSECPro
 		state.IkeGroup.LifetimeUnits = types.StringPointerValue(ans.IkeGroup.LifetimeUnits)
 		// property: name=port, type=INTEGER macro=copy_to_state
 		state.IkeGroup.Port = types.Int64PointerValue(ans.IkeGroup.Port)
+		// property: name=pqc_kem_config, type=REFERENCE macro=copy_to_state
+		if ans.IkeGroup.PqcKemConfig == nil {
+			state.IkeGroup.PqcKemConfig = nil
+		} else {
+			state.IkeGroup.PqcKemConfig = &rsModelPQCKEMConfig{}
+			// copy_to_state: state=state.IkeGroup.PqcKemConfig prefix=rsModel ans=ans.IkeGroup.PqcKemConfig properties=9
+			tflog.Debug(ctx, "copy_to_state state=state.IkeGroup.PqcKemConfig prefix=rsModel ans=ans.IkeGroup.PqcKemConfig")
+			// property: name=block_vulnerable_cipher, type=BOOLEAN macro=copy_to_state
+			state.IkeGroup.PqcKemConfig.BlockVulnerableCipher = types.BoolPointerValue(ans.IkeGroup.PqcKemConfig.BlockVulnerableCipher)
+			// property: name=enabled, type=BOOLEAN macro=copy_to_state
+			state.IkeGroup.PqcKemConfig.Enabled = types.BoolPointerValue(ans.IkeGroup.PqcKemConfig.Enabled)
+			// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound1Algorithms, errRound1Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round1Algorithms)
+			state.IkeGroup.PqcKemConfig.Round1Algorithms = varRound1Algorithms
+			resp.Diagnostics.Append(errRound1Algorithms.Errors()...)
+			// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound2Algorithms, errRound2Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round2Algorithms)
+			state.IkeGroup.PqcKemConfig.Round2Algorithms = varRound2Algorithms
+			resp.Diagnostics.Append(errRound2Algorithms.Errors()...)
+			// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound3Algorithms, errRound3Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round3Algorithms)
+			state.IkeGroup.PqcKemConfig.Round3Algorithms = varRound3Algorithms
+			resp.Diagnostics.Append(errRound3Algorithms.Errors()...)
+			// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound4Algorithms, errRound4Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round4Algorithms)
+			state.IkeGroup.PqcKemConfig.Round4Algorithms = varRound4Algorithms
+			resp.Diagnostics.Append(errRound4Algorithms.Errors()...)
+			// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound5Algorithms, errRound5Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round5Algorithms)
+			state.IkeGroup.PqcKemConfig.Round5Algorithms = varRound5Algorithms
+			resp.Diagnostics.Append(errRound5Algorithms.Errors()...)
+			// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound6Algorithms, errRound6Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round6Algorithms)
+			state.IkeGroup.PqcKemConfig.Round6Algorithms = varRound6Algorithms
+			resp.Diagnostics.Append(errRound6Algorithms.Errors()...)
+			// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound7Algorithms, errRound7Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round7Algorithms)
+			state.IkeGroup.PqcKemConfig.Round7Algorithms = varRound7Algorithms
+			resp.Diagnostics.Append(errRound7Algorithms.Errors()...)
+		}
 		// property: name=proposals, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.IkeGroup.Proposals == nil {
 			state.IkeGroup.Proposals = nil
@@ -1611,12 +2565,20 @@ func (r *ipsecProfileResource) doGet(ctx context.Context, state *rsModelIPSECPro
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=used_for, type=STRING macro=copy_to_state
 	state.UsedFor = types.StringPointerValue(ans.UsedFor)
 	return true
 }
 
-func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProfileScreenV2N2, state *rsModelIPSECProfileScreenV2N2, State *tfsdk.State, resp *resource.UpdateResponse) bool {
+func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProfileScreenV2N3, state *rsModelIPSECProfileScreenV2N3, State *tfsdk.State, resp *resource.UpdateResponse) bool {
 	state_tfid := state.Tfid.ValueString()
 	plan_tfid := plan.Tfid.ValueString()
 	// Basic logging.
@@ -1644,7 +2606,7 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 	put_request := &sdwan_client.SdwanClientRequestResponse{}
 	put_request.ResourceType = "prismasdwan_ipsec_profile"
 	put_request.Method = "PUT"
-	put_request.Path = "/sdwan/v2.2/api/ipsecprofiles/{profile_id}"
+	put_request.Path = "/sdwan/v2.3/api/ipsecprofiles/{profile_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -1663,7 +2625,7 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.IPSECProfileScreenV2N2{}
+	var body = &sdwan_schema.IPSECProfileScreenV2N3{}
 
 	// now we create the JSON request from the state/plan created by TF
 	// below copy code generated from macro copy_from_plan_or_state
@@ -1686,22 +2648,22 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 		body.Authentication = nil
 	} else {
 		body.Authentication = &sdwan_schema.IPSECAuthenticationV1{}
-		// copy_from_plan_or_state: body=body.Authentication prefix=rsModel state=state.Authentication plan=plan.Authentication properties=22
+		// copy_from_plan_or_state: body=body.Authentication prefix=rsModel state=state.Authentication plan=plan.Authentication properties=23
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.Authentication prefix=rsModel state=state.Authentication plan=plan.Authentication")
 		// property: name=certificate, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.Certificate = ValueStringPointerFromPlanOrState(plan.Authentication.Certificate, state.Authentication.Certificate)
 		} else {
 			body.Authentication.Certificate = StringValueOrNil(plan.Authentication.Certificate)
 		}
 		// property: name=certificate_profile_id, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.CertificateProfileId = ValueStringPointerFromPlanOrState(plan.Authentication.CertificateProfileId, state.Authentication.CertificateProfileId)
 		} else {
 			body.Authentication.CertificateProfileId = StringValueOrNil(plan.Authentication.CertificateProfileId)
 		}
 		// property: name=comment, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.Comment = ValueStringPointerFromPlanOrState(plan.Authentication.Comment, state.Authentication.Comment)
 		} else {
 			body.Authentication.Comment = StringValueOrNil(plan.Authentication.Comment)
@@ -1714,140 +2676,196 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 			// copy_from_plan_or_state: body=body.Authentication.Ikev1Params prefix=rsModel state=state.Authentication.Ikev1Params plan=plan.Authentication.Ikev1Params properties=5
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.Authentication.Ikev1Params prefix=rsModel state=state.Authentication.Ikev1Params plan=plan.Authentication.Ikev1Params")
 			// property: name=xauth_id, type=STRING macro=copy_from_plan_or_state
-			if state.Authentication.Ikev1Params != nil {
+			if state != nil && state.Authentication != nil && state.Authentication.Ikev1Params != nil {
 				body.Authentication.Ikev1Params.XauthId = ValueStringPointerFromPlanOrState(plan.Authentication.Ikev1Params.XauthId, state.Authentication.Ikev1Params.XauthId)
 			} else {
 				body.Authentication.Ikev1Params.XauthId = StringValueOrNil(plan.Authentication.Ikev1Params.XauthId)
 			}
 			// property: name=xauth_secret, type=STRING macro=copy_from_plan_or_state
-			if state.Authentication.Ikev1Params != nil {
+			if state != nil && state.Authentication != nil && state.Authentication.Ikev1Params != nil {
 				body.Authentication.Ikev1Params.XauthSecret = ValueStringPointerFromPlanOrState(plan.Authentication.Ikev1Params.XauthSecret, state.Authentication.Ikev1Params.XauthSecret)
 			} else {
 				body.Authentication.Ikev1Params.XauthSecret = StringValueOrNil(plan.Authentication.Ikev1Params.XauthSecret)
 			}
 			// property: name=xauth_secret_encrypted, type=STRING macro=copy_from_plan_or_state
-			if state.Authentication.Ikev1Params != nil {
+			if state != nil && state.Authentication != nil && state.Authentication.Ikev1Params != nil {
 				body.Authentication.Ikev1Params.XauthSecretEncrypted = ValueStringPointerFromPlanOrState(plan.Authentication.Ikev1Params.XauthSecretEncrypted, state.Authentication.Ikev1Params.XauthSecretEncrypted)
 			} else {
 				body.Authentication.Ikev1Params.XauthSecretEncrypted = StringValueOrNil(plan.Authentication.Ikev1Params.XauthSecretEncrypted)
 			}
 			// property: name=xauth_secret_hash, type=STRING macro=copy_from_plan_or_state
-			if state.Authentication.Ikev1Params != nil {
+			if state != nil && state.Authentication != nil && state.Authentication.Ikev1Params != nil {
 				body.Authentication.Ikev1Params.XauthSecretHash = ValueStringPointerFromPlanOrState(plan.Authentication.Ikev1Params.XauthSecretHash, state.Authentication.Ikev1Params.XauthSecretHash)
 			} else {
 				body.Authentication.Ikev1Params.XauthSecretHash = StringValueOrNil(plan.Authentication.Ikev1Params.XauthSecretHash)
 			}
 			// property: name=xauth_type, type=STRING macro=copy_from_plan_or_state
-			if state.Authentication.Ikev1Params != nil {
+			if state != nil && state.Authentication != nil && state.Authentication.Ikev1Params != nil {
 				body.Authentication.Ikev1Params.XauthType = ValueStringPointerFromPlanOrState(plan.Authentication.Ikev1Params.XauthType, state.Authentication.Ikev1Params.XauthType)
 			} else {
 				body.Authentication.Ikev1Params.XauthType = StringValueOrNil(plan.Authentication.Ikev1Params.XauthType)
 			}
 		}
 		// property: name=local_ca_certificate, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.LocalCaCertificate = ValueStringPointerFromPlanOrState(plan.Authentication.LocalCaCertificate, state.Authentication.LocalCaCertificate)
 		} else {
 			body.Authentication.LocalCaCertificate = StringValueOrNil(plan.Authentication.LocalCaCertificate)
 		}
 		// property: name=local_id, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.LocalId = ValueStringPointerFromPlanOrState(plan.Authentication.LocalId, state.Authentication.LocalId)
 		} else {
 			body.Authentication.LocalId = StringValueOrNil(plan.Authentication.LocalId)
 		}
 		// property: name=local_id_custom, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.LocalIdCustom = ValueStringPointerFromPlanOrState(plan.Authentication.LocalIdCustom, state.Authentication.LocalIdCustom)
 		} else {
 			body.Authentication.LocalIdCustom = StringValueOrNil(plan.Authentication.LocalIdCustom)
 		}
 		// property: name=local_pa_certificate_id, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.LocalPaCertificateId = ValueStringPointerFromPlanOrState(plan.Authentication.LocalPaCertificateId, state.Authentication.LocalPaCertificateId)
 		} else {
 			body.Authentication.LocalPaCertificateId = StringValueOrNil(plan.Authentication.LocalPaCertificateId)
 		}
 		// property: name=pa_master_key_id, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.PaMasterKeyId = ValueStringPointerFromPlanOrState(plan.Authentication.PaMasterKeyId, state.Authentication.PaMasterKeyId)
 		} else {
 			body.Authentication.PaMasterKeyId = StringValueOrNil(plan.Authentication.PaMasterKeyId)
 		}
 		// property: name=passphrase, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.Passphrase = ValueStringPointerFromPlanOrState(plan.Authentication.Passphrase, state.Authentication.Passphrase)
 		} else {
 			body.Authentication.Passphrase = StringValueOrNil(plan.Authentication.Passphrase)
 		}
 		// property: name=passphrase_encrypted, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.PassphraseEncrypted = ValueStringPointerFromPlanOrState(plan.Authentication.PassphraseEncrypted, state.Authentication.PassphraseEncrypted)
 		} else {
 			body.Authentication.PassphraseEncrypted = StringValueOrNil(plan.Authentication.PassphraseEncrypted)
 		}
 		// property: name=peer_id_check, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.PeerIdCheck = ValueStringPointerFromPlanOrState(plan.Authentication.PeerIdCheck, state.Authentication.PeerIdCheck)
 		} else {
 			body.Authentication.PeerIdCheck = StringValueOrNil(plan.Authentication.PeerIdCheck)
 		}
 		// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.PermitPeerIdMismatch = ValueBoolPointerFromPlanOrState(plan.Authentication.PermitPeerIdMismatch, state.Authentication.PermitPeerIdMismatch)
 		} else {
 			body.Authentication.PermitPeerIdMismatch = BoolValueOrNil(plan.Authentication.PermitPeerIdMismatch)
 		}
+		// property: name=ppk_config, type=REFERENCE macro=copy_from_plan_or_state
+		if plan.Authentication.PpkConfig == nil {
+			body.Authentication.PpkConfig = nil
+		} else {
+			body.Authentication.PpkConfig = &sdwan_schema.PPKConfig{}
+			// copy_from_plan_or_state: body=body.Authentication.PpkConfig prefix=rsModel state=state.Authentication.PpkConfig plan=plan.Authentication.PpkConfig properties=8
+			tflog.Debug(ctx, "copy_from_plan_or_state body=body.Authentication.PpkConfig prefix=rsModel state=state.Authentication.PpkConfig plan=plan.Authentication.PpkConfig")
+			// property: name=enabled, type=BOOLEAN macro=copy_from_plan_or_state
+			if state != nil && state.Authentication != nil && state.Authentication.PpkConfig != nil {
+				body.Authentication.PpkConfig.Enabled = ValueBoolPointerFromPlanOrState(plan.Authentication.PpkConfig.Enabled, state.Authentication.PpkConfig.Enabled)
+			} else {
+				body.Authentication.PpkConfig.Enabled = BoolValueOrNil(plan.Authentication.PpkConfig.Enabled)
+			}
+			// property: name=key_enabled, type=BOOLEAN macro=copy_from_plan_or_state
+			if state != nil && state.Authentication != nil && state.Authentication.PpkConfig != nil {
+				body.Authentication.PpkConfig.KeyEnabled = ValueBoolPointerFromPlanOrState(plan.Authentication.PpkConfig.KeyEnabled, state.Authentication.PpkConfig.KeyEnabled)
+			} else {
+				body.Authentication.PpkConfig.KeyEnabled = BoolValueOrNil(plan.Authentication.PpkConfig.KeyEnabled)
+			}
+			// property: name=mode, type=STRING macro=copy_from_plan_or_state
+			if state != nil && state.Authentication != nil && state.Authentication.PpkConfig != nil {
+				body.Authentication.PpkConfig.Mode = ValueStringPointerFromPlanOrState(plan.Authentication.PpkConfig.Mode, state.Authentication.PpkConfig.Mode)
+			} else {
+				body.Authentication.PpkConfig.Mode = StringValueOrNil(plan.Authentication.PpkConfig.Mode)
+			}
+			// property: name=ppk_key_id, type=STRING macro=copy_from_plan_or_state
+			if state != nil && state.Authentication != nil && state.Authentication.PpkConfig != nil {
+				body.Authentication.PpkConfig.PpkKeyId = ValueStringPointerFromPlanOrState(plan.Authentication.PpkConfig.PpkKeyId, state.Authentication.PpkConfig.PpkKeyId)
+			} else {
+				body.Authentication.PpkConfig.PpkKeyId = StringValueOrNil(plan.Authentication.PpkConfig.PpkKeyId)
+			}
+			// property: name=ppk_secret, type=STRING macro=copy_from_plan_or_state
+			if state != nil && state.Authentication != nil && state.Authentication.PpkConfig != nil {
+				body.Authentication.PpkConfig.PpkSecret = ValueStringPointerFromPlanOrState(plan.Authentication.PpkConfig.PpkSecret, state.Authentication.PpkConfig.PpkSecret)
+			} else {
+				body.Authentication.PpkConfig.PpkSecret = StringValueOrNil(plan.Authentication.PpkConfig.PpkSecret)
+			}
+			// property: name=ppk_secret_configured, type=BOOLEAN macro=copy_from_plan_or_state
+			if state != nil && state.Authentication != nil && state.Authentication.PpkConfig != nil {
+				body.Authentication.PpkConfig.PpkSecretConfigured = ValueBoolPointerFromPlanOrState(plan.Authentication.PpkConfig.PpkSecretConfigured, state.Authentication.PpkConfig.PpkSecretConfigured)
+			} else {
+				body.Authentication.PpkConfig.PpkSecretConfigured = BoolValueOrNil(plan.Authentication.PpkConfig.PpkSecretConfigured)
+			}
+			// property: name=ppk_secret_encrypted, type=STRING macro=copy_from_plan_or_state
+			if state != nil && state.Authentication != nil && state.Authentication.PpkConfig != nil {
+				body.Authentication.PpkConfig.PpkSecretEncrypted = ValueStringPointerFromPlanOrState(plan.Authentication.PpkConfig.PpkSecretEncrypted, state.Authentication.PpkConfig.PpkSecretEncrypted)
+			} else {
+				body.Authentication.PpkConfig.PpkSecretEncrypted = StringValueOrNil(plan.Authentication.PpkConfig.PpkSecretEncrypted)
+			}
+			// property: name=ppk_secret_hash, type=STRING macro=copy_from_plan_or_state
+			if state != nil && state.Authentication != nil && state.Authentication.PpkConfig != nil {
+				body.Authentication.PpkConfig.PpkSecretHash = ValueStringPointerFromPlanOrState(plan.Authentication.PpkConfig.PpkSecretHash, state.Authentication.PpkConfig.PpkSecretHash)
+			} else {
+				body.Authentication.PpkConfig.PpkSecretHash = StringValueOrNil(plan.Authentication.PpkConfig.PpkSecretHash)
+			}
+		}
 		// property: name=private_key, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.PrivateKey = ValueStringPointerFromPlanOrState(plan.Authentication.PrivateKey, state.Authentication.PrivateKey)
 		} else {
 			body.Authentication.PrivateKey = StringValueOrNil(plan.Authentication.PrivateKey)
 		}
 		// property: name=private_key_encrypted, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.PrivateKeyEncrypted = ValueStringPointerFromPlanOrState(plan.Authentication.PrivateKeyEncrypted, state.Authentication.PrivateKeyEncrypted)
 		} else {
 			body.Authentication.PrivateKeyEncrypted = StringValueOrNil(plan.Authentication.PrivateKeyEncrypted)
 		}
 		// property: name=remote_ca_certificate, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.RemoteCaCertificate = ValueStringPointerFromPlanOrState(plan.Authentication.RemoteCaCertificate, state.Authentication.RemoteCaCertificate)
 		} else {
 			body.Authentication.RemoteCaCertificate = StringValueOrNil(plan.Authentication.RemoteCaCertificate)
 		}
 		// property: name=remote_id, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.RemoteId = ValueStringPointerFromPlanOrState(plan.Authentication.RemoteId, state.Authentication.RemoteId)
 		} else {
 			body.Authentication.RemoteId = StringValueOrNil(plan.Authentication.RemoteId)
 		}
 		// property: name=secret, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.Secret = ValueStringPointerFromPlanOrState(plan.Authentication.Secret, state.Authentication.Secret)
 		} else {
 			body.Authentication.Secret = StringValueOrNil(plan.Authentication.Secret)
 		}
 		// property: name=secret_encrypted, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.SecretEncrypted = ValueStringPointerFromPlanOrState(plan.Authentication.SecretEncrypted, state.Authentication.SecretEncrypted)
 		} else {
 			body.Authentication.SecretEncrypted = StringValueOrNil(plan.Authentication.SecretEncrypted)
 		}
 		// property: name=secret_hash, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.SecretHash = ValueStringPointerFromPlanOrState(plan.Authentication.SecretHash, state.Authentication.SecretHash)
 		} else {
 			body.Authentication.SecretHash = StringValueOrNil(plan.Authentication.SecretHash)
 		}
 		// property: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.StrictValidationPeerExtendedKeyUse = ValueBoolPointerFromPlanOrState(plan.Authentication.StrictValidationPeerExtendedKeyUse, state.Authentication.StrictValidationPeerExtendedKeyUse)
 		} else {
 			body.Authentication.StrictValidationPeerExtendedKeyUse = BoolValueOrNil(plan.Authentication.StrictValidationPeerExtendedKeyUse)
 		}
 		// property: name=type, type=STRING macro=copy_from_plan_or_state
-		if state.Authentication != nil {
+		if state != nil && state.Authentication != nil {
 			body.Authentication.Type = ValueStringPointerFromPlanOrState(plan.Authentication.Type, state.Authentication.Type)
 		} else {
 			body.Authentication.Type = StringValueOrNil(plan.Authentication.Type)
@@ -1882,10 +2900,10 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 		body.EspGroup = nil
 	} else {
 		body.EspGroup = &sdwan_schema.ESPGroup{}
-		// copy_from_plan_or_state: body=body.EspGroup prefix=rsModel state=state.EspGroup plan=plan.EspGroup properties=7
+		// copy_from_plan_or_state: body=body.EspGroup prefix=rsModel state=state.EspGroup plan=plan.EspGroup properties=8
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.EspGroup prefix=rsModel state=state.EspGroup plan=plan.EspGroup")
 		// property: name=force_encapsulation, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.EspGroup != nil {
+		if state != nil && state.EspGroup != nil {
 			body.EspGroup.ForceEncapsulation = ValueBoolPointerFromPlanOrState(plan.EspGroup.ForceEncapsulation, state.EspGroup.ForceEncapsulation)
 		} else {
 			body.EspGroup.ForceEncapsulation = BoolValueOrNil(plan.EspGroup.ForceEncapsulation)
@@ -1898,42 +2916,111 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 			// copy_from_plan_or_state: body=body.EspGroup.Lifesize prefix=rsModel state=state.EspGroup.Lifesize plan=plan.EspGroup.Lifesize properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.EspGroup.Lifesize prefix=rsModel state=state.EspGroup.Lifesize plan=plan.EspGroup.Lifesize")
 			// property: name=units, type=STRING macro=copy_from_plan_or_state
-			if state.EspGroup.Lifesize != nil {
+			if state != nil && state.EspGroup != nil && state.EspGroup.Lifesize != nil {
 				body.EspGroup.Lifesize.Units = ValueStringPointerFromPlanOrState(plan.EspGroup.Lifesize.Units, state.EspGroup.Lifesize.Units)
 			} else {
 				body.EspGroup.Lifesize.Units = StringValueOrNil(plan.EspGroup.Lifesize.Units)
 			}
 			// property: name=value, type=INTEGER macro=copy_from_plan_or_state
-			if state.EspGroup.Lifesize != nil {
+			if state != nil && state.EspGroup != nil && state.EspGroup.Lifesize != nil {
 				body.EspGroup.Lifesize.Value = ValueInt64PointerFromPlanOrState(plan.EspGroup.Lifesize.Value, state.EspGroup.Lifesize.Value)
 			} else {
 				body.EspGroup.Lifesize.Value = Int64ValueOrNil(plan.EspGroup.Lifesize.Value)
 			}
 		}
 		// property: name=lifetime, type=INTEGER macro=copy_from_plan_or_state
-		if state.EspGroup != nil {
+		if state != nil && state.EspGroup != nil {
 			body.EspGroup.Lifetime = ValueInt64PointerFromPlanOrState(plan.EspGroup.Lifetime, state.EspGroup.Lifetime)
 		} else {
 			body.EspGroup.Lifetime = Int64ValueOrNil(plan.EspGroup.Lifetime)
 		}
 		// property: name=lifetime_units, type=STRING macro=copy_from_plan_or_state
-		if state.EspGroup != nil {
+		if state != nil && state.EspGroup != nil {
 			body.EspGroup.LifetimeUnits = ValueStringPointerFromPlanOrState(plan.EspGroup.LifetimeUnits, state.EspGroup.LifetimeUnits)
 		} else {
 			body.EspGroup.LifetimeUnits = StringValueOrNil(plan.EspGroup.LifetimeUnits)
 		}
 		// property: name=mode, type=STRING macro=copy_from_plan_or_state
-		if state.EspGroup != nil {
+		if state != nil && state.EspGroup != nil {
 			body.EspGroup.Mode = ValueStringPointerFromPlanOrState(plan.EspGroup.Mode, state.EspGroup.Mode)
 		} else {
 			body.EspGroup.Mode = StringValueOrNil(plan.EspGroup.Mode)
 		}
+		// property: name=pqc_kem_config, type=REFERENCE macro=copy_from_plan_or_state
+		if plan.EspGroup.PqcKemConfig == nil {
+			body.EspGroup.PqcKemConfig = nil
+		} else {
+			body.EspGroup.PqcKemConfig = &sdwan_schema.PQCKEMConfig{}
+			// copy_from_plan_or_state: body=body.EspGroup.PqcKemConfig prefix=rsModel state=state.EspGroup.PqcKemConfig plan=plan.EspGroup.PqcKemConfig properties=9
+			tflog.Debug(ctx, "copy_from_plan_or_state body=body.EspGroup.PqcKemConfig prefix=rsModel state=state.EspGroup.PqcKemConfig plan=plan.EspGroup.PqcKemConfig")
+			// property: name=block_vulnerable_cipher, type=BOOLEAN macro=copy_from_plan_or_state
+			if state != nil && state.EspGroup != nil && state.EspGroup.PqcKemConfig != nil {
+				body.EspGroup.PqcKemConfig.BlockVulnerableCipher = ValueBoolPointerFromPlanOrState(plan.EspGroup.PqcKemConfig.BlockVulnerableCipher, state.EspGroup.PqcKemConfig.BlockVulnerableCipher)
+			} else {
+				body.EspGroup.PqcKemConfig.BlockVulnerableCipher = BoolValueOrNil(plan.EspGroup.PqcKemConfig.BlockVulnerableCipher)
+			}
+			// property: name=enabled, type=BOOLEAN macro=copy_from_plan_or_state
+			if state != nil && state.EspGroup != nil && state.EspGroup.PqcKemConfig != nil {
+				body.EspGroup.PqcKemConfig.Enabled = ValueBoolPointerFromPlanOrState(plan.EspGroup.PqcKemConfig.Enabled, state.EspGroup.PqcKemConfig.Enabled)
+			} else {
+				body.EspGroup.PqcKemConfig.Enabled = BoolValueOrNil(plan.EspGroup.PqcKemConfig.Enabled)
+			}
+			// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.EspGroup != nil && state.EspGroup.PqcKemConfig != nil && plan.EspGroup.PqcKemConfig.Round1Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.EspGroup.PqcKemConfig.Round1Algorithms = ListStringValueOrNil(ctx, state.EspGroup.PqcKemConfig.Round1Algorithms)
+			} else {
+				body.EspGroup.PqcKemConfig.Round1Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round1Algorithms)
+			}
+			// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.EspGroup != nil && state.EspGroup.PqcKemConfig != nil && plan.EspGroup.PqcKemConfig.Round2Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.EspGroup.PqcKemConfig.Round2Algorithms = ListStringValueOrNil(ctx, state.EspGroup.PqcKemConfig.Round2Algorithms)
+			} else {
+				body.EspGroup.PqcKemConfig.Round2Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round2Algorithms)
+			}
+			// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.EspGroup != nil && state.EspGroup.PqcKemConfig != nil && plan.EspGroup.PqcKemConfig.Round3Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.EspGroup.PqcKemConfig.Round3Algorithms = ListStringValueOrNil(ctx, state.EspGroup.PqcKemConfig.Round3Algorithms)
+			} else {
+				body.EspGroup.PqcKemConfig.Round3Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round3Algorithms)
+			}
+			// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.EspGroup != nil && state.EspGroup.PqcKemConfig != nil && plan.EspGroup.PqcKemConfig.Round4Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.EspGroup.PqcKemConfig.Round4Algorithms = ListStringValueOrNil(ctx, state.EspGroup.PqcKemConfig.Round4Algorithms)
+			} else {
+				body.EspGroup.PqcKemConfig.Round4Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round4Algorithms)
+			}
+			// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.EspGroup != nil && state.EspGroup.PqcKemConfig != nil && plan.EspGroup.PqcKemConfig.Round5Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.EspGroup.PqcKemConfig.Round5Algorithms = ListStringValueOrNil(ctx, state.EspGroup.PqcKemConfig.Round5Algorithms)
+			} else {
+				body.EspGroup.PqcKemConfig.Round5Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round5Algorithms)
+			}
+			// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.EspGroup != nil && state.EspGroup.PqcKemConfig != nil && plan.EspGroup.PqcKemConfig.Round6Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.EspGroup.PqcKemConfig.Round6Algorithms = ListStringValueOrNil(ctx, state.EspGroup.PqcKemConfig.Round6Algorithms)
+			} else {
+				body.EspGroup.PqcKemConfig.Round6Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round6Algorithms)
+			}
+			// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.EspGroup != nil && state.EspGroup.PqcKemConfig != nil && plan.EspGroup.PqcKemConfig.Round7Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.EspGroup.PqcKemConfig.Round7Algorithms = ListStringValueOrNil(ctx, state.EspGroup.PqcKemConfig.Round7Algorithms)
+			} else {
+				body.EspGroup.PqcKemConfig.Round7Algorithms = ListStringValueOrNil(ctx, plan.EspGroup.PqcKemConfig.Round7Algorithms)
+			}
+		}
 		// property: name=proposals, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-		if plan.EspGroup.Proposals == nil && (state.EspGroup == nil || state.EspGroup.Proposals == nil) {
+		if plan.EspGroup.Proposals == nil && (!(state != nil && state.EspGroup != nil) || state.EspGroup.Proposals == nil) {
 			body.EspGroup.Proposals = nil
-		} else if len(plan.EspGroup.Proposals) == 0 && (state.EspGroup == nil || len(state.EspGroup.Proposals) == 0) {
+		} else if len(plan.EspGroup.Proposals) == 0 && (!(state != nil && state.EspGroup != nil) || len(state.EspGroup.Proposals) == 0) {
 			body.EspGroup.Proposals = []sdwan_schema.Proposals{}
-		} else if len(plan.EspGroup.Proposals) != 0 || (state.EspGroup != nil && len(state.EspGroup.Proposals) != 0) {
+		} else if len(plan.EspGroup.Proposals) != 0 || (state != nil && state.EspGroup != nil && len(state.EspGroup.Proposals) != 0) {
 			ProposalsToUse := plan.EspGroup.Proposals
 			if len(plan.EspGroup.Proposals) == 0 {
 				ProposalsToUse = state.EspGroup.Proposals
@@ -1963,11 +3050,26 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 			// copy_from_plan_or_state: body=body.EspGroup.ResponderSaseProposals prefix=rsModel state=state.EspGroup.ResponderSaseProposals plan=plan.EspGroup.ResponderSaseProposals properties=3
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.EspGroup.ResponderSaseProposals prefix=rsModel state=state.EspGroup.ResponderSaseProposals plan=plan.EspGroup.ResponderSaseProposals")
 			// property: name=dh_group, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-			body.EspGroup.ResponderSaseProposals.DhGroup = ListStringValueOrNil(ctx, plan.EspGroup.ResponderSaseProposals.DhGroup)
+			if state != nil && state.EspGroup != nil && state.EspGroup.ResponderSaseProposals != nil && plan.EspGroup.ResponderSaseProposals.DhGroup.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.EspGroup.ResponderSaseProposals.DhGroup = ListStringValueOrNil(ctx, state.EspGroup.ResponderSaseProposals.DhGroup)
+			} else {
+				body.EspGroup.ResponderSaseProposals.DhGroup = ListStringValueOrNil(ctx, plan.EspGroup.ResponderSaseProposals.DhGroup)
+			}
 			// property: name=encryption, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-			body.EspGroup.ResponderSaseProposals.Encryption = ListStringValueOrNil(ctx, plan.EspGroup.ResponderSaseProposals.Encryption)
+			if state != nil && state.EspGroup != nil && state.EspGroup.ResponderSaseProposals != nil && plan.EspGroup.ResponderSaseProposals.Encryption.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.EspGroup.ResponderSaseProposals.Encryption = ListStringValueOrNil(ctx, state.EspGroup.ResponderSaseProposals.Encryption)
+			} else {
+				body.EspGroup.ResponderSaseProposals.Encryption = ListStringValueOrNil(ctx, plan.EspGroup.ResponderSaseProposals.Encryption)
+			}
 			// property: name=hash, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-			body.EspGroup.ResponderSaseProposals.Hash = ListStringValueOrNil(ctx, plan.EspGroup.ResponderSaseProposals.Hash)
+			if state != nil && state.EspGroup != nil && state.EspGroup.ResponderSaseProposals != nil && plan.EspGroup.ResponderSaseProposals.Hash.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.EspGroup.ResponderSaseProposals.Hash = ListStringValueOrNil(ctx, state.EspGroup.ResponderSaseProposals.Hash)
+			} else {
+				body.EspGroup.ResponderSaseProposals.Hash = ListStringValueOrNil(ctx, plan.EspGroup.ResponderSaseProposals.Hash)
+			}
 		}
 	}
 	// property: name=id, type=STRING macro=copy_from_plan_or_state
@@ -1981,50 +3083,119 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 		body.IkeGroup = nil
 	} else {
 		body.IkeGroup = &sdwan_schema.IKEGroup{}
-		// copy_from_plan_or_state: body=body.IkeGroup prefix=rsModel state=state.IkeGroup plan=plan.IkeGroup properties=8
+		// copy_from_plan_or_state: body=body.IkeGroup prefix=rsModel state=state.IkeGroup plan=plan.IkeGroup properties=9
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.IkeGroup prefix=rsModel state=state.IkeGroup plan=plan.IkeGroup")
 		// property: name=aggressive, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.IkeGroup != nil {
+		if state != nil && state.IkeGroup != nil {
 			body.IkeGroup.Aggressive = ValueBoolPointerFromPlanOrState(plan.IkeGroup.Aggressive, state.IkeGroup.Aggressive)
 		} else {
 			body.IkeGroup.Aggressive = BoolValueOrNil(plan.IkeGroup.Aggressive)
 		}
 		// property: name=authentication_multiple, type=INTEGER macro=copy_from_plan_or_state
-		if state.IkeGroup != nil {
+		if state != nil && state.IkeGroup != nil {
 			body.IkeGroup.AuthenticationMultiple = ValueInt64PointerFromPlanOrState(plan.IkeGroup.AuthenticationMultiple, state.IkeGroup.AuthenticationMultiple)
 		} else {
 			body.IkeGroup.AuthenticationMultiple = Int64ValueOrNil(plan.IkeGroup.AuthenticationMultiple)
 		}
 		// property: name=key_exchange, type=STRING macro=copy_from_plan_or_state
-		if state.IkeGroup != nil {
+		if state != nil && state.IkeGroup != nil {
 			body.IkeGroup.KeyExchange = ValueStringPointerFromPlanOrState(plan.IkeGroup.KeyExchange, state.IkeGroup.KeyExchange)
 		} else {
 			body.IkeGroup.KeyExchange = StringValueOrNil(plan.IkeGroup.KeyExchange)
 		}
 		// property: name=lifetime, type=INTEGER macro=copy_from_plan_or_state
-		if state.IkeGroup != nil {
+		if state != nil && state.IkeGroup != nil {
 			body.IkeGroup.Lifetime = ValueInt64PointerFromPlanOrState(plan.IkeGroup.Lifetime, state.IkeGroup.Lifetime)
 		} else {
 			body.IkeGroup.Lifetime = Int64ValueOrNil(plan.IkeGroup.Lifetime)
 		}
 		// property: name=lifetime_units, type=STRING macro=copy_from_plan_or_state
-		if state.IkeGroup != nil {
+		if state != nil && state.IkeGroup != nil {
 			body.IkeGroup.LifetimeUnits = ValueStringPointerFromPlanOrState(plan.IkeGroup.LifetimeUnits, state.IkeGroup.LifetimeUnits)
 		} else {
 			body.IkeGroup.LifetimeUnits = StringValueOrNil(plan.IkeGroup.LifetimeUnits)
 		}
 		// property: name=port, type=INTEGER macro=copy_from_plan_or_state
-		if state.IkeGroup != nil {
+		if state != nil && state.IkeGroup != nil {
 			body.IkeGroup.Port = ValueInt64PointerFromPlanOrState(plan.IkeGroup.Port, state.IkeGroup.Port)
 		} else {
 			body.IkeGroup.Port = Int64ValueOrNil(plan.IkeGroup.Port)
 		}
+		// property: name=pqc_kem_config, type=REFERENCE macro=copy_from_plan_or_state
+		if plan.IkeGroup.PqcKemConfig == nil {
+			body.IkeGroup.PqcKemConfig = nil
+		} else {
+			body.IkeGroup.PqcKemConfig = &sdwan_schema.PQCKEMConfig{}
+			// copy_from_plan_or_state: body=body.IkeGroup.PqcKemConfig prefix=rsModel state=state.IkeGroup.PqcKemConfig plan=plan.IkeGroup.PqcKemConfig properties=9
+			tflog.Debug(ctx, "copy_from_plan_or_state body=body.IkeGroup.PqcKemConfig prefix=rsModel state=state.IkeGroup.PqcKemConfig plan=plan.IkeGroup.PqcKemConfig")
+			// property: name=block_vulnerable_cipher, type=BOOLEAN macro=copy_from_plan_or_state
+			if state != nil && state.IkeGroup != nil && state.IkeGroup.PqcKemConfig != nil {
+				body.IkeGroup.PqcKemConfig.BlockVulnerableCipher = ValueBoolPointerFromPlanOrState(plan.IkeGroup.PqcKemConfig.BlockVulnerableCipher, state.IkeGroup.PqcKemConfig.BlockVulnerableCipher)
+			} else {
+				body.IkeGroup.PqcKemConfig.BlockVulnerableCipher = BoolValueOrNil(plan.IkeGroup.PqcKemConfig.BlockVulnerableCipher)
+			}
+			// property: name=enabled, type=BOOLEAN macro=copy_from_plan_or_state
+			if state != nil && state.IkeGroup != nil && state.IkeGroup.PqcKemConfig != nil {
+				body.IkeGroup.PqcKemConfig.Enabled = ValueBoolPointerFromPlanOrState(plan.IkeGroup.PqcKemConfig.Enabled, state.IkeGroup.PqcKemConfig.Enabled)
+			} else {
+				body.IkeGroup.PqcKemConfig.Enabled = BoolValueOrNil(plan.IkeGroup.PqcKemConfig.Enabled)
+			}
+			// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.IkeGroup != nil && state.IkeGroup.PqcKemConfig != nil && plan.IkeGroup.PqcKemConfig.Round1Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.IkeGroup.PqcKemConfig.Round1Algorithms = ListStringValueOrNil(ctx, state.IkeGroup.PqcKemConfig.Round1Algorithms)
+			} else {
+				body.IkeGroup.PqcKemConfig.Round1Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round1Algorithms)
+			}
+			// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.IkeGroup != nil && state.IkeGroup.PqcKemConfig != nil && plan.IkeGroup.PqcKemConfig.Round2Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.IkeGroup.PqcKemConfig.Round2Algorithms = ListStringValueOrNil(ctx, state.IkeGroup.PqcKemConfig.Round2Algorithms)
+			} else {
+				body.IkeGroup.PqcKemConfig.Round2Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round2Algorithms)
+			}
+			// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.IkeGroup != nil && state.IkeGroup.PqcKemConfig != nil && plan.IkeGroup.PqcKemConfig.Round3Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.IkeGroup.PqcKemConfig.Round3Algorithms = ListStringValueOrNil(ctx, state.IkeGroup.PqcKemConfig.Round3Algorithms)
+			} else {
+				body.IkeGroup.PqcKemConfig.Round3Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round3Algorithms)
+			}
+			// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.IkeGroup != nil && state.IkeGroup.PqcKemConfig != nil && plan.IkeGroup.PqcKemConfig.Round4Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.IkeGroup.PqcKemConfig.Round4Algorithms = ListStringValueOrNil(ctx, state.IkeGroup.PqcKemConfig.Round4Algorithms)
+			} else {
+				body.IkeGroup.PqcKemConfig.Round4Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round4Algorithms)
+			}
+			// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.IkeGroup != nil && state.IkeGroup.PqcKemConfig != nil && plan.IkeGroup.PqcKemConfig.Round5Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.IkeGroup.PqcKemConfig.Round5Algorithms = ListStringValueOrNil(ctx, state.IkeGroup.PqcKemConfig.Round5Algorithms)
+			} else {
+				body.IkeGroup.PqcKemConfig.Round5Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round5Algorithms)
+			}
+			// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.IkeGroup != nil && state.IkeGroup.PqcKemConfig != nil && plan.IkeGroup.PqcKemConfig.Round6Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.IkeGroup.PqcKemConfig.Round6Algorithms = ListStringValueOrNil(ctx, state.IkeGroup.PqcKemConfig.Round6Algorithms)
+			} else {
+				body.IkeGroup.PqcKemConfig.Round6Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round6Algorithms)
+			}
+			// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.IkeGroup != nil && state.IkeGroup.PqcKemConfig != nil && plan.IkeGroup.PqcKemConfig.Round7Algorithms.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.IkeGroup.PqcKemConfig.Round7Algorithms = ListStringValueOrNil(ctx, state.IkeGroup.PqcKemConfig.Round7Algorithms)
+			} else {
+				body.IkeGroup.PqcKemConfig.Round7Algorithms = ListStringValueOrNil(ctx, plan.IkeGroup.PqcKemConfig.Round7Algorithms)
+			}
+		}
 		// property: name=proposals, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-		if plan.IkeGroup.Proposals == nil && (state.IkeGroup == nil || state.IkeGroup.Proposals == nil) {
+		if plan.IkeGroup.Proposals == nil && (!(state != nil && state.IkeGroup != nil) || state.IkeGroup.Proposals == nil) {
 			body.IkeGroup.Proposals = nil
-		} else if len(plan.IkeGroup.Proposals) == 0 && (state.IkeGroup == nil || len(state.IkeGroup.Proposals) == 0) {
+		} else if len(plan.IkeGroup.Proposals) == 0 && (!(state != nil && state.IkeGroup != nil) || len(state.IkeGroup.Proposals) == 0) {
 			body.IkeGroup.Proposals = []sdwan_schema.Proposals{}
-		} else if len(plan.IkeGroup.Proposals) != 0 || (state.IkeGroup != nil && len(state.IkeGroup.Proposals) != 0) {
+		} else if len(plan.IkeGroup.Proposals) != 0 || (state != nil && state.IkeGroup != nil && len(state.IkeGroup.Proposals) != 0) {
 			ProposalsToUse := plan.IkeGroup.Proposals
 			if len(plan.IkeGroup.Proposals) == 0 {
 				ProposalsToUse = state.IkeGroup.Proposals
@@ -2047,7 +3218,7 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 			}
 		}
 		// property: name=reauth, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.IkeGroup != nil {
+		if state != nil && state.IkeGroup != nil {
 			body.IkeGroup.Reauth = ValueBoolPointerFromPlanOrState(plan.IkeGroup.Reauth, state.IkeGroup.Reauth)
 		} else {
 			body.IkeGroup.Reauth = BoolValueOrNil(plan.IkeGroup.Reauth)
@@ -2060,7 +3231,12 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 		body.Name = StringValueOrNil(plan.Name)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=used_for, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.UsedFor = ValueStringPointerFromPlanOrState(plan.UsedFor, state.UsedFor)
@@ -2071,7 +3247,7 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct IPSECProfileScreenV2N2 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct IPSECProfileScreenV2N3 to JSON:", err.Error())
 		return false
 	}
 
@@ -2146,16 +3322,22 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.IPSECProfileScreenV2N2
+	var ans sdwan_schema.IPSECProfileScreenV2N3
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to IPSECProfileScreenV2N2 in update", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to IPSECProfileScreenV2N3 in update", json_err.Error())
 		return false
 	}
 
-	// Store the answer to state. schema=IPSECProfileScreenV2N2
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
+	// Store the answer to state. schema=IPSECProfileScreenV2N3
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=13
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -2167,7 +3349,7 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 		state.Authentication = nil
 	} else {
 		state.Authentication = &rsModelIPSECAuthenticationV1{}
-		// copy_to_state: state=state.Authentication prefix=rsModel ans=ans.Authentication properties=22
+		// copy_to_state: state=state.Authentication prefix=rsModel ans=ans.Authentication properties=23
 		tflog.Debug(ctx, "copy_to_state state=state.Authentication prefix=rsModel ans=ans.Authentication")
 		// property: name=certificate, type=STRING macro=copy_to_state
 		state.Authentication.Certificate = types.StringPointerValue(ans.Authentication.Certificate)
@@ -2185,31 +3367,49 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 			// property: name=xauth_id, type=STRING macro=copy_to_state
 			state.Authentication.Ikev1Params.XauthId = types.StringPointerValue(ans.Authentication.Ikev1Params.XauthId)
 			// property: name=xauth_secret, type=STRING macro=copy_to_state
-			state.Authentication.Ikev1Params.XauthSecret = types.StringPointerValue(plan.Authentication.Ikev1Params.XauthSecret.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.Authentication.Ikev1Params.XauthSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.Authentication.Ikev1Params.XauthSecret = types.StringNull()
+			if plan.Authentication != nil && plan.Authentication.Ikev1Params != nil {
+				state.Authentication.Ikev1Params.XauthSecret = types.StringPointerValue(plan.Authentication.Ikev1Params.XauthSecret.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.Authentication.Ikev1Params.XauthSecret.IsNull() {
-				encryptedXauthSecret, _ := Encrypt([]byte(state.Authentication.Ikev1Params.XauthSecret.String()))
-				resp.Private.SetKey(ctx, state.Authentication.Ikev1Params.XauthSecretInternalKeyName.String(), []byte(encryptedXauthSecret))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedXauthSecret, _ := Encrypt([]byte(state.Authentication.Ikev1Params.XauthSecret.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedXauthSecretJson, _ := json.Marshal(encryptedXauthSecret)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.Ikev1Params.XauthSecretInternalKeyName.String(), encryptedXauthSecretJson)...)
 			}
 			// property: name=xauth_secret_encrypted, type=STRING macro=copy_to_state
-			state.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringPointerValue(plan.Authentication.Ikev1Params.XauthSecretEncrypted.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringNull()
+			if plan.Authentication != nil && plan.Authentication.Ikev1Params != nil {
+				state.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringPointerValue(plan.Authentication.Ikev1Params.XauthSecretEncrypted.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.Authentication.Ikev1Params.XauthSecretEncrypted.IsNull() {
-				encryptedXauthSecretEncrypted, _ := Encrypt([]byte(state.Authentication.Ikev1Params.XauthSecretEncrypted.String()))
-				resp.Private.SetKey(ctx, state.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName.String(), []byte(encryptedXauthSecretEncrypted))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedXauthSecretEncrypted, _ := Encrypt([]byte(state.Authentication.Ikev1Params.XauthSecretEncrypted.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedXauthSecretEncryptedJson, _ := json.Marshal(encryptedXauthSecretEncrypted)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName.String(), encryptedXauthSecretEncryptedJson)...)
 			}
 			// property: name=xauth_secret_hash, type=STRING macro=copy_to_state
-			state.Authentication.Ikev1Params.XauthSecretHash = types.StringPointerValue(plan.Authentication.Ikev1Params.XauthSecretHash.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.Authentication.Ikev1Params.XauthSecretHashInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.Authentication.Ikev1Params.XauthSecretHash = types.StringNull()
+			if plan.Authentication != nil && plan.Authentication.Ikev1Params != nil {
+				state.Authentication.Ikev1Params.XauthSecretHash = types.StringPointerValue(plan.Authentication.Ikev1Params.XauthSecretHash.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.Authentication.Ikev1Params.XauthSecretHash.IsNull() {
-				encryptedXauthSecretHash, _ := Encrypt([]byte(state.Authentication.Ikev1Params.XauthSecretHash.String()))
-				resp.Private.SetKey(ctx, state.Authentication.Ikev1Params.XauthSecretHashInternalKeyName.String(), []byte(encryptedXauthSecretHash))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedXauthSecretHash, _ := Encrypt([]byte(state.Authentication.Ikev1Params.XauthSecretHash.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedXauthSecretHashJson, _ := json.Marshal(encryptedXauthSecretHash)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.Ikev1Params.XauthSecretHashInternalKeyName.String(), encryptedXauthSecretHashJson)...)
 			}
 			// property: name=xauth_type, type=STRING macro=copy_to_state
 			state.Authentication.Ikev1Params.XauthType = types.StringPointerValue(ans.Authentication.Ikev1Params.XauthType)
@@ -2225,47 +3425,180 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 		// property: name=pa_master_key_id, type=STRING macro=copy_to_state
 		state.Authentication.PaMasterKeyId = types.StringPointerValue(ans.Authentication.PaMasterKeyId)
 		// property: name=passphrase, type=STRING macro=copy_to_state
-		state.Authentication.Passphrase = types.StringPointerValue(ans.Authentication.Passphrase)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.Authentication.PassphraseInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.Passphrase = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.Passphrase = types.StringPointerValue(plan.Authentication.Passphrase.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.Authentication.Passphrase.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedPassphrase, _ := Encrypt([]byte(state.Authentication.Passphrase.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedPassphraseJson, _ := json.Marshal(encryptedPassphrase)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PassphraseInternalKeyName.String(), encryptedPassphraseJson)...)
+		}
 		// property: name=passphrase_encrypted, type=STRING macro=copy_to_state
-		state.Authentication.PassphraseEncrypted = types.StringPointerValue(ans.Authentication.PassphraseEncrypted)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.Authentication.PassphraseEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.PassphraseEncrypted = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.PassphraseEncrypted = types.StringPointerValue(plan.Authentication.PassphraseEncrypted.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.Authentication.PassphraseEncrypted.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedPassphraseEncrypted, _ := Encrypt([]byte(state.Authentication.PassphraseEncrypted.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedPassphraseEncryptedJson, _ := json.Marshal(encryptedPassphraseEncrypted)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PassphraseEncryptedInternalKeyName.String(), encryptedPassphraseEncryptedJson)...)
+		}
 		// property: name=peer_id_check, type=STRING macro=copy_to_state
 		state.Authentication.PeerIdCheck = types.StringPointerValue(ans.Authentication.PeerIdCheck)
 		// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=copy_to_state
 		state.Authentication.PermitPeerIdMismatch = types.BoolPointerValue(ans.Authentication.PermitPeerIdMismatch)
+		// property: name=ppk_config, type=REFERENCE macro=copy_to_state
+		if ans.Authentication.PpkConfig == nil {
+			state.Authentication.PpkConfig = nil
+		} else {
+			state.Authentication.PpkConfig = &rsModelPPKConfig{}
+			// copy_to_state: state=state.Authentication.PpkConfig prefix=rsModel ans=ans.Authentication.PpkConfig properties=8
+			tflog.Debug(ctx, "copy_to_state state=state.Authentication.PpkConfig prefix=rsModel ans=ans.Authentication.PpkConfig")
+			// property: name=enabled, type=BOOLEAN macro=copy_to_state
+			state.Authentication.PpkConfig.Enabled = types.BoolPointerValue(ans.Authentication.PpkConfig.Enabled)
+			// property: name=key_enabled, type=BOOLEAN macro=copy_to_state
+			state.Authentication.PpkConfig.KeyEnabled = types.BoolPointerValue(ans.Authentication.PpkConfig.KeyEnabled)
+			// property: name=mode, type=STRING macro=copy_to_state
+			state.Authentication.PpkConfig.Mode = types.StringPointerValue(ans.Authentication.PpkConfig.Mode)
+			// property: name=ppk_key_id, type=STRING macro=copy_to_state
+			state.Authentication.PpkConfig.PpkKeyId = types.StringPointerValue(ans.Authentication.PpkConfig.PpkKeyId)
+			// property: name=ppk_secret, type=STRING macro=copy_to_state
+			// this property is sensitive and will be stored in the state's internal key name
+			state.Authentication.PpkConfig.PpkSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.Authentication.PpkConfig.PpkSecret = types.StringNull()
+			if plan.Authentication != nil && plan.Authentication.PpkConfig != nil {
+				state.Authentication.PpkConfig.PpkSecret = types.StringPointerValue(plan.Authentication.PpkConfig.PpkSecret.ValueStringPointer())
+			}
+			// store value if needed
+			if !state.Authentication.PpkConfig.PpkSecret.IsNull() {
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedPpkSecret, _ := Encrypt([]byte(state.Authentication.PpkConfig.PpkSecret.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedPpkSecretJson, _ := json.Marshal(encryptedPpkSecret)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PpkConfig.PpkSecretInternalKeyName.String(), encryptedPpkSecretJson)...)
+			}
+			// property: name=ppk_secret_configured, type=BOOLEAN macro=copy_to_state
+			state.Authentication.PpkConfig.PpkSecretConfigured = types.BoolPointerValue(ans.Authentication.PpkConfig.PpkSecretConfigured)
+			// property: name=ppk_secret_encrypted, type=STRING macro=copy_to_state
+			// this property is sensitive and will be stored in the state's internal key name
+			state.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.Authentication.PpkConfig.PpkSecretEncrypted = types.StringNull()
+			if plan.Authentication != nil && plan.Authentication.PpkConfig != nil {
+				state.Authentication.PpkConfig.PpkSecretEncrypted = types.StringPointerValue(plan.Authentication.PpkConfig.PpkSecretEncrypted.ValueStringPointer())
+			}
+			// store value if needed
+			if !state.Authentication.PpkConfig.PpkSecretEncrypted.IsNull() {
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedPpkSecretEncrypted, _ := Encrypt([]byte(state.Authentication.PpkConfig.PpkSecretEncrypted.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedPpkSecretEncryptedJson, _ := json.Marshal(encryptedPpkSecretEncrypted)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName.String(), encryptedPpkSecretEncryptedJson)...)
+			}
+			// property: name=ppk_secret_hash, type=STRING macro=copy_to_state
+			// this property is sensitive and will be stored in the state's internal key name
+			state.Authentication.PpkConfig.PpkSecretHashInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.Authentication.PpkConfig.PpkSecretHash = types.StringNull()
+			if plan.Authentication != nil && plan.Authentication.PpkConfig != nil {
+				state.Authentication.PpkConfig.PpkSecretHash = types.StringPointerValue(plan.Authentication.PpkConfig.PpkSecretHash.ValueStringPointer())
+			}
+			// store value if needed
+			if !state.Authentication.PpkConfig.PpkSecretHash.IsNull() {
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedPpkSecretHash, _ := Encrypt([]byte(state.Authentication.PpkConfig.PpkSecretHash.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedPpkSecretHashJson, _ := json.Marshal(encryptedPpkSecretHash)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PpkConfig.PpkSecretHashInternalKeyName.String(), encryptedPpkSecretHashJson)...)
+			}
+		}
 		// property: name=private_key, type=STRING macro=copy_to_state
-		state.Authentication.PrivateKey = types.StringPointerValue(ans.Authentication.PrivateKey)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.Authentication.PrivateKeyInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.PrivateKey = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.PrivateKey = types.StringPointerValue(plan.Authentication.PrivateKey.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.Authentication.PrivateKey.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedPrivateKey, _ := Encrypt([]byte(state.Authentication.PrivateKey.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedPrivateKeyJson, _ := json.Marshal(encryptedPrivateKey)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PrivateKeyInternalKeyName.String(), encryptedPrivateKeyJson)...)
+		}
 		// property: name=private_key_encrypted, type=STRING macro=copy_to_state
-		state.Authentication.PrivateKeyEncrypted = types.StringPointerValue(ans.Authentication.PrivateKeyEncrypted)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.Authentication.PrivateKeyEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.PrivateKeyEncrypted = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.PrivateKeyEncrypted = types.StringPointerValue(plan.Authentication.PrivateKeyEncrypted.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.Authentication.PrivateKeyEncrypted.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedPrivateKeyEncrypted, _ := Encrypt([]byte(state.Authentication.PrivateKeyEncrypted.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedPrivateKeyEncryptedJson, _ := json.Marshal(encryptedPrivateKeyEncrypted)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.PrivateKeyEncryptedInternalKeyName.String(), encryptedPrivateKeyEncryptedJson)...)
+		}
 		// property: name=remote_ca_certificate, type=STRING macro=copy_to_state
 		state.Authentication.RemoteCaCertificate = types.StringPointerValue(ans.Authentication.RemoteCaCertificate)
 		// property: name=remote_id, type=STRING macro=copy_to_state
 		state.Authentication.RemoteId = types.StringPointerValue(ans.Authentication.RemoteId)
 		// property: name=secret, type=STRING macro=copy_to_state
-		state.Authentication.Secret = types.StringPointerValue(plan.Authentication.Secret.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.Authentication.SecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.Secret = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.Secret = types.StringPointerValue(plan.Authentication.Secret.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.Authentication.Secret.IsNull() {
-			encryptedSecret, _ := Encrypt([]byte(state.Authentication.Secret.String()))
-			resp.Private.SetKey(ctx, state.Authentication.SecretInternalKeyName.String(), []byte(encryptedSecret))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSecret, _ := Encrypt([]byte(state.Authentication.Secret.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSecretJson, _ := json.Marshal(encryptedSecret)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.SecretInternalKeyName.String(), encryptedSecretJson)...)
 		}
 		// property: name=secret_encrypted, type=STRING macro=copy_to_state
-		state.Authentication.SecretEncrypted = types.StringPointerValue(plan.Authentication.SecretEncrypted.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.Authentication.SecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.SecretEncrypted = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.SecretEncrypted = types.StringPointerValue(plan.Authentication.SecretEncrypted.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.Authentication.SecretEncrypted.IsNull() {
-			encryptedSecretEncrypted, _ := Encrypt([]byte(state.Authentication.SecretEncrypted.String()))
-			resp.Private.SetKey(ctx, state.Authentication.SecretEncryptedInternalKeyName.String(), []byte(encryptedSecretEncrypted))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSecretEncrypted, _ := Encrypt([]byte(state.Authentication.SecretEncrypted.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSecretEncryptedJson, _ := json.Marshal(encryptedSecretEncrypted)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.SecretEncryptedInternalKeyName.String(), encryptedSecretEncryptedJson)...)
 		}
 		// property: name=secret_hash, type=STRING macro=copy_to_state
-		state.Authentication.SecretHash = types.StringPointerValue(plan.Authentication.SecretHash.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.Authentication.SecretHashInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.Authentication.SecretHash = types.StringNull()
+		if plan.Authentication != nil {
+			state.Authentication.SecretHash = types.StringPointerValue(plan.Authentication.SecretHash.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.Authentication.SecretHash.IsNull() {
-			encryptedSecretHash, _ := Encrypt([]byte(state.Authentication.SecretHash.String()))
-			resp.Private.SetKey(ctx, state.Authentication.SecretHashInternalKeyName.String(), []byte(encryptedSecretHash))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSecretHash, _ := Encrypt([]byte(state.Authentication.SecretHash.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSecretHashJson, _ := json.Marshal(encryptedSecretHash)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Authentication.SecretHashInternalKeyName.String(), encryptedSecretHashJson)...)
 		}
 		// property: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=copy_to_state
 		state.Authentication.StrictValidationPeerExtendedKeyUse = types.BoolPointerValue(ans.Authentication.StrictValidationPeerExtendedKeyUse)
@@ -2285,7 +3618,7 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 		state.EspGroup = nil
 	} else {
 		state.EspGroup = &rsModelESPGroup{}
-		// copy_to_state: state=state.EspGroup prefix=rsModel ans=ans.EspGroup properties=7
+		// copy_to_state: state=state.EspGroup prefix=rsModel ans=ans.EspGroup properties=8
 		tflog.Debug(ctx, "copy_to_state state=state.EspGroup prefix=rsModel ans=ans.EspGroup")
 		// property: name=force_encapsulation, type=BOOLEAN macro=copy_to_state
 		state.EspGroup.ForceEncapsulation = types.BoolPointerValue(ans.EspGroup.ForceEncapsulation)
@@ -2307,6 +3640,46 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 		state.EspGroup.LifetimeUnits = types.StringPointerValue(ans.EspGroup.LifetimeUnits)
 		// property: name=mode, type=STRING macro=copy_to_state
 		state.EspGroup.Mode = types.StringPointerValue(ans.EspGroup.Mode)
+		// property: name=pqc_kem_config, type=REFERENCE macro=copy_to_state
+		if ans.EspGroup.PqcKemConfig == nil {
+			state.EspGroup.PqcKemConfig = nil
+		} else {
+			state.EspGroup.PqcKemConfig = &rsModelPQCKEMConfig{}
+			// copy_to_state: state=state.EspGroup.PqcKemConfig prefix=rsModel ans=ans.EspGroup.PqcKemConfig properties=9
+			tflog.Debug(ctx, "copy_to_state state=state.EspGroup.PqcKemConfig prefix=rsModel ans=ans.EspGroup.PqcKemConfig")
+			// property: name=block_vulnerable_cipher, type=BOOLEAN macro=copy_to_state
+			state.EspGroup.PqcKemConfig.BlockVulnerableCipher = types.BoolPointerValue(ans.EspGroup.PqcKemConfig.BlockVulnerableCipher)
+			// property: name=enabled, type=BOOLEAN macro=copy_to_state
+			state.EspGroup.PqcKemConfig.Enabled = types.BoolPointerValue(ans.EspGroup.PqcKemConfig.Enabled)
+			// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound1Algorithms, errRound1Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round1Algorithms)
+			state.EspGroup.PqcKemConfig.Round1Algorithms = varRound1Algorithms
+			resp.Diagnostics.Append(errRound1Algorithms.Errors()...)
+			// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound2Algorithms, errRound2Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round2Algorithms)
+			state.EspGroup.PqcKemConfig.Round2Algorithms = varRound2Algorithms
+			resp.Diagnostics.Append(errRound2Algorithms.Errors()...)
+			// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound3Algorithms, errRound3Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round3Algorithms)
+			state.EspGroup.PqcKemConfig.Round3Algorithms = varRound3Algorithms
+			resp.Diagnostics.Append(errRound3Algorithms.Errors()...)
+			// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound4Algorithms, errRound4Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round4Algorithms)
+			state.EspGroup.PqcKemConfig.Round4Algorithms = varRound4Algorithms
+			resp.Diagnostics.Append(errRound4Algorithms.Errors()...)
+			// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound5Algorithms, errRound5Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round5Algorithms)
+			state.EspGroup.PqcKemConfig.Round5Algorithms = varRound5Algorithms
+			resp.Diagnostics.Append(errRound5Algorithms.Errors()...)
+			// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound6Algorithms, errRound6Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round6Algorithms)
+			state.EspGroup.PqcKemConfig.Round6Algorithms = varRound6Algorithms
+			resp.Diagnostics.Append(errRound6Algorithms.Errors()...)
+			// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound7Algorithms, errRound7Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round7Algorithms)
+			state.EspGroup.PqcKemConfig.Round7Algorithms = varRound7Algorithms
+			resp.Diagnostics.Append(errRound7Algorithms.Errors()...)
+		}
 		// property: name=proposals, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.EspGroup.Proposals == nil {
 			state.EspGroup.Proposals = nil
@@ -2357,7 +3730,7 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 		state.IkeGroup = nil
 	} else {
 		state.IkeGroup = &rsModelIKEGroup{}
-		// copy_to_state: state=state.IkeGroup prefix=rsModel ans=ans.IkeGroup properties=8
+		// copy_to_state: state=state.IkeGroup prefix=rsModel ans=ans.IkeGroup properties=9
 		tflog.Debug(ctx, "copy_to_state state=state.IkeGroup prefix=rsModel ans=ans.IkeGroup")
 		// property: name=aggressive, type=BOOLEAN macro=copy_to_state
 		state.IkeGroup.Aggressive = types.BoolPointerValue(ans.IkeGroup.Aggressive)
@@ -2371,6 +3744,46 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 		state.IkeGroup.LifetimeUnits = types.StringPointerValue(ans.IkeGroup.LifetimeUnits)
 		// property: name=port, type=INTEGER macro=copy_to_state
 		state.IkeGroup.Port = types.Int64PointerValue(ans.IkeGroup.Port)
+		// property: name=pqc_kem_config, type=REFERENCE macro=copy_to_state
+		if ans.IkeGroup.PqcKemConfig == nil {
+			state.IkeGroup.PqcKemConfig = nil
+		} else {
+			state.IkeGroup.PqcKemConfig = &rsModelPQCKEMConfig{}
+			// copy_to_state: state=state.IkeGroup.PqcKemConfig prefix=rsModel ans=ans.IkeGroup.PqcKemConfig properties=9
+			tflog.Debug(ctx, "copy_to_state state=state.IkeGroup.PqcKemConfig prefix=rsModel ans=ans.IkeGroup.PqcKemConfig")
+			// property: name=block_vulnerable_cipher, type=BOOLEAN macro=copy_to_state
+			state.IkeGroup.PqcKemConfig.BlockVulnerableCipher = types.BoolPointerValue(ans.IkeGroup.PqcKemConfig.BlockVulnerableCipher)
+			// property: name=enabled, type=BOOLEAN macro=copy_to_state
+			state.IkeGroup.PqcKemConfig.Enabled = types.BoolPointerValue(ans.IkeGroup.PqcKemConfig.Enabled)
+			// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound1Algorithms, errRound1Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round1Algorithms)
+			state.IkeGroup.PqcKemConfig.Round1Algorithms = varRound1Algorithms
+			resp.Diagnostics.Append(errRound1Algorithms.Errors()...)
+			// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound2Algorithms, errRound2Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round2Algorithms)
+			state.IkeGroup.PqcKemConfig.Round2Algorithms = varRound2Algorithms
+			resp.Diagnostics.Append(errRound2Algorithms.Errors()...)
+			// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound3Algorithms, errRound3Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round3Algorithms)
+			state.IkeGroup.PqcKemConfig.Round3Algorithms = varRound3Algorithms
+			resp.Diagnostics.Append(errRound3Algorithms.Errors()...)
+			// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound4Algorithms, errRound4Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round4Algorithms)
+			state.IkeGroup.PqcKemConfig.Round4Algorithms = varRound4Algorithms
+			resp.Diagnostics.Append(errRound4Algorithms.Errors()...)
+			// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound5Algorithms, errRound5Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round5Algorithms)
+			state.IkeGroup.PqcKemConfig.Round5Algorithms = varRound5Algorithms
+			resp.Diagnostics.Append(errRound5Algorithms.Errors()...)
+			// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound6Algorithms, errRound6Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round6Algorithms)
+			state.IkeGroup.PqcKemConfig.Round6Algorithms = varRound6Algorithms
+			resp.Diagnostics.Append(errRound6Algorithms.Errors()...)
+			// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varRound7Algorithms, errRound7Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round7Algorithms)
+			state.IkeGroup.PqcKemConfig.Round7Algorithms = varRound7Algorithms
+			resp.Diagnostics.Append(errRound7Algorithms.Errors()...)
+		}
 		// property: name=proposals, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.IkeGroup.Proposals == nil {
 			state.IkeGroup.Proposals = nil
@@ -2402,12 +3815,20 @@ func (r *ipsecProfileResource) doPut(ctx context.Context, plan *rsModelIPSECProf
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=used_for, type=STRING macro=copy_to_state
 	state.UsedFor = types.StringPointerValue(ans.UsedFor)
 	return true
 }
 
-func (r *ipsecProfileResource) doDelete(ctx context.Context, state *rsModelIPSECProfileScreenV2N2, resp *resource.DeleteResponse) bool {
+func (r *ipsecProfileResource) doDelete(ctx context.Context, state *rsModelIPSECProfileScreenV2N3, resp *resource.DeleteResponse) bool {
 	// read object id
 	tfid := state.Tfid.ValueString()
 	// Basic logging.
@@ -2428,7 +3849,7 @@ func (r *ipsecProfileResource) doDelete(ctx context.Context, state *rsModelIPSEC
 	delete_request := &sdwan_client.SdwanClientRequestResponse{}
 	delete_request.ResourceType = "prismasdwan_ipsec_profile"
 	delete_request.Method = "DELETE"
-	delete_request.Path = "/sdwan/v2.2/api/ipsecprofiles/{profile_id}"
+	delete_request.Path = "/sdwan/v2.3/api/ipsecprofiles/{profile_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -2462,14 +3883,14 @@ func (r *ipsecProfileResource) doDelete(ctx context.Context, state *rsModelIPSEC
 // Path Parameters are encoded into TfID itself
 func (r *ipsecProfileResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "executing resource create for prismasdwan_ipsec_profile")
-	var plan rsModelIPSECProfileScreenV2N2
+	var plan rsModelIPSECProfileScreenV2N3
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// make post call
-	var state rsModelIPSECProfileScreenV2N2
+	var state rsModelIPSECProfileScreenV2N3
 	if r.doPost(ctx, &plan, &state, resp) {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	}
@@ -2481,7 +3902,7 @@ func (r *ipsecProfileResource) Create(ctx context.Context, req resource.CreateRe
 func (r *ipsecProfileResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 	tflog.Info(ctx, "executing resource read for prismasdwan_ipsec_profile")
-	var savestate, state rsModelIPSECProfileScreenV2N2
+	var savestate, state rsModelIPSECProfileScreenV2N3
 	resp.Diagnostics.Append(req.State.Get(ctx, &savestate)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -2500,7 +3921,7 @@ func (r *ipsecProfileResource) Read(ctx context.Context, req resource.ReadReques
 func (r *ipsecProfileResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
 	tflog.Info(ctx, "executing resource update for prismasdwan_ipsec_profile")
-	var plan, state rsModelIPSECProfileScreenV2N2
+	var plan, state rsModelIPSECProfileScreenV2N3
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -2524,7 +3945,7 @@ func (r *ipsecProfileResource) Update(ctx context.Context, req resource.UpdateRe
 func (r *ipsecProfileResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 
 	tflog.Info(ctx, "executing resource delete for prismasdwan_ipsec_profile")
-	var state rsModelIPSECProfileScreenV2N2
+	var state rsModelIPSECProfileScreenV2N3
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {

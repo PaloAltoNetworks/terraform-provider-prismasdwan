@@ -6,6 +6,8 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -74,31 +76,36 @@ type listResponse struct {
 // Schema defines the schema for this data source.
 func (r *newResourceLocatorResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Looks up the ID of an existing Prisma SD-WAN configuration object by matching one of its attributes. Useful for referencing objects that are not managed by this provider.",
 		Attributes: map[string]rsschema.Attribute{
 			"resource_type": rsschema.StringAttribute{
-				Computed: false,
-				Required: true,
+				Computed:    false,
+				Required:    true,
+				Description: "The provider resource type to look up, e.g. `prismasdwan_site`.",
 			},
 			"resource_property": rsschema.StringAttribute{
-				Computed: false,
-				Required: false,
-				Optional: true,
+				Computed:    false,
+				Required:    false,
+				Optional:    true,
+				Description: "Name of the object attribute to match against, e.g. `name`.",
 			},
 			"resource_property_value": rsschema.StringAttribute{
-				Computed: false,
-				Required: false,
-				Optional: true,
+				Computed:    false,
+				Required:    false,
+				Optional:    true,
+				Description: "Value of the attribute to match.",
 			},
 			"result": rsschema.StringAttribute{
-				Computed: true,
-				Required: false,
+				Computed:    true,
+				Required:    false,
+				Description: "The resolved ID of the matching object.",
 			},
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters used to locate the object, managed automatically by the provider.",
 			},
 		},
 	}
@@ -117,19 +124,18 @@ func (r *newResourceLocatorResource) Configure(_ context.Context, req resource.C
 	}
 	// inject into map
 	resourceTypeToUrlMap = make(map[string]string)
-	resourceTypeToUrlMap["TEST"] = "SOME"
 	resourceTypeToUrlMap["prismasdwan_app_def_override"] = "/sdwan/v2.3/api/appdefs/{appdef_id}/overrides/{override_id}"
 	resourceTypeToUrlMap["prismasdwan_element_radius"] = "/sdwan/v2.0/api/elements/{element_id}/radii/{radius_id}"
 	resourceTypeToUrlMap["prismasdwan_element_ipfix"] = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/ipfix/{ipfix_id}"
-	resourceTypeToUrlMap["prismasdwan_site_prisma_sase_connection"] = "/sdwan/v2.1/api/sites/{site_id}/prismasase_connections/{prismasase_connection_id}"
+	resourceTypeToUrlMap["prismasdwan_site_prisma_sase_connection"] = "/sdwan/v3.1/api/sites/{site_id}/prismasase_connections/{prismasase_connection_id}"
 	resourceTypeToUrlMap["prismasdwan_security_policy_local_prefix"] = "/sdwan/v2.0/api/ngfwsecuritypolicylocalprefixes/{prefix_id}"
 	resourceTypeToUrlMap["prismasdwan_anynet_link"] = "/sdwan/v4.0/api/anynetlinks/{anynet_id}"
 	resourceTypeToUrlMap["prismasdwan_wan_overlay"] = "/sdwan/v2.0/api/wanoverlays/{wan_overlay_id}"
 	resourceTypeToUrlMap["prismasdwan_app_def"] = "/sdwan/v2.6/api/appdefs/{appdef_id}"
 	resourceTypeToUrlMap["prismasdwan_multicast_peer_group_profile"] = "/sdwan/v2.1/api/multicastpeergroups/{peer_group_id}"
-	resourceTypeToUrlMap["prismasdwan_element_bgp_config"] = "/sdwan/v2.4/api/sites/{site_id}/elements/{element_id}/bgpconfigs/{bgp_config_id}"
-	resourceTypeToUrlMap["prismasdwan_site_security_zone"] = "/sdwan/v2.0/api/sites/{site_id}/sitesecurityzones/{zone_id}"
-	resourceTypeToUrlMap["prismasdwan_element_security_zone"] = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/securityzones/{security_zone_id}"
+	resourceTypeToUrlMap["prismasdwan_element_bgp_config"] = "/sdwan/v2.5/api/sites/{site_id}/elements/{element_id}/bgpconfigs/{bgp_config_id}"
+	resourceTypeToUrlMap["prismasdwan_site_security_zone"] = "/sdwan/v2.1/api/sites/{site_id}/sitesecurityzones/{zone_id}"
+	resourceTypeToUrlMap["prismasdwan_element_security_zone"] = "/sdwan/v2.1/api/sites/{site_id}/elements/{element_id}/securityzones/{security_zone_id}"
 	resourceTypeToUrlMap["prismasdwan_site_wan_multicast_configuration"] = "/sdwan/v2.0/api/sites/{site_id}/multicastsourcesiteconfigs/{config_id}"
 	resourceTypeToUrlMap["prismasdwan_site_lan_network"] = "/sdwan/v3.3/api/sites/{site_id}/lannetworks/{lannetwork_id}"
 	resourceTypeToUrlMap["prismasdwan_element_interface"] = "/sdwan/v4.21/api/sites/{site_id}/elements/{element_id}/interfaces/{interface_id}"
@@ -138,10 +144,10 @@ func (r *newResourceLocatorResource) Configure(_ context.Context, req resource.C
 	resourceTypeToUrlMap["prismasdwan_security_policy_stack"] = "/sdwan/v2.0/api/ngfwsecuritypolicysetstacks/{policyset_stack_id}"
 	resourceTypeToUrlMap["prismasdwan_element_static_route"] = "/sdwan/v2.3/api/sites/{site_id}/elements/{element_id}/staticroutes/{static_route_id}"
 	resourceTypeToUrlMap["prismasdwan_event_correlation_policy_rule"] = "/sdwan/v2.1/api/eventcorrelationpolicysets/{policy_set_id}/eventcorrelationpolicyrules/{policy_rule_id}"
-	resourceTypeToUrlMap["prismasdwan_site_hub_prefix_filter_association"] = "/sdwan/v2.0/api/sites/{site_id}/pathprefixdistributionfilterassociation/{id}"
+	resourceTypeToUrlMap["prismasdwan_site_hub_prefix_filter_association"] = "/sdwan/v2.0/api/sites/{site_id}/pathprefixdistributionfilterassociation/{pathprefixdistributionfilterassociation_id}"
 	resourceTypeToUrlMap["prismasdwan_qos_policy_stack"] = "/sdwan/v2.0/api/prioritypolicysetstacks/{policy_set_id}"
 	resourceTypeToUrlMap["prismasdwan_wan_interface_label"] = "/sdwan/v2.6/api/waninterfacelabels/{wantinterface_label_id}"
-	resourceTypeToUrlMap["prismasdwan_ipsec_profile"] = "/sdwan/v2.2/api/ipsecprofiles/{profile_id}"
+	resourceTypeToUrlMap["prismasdwan_ipsec_profile"] = "/sdwan/v2.3/api/ipsecprofiles/{profile_id}"
 	resourceTypeToUrlMap["prismasdwan_vrf_context"] = "/sdwan/v2.0/api/vrfcontexts/{vrf_context_id}"
 	resourceTypeToUrlMap["prismasdwan_site_hub_prefix_filter"] = "/sdwan/v2.0/api/sites/{site_id}/prefixfilters/{filter_id}"
 	resourceTypeToUrlMap["prismasdwan_ipfix_profile"] = "/sdwan/v2.0/api/ipfixprofiles/{profile_id}"
@@ -149,11 +155,11 @@ func (r *newResourceLocatorResource) Configure(_ context.Context, req resource.C
 	resourceTypeToUrlMap["prismasdwan_global_prefix_filter"] = "/sdwan/v2.0/api/globalprefixfilters/{filter_id}"
 	resourceTypeToUrlMap["prismasdwan_security_policy_set"] = "/sdwan/v2.0/api/ngfwsecuritypolicysets/{policy_set_id}"
 	resourceTypeToUrlMap["prismasdwan_ipfix_local_prefix"] = "/sdwan/v2.0/api/ipfixlocalprefixes/{prefix_id}"
-	resourceTypeToUrlMap["prismasdwan_security_zone"] = "/sdwan/v2.1/api/securityzones/{zone_id}"
+	resourceTypeToUrlMap["prismasdwan_security_zone"] = "/sdwan/v2.2/api/securityzones/{zone_id}"
 	resourceTypeToUrlMap["prismasdwan_element_dns_service"] = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/dnsservices/{dnsservice_role_id}"
-	resourceTypeToUrlMap["prismasdwan_site"] = "/sdwan/v4.12/api/sites/{site_id}"
+	resourceTypeToUrlMap["prismasdwan_site"] = "/sdwan/v4.13/api/sites/{site_id}"
 	resourceTypeToUrlMap["prismasdwan_dns_service_role"] = "/sdwan/v2.0/api/dnsserviceroles/{dnsservice_role_id}"
-	resourceTypeToUrlMap["prismasdwan_performance_policy_stack"] = "/sdwan/v2.0/api/perfmgmtpolicysetstacks/{id}"
+	resourceTypeToUrlMap["prismasdwan_performance_policy_stack"] = "/sdwan/v2.0/api/perfmgmtpolicysetstacks/{perfmgmtpolicysetstack_id}"
 	resourceTypeToUrlMap["prismasdwan_vrf_context_profile"] = "/sdwan/v2.0/api/vrfcontextprofiles/{vrf_context_profile_id}"
 	resourceTypeToUrlMap["prismasdwan_element_snmp_trap"] = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/snmptraps/{snmptrap_id}"
 	resourceTypeToUrlMap["prismasdwan_service_group"] = "/sdwan/v2.1/api/servicelabels/{service_label_id}"
@@ -170,17 +176,17 @@ func (r *newResourceLocatorResource) Configure(_ context.Context, req resource.C
 	resourceTypeToUrlMap["prismasdwan_path_local_prefix"] = "/sdwan/v2.0/api/networkpolicylocalprefixes/{prefix_id}"
 	resourceTypeToUrlMap["prismasdwan_site_iot_device_id_config"] = "/sdwan/v2.1/api/sites/{site_id}/deviceidconfigs/{config_id}"
 	resourceTypeToUrlMap["prismasdwan_element_ospf_global_config"] = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/ospfglobalconfigs/{ospf_config_id}"
-	resourceTypeToUrlMap["prismasdwan_performance_policy_rule"] = "/sdwan/v2.2/api/perfmgmtpolicysets/{perfmgmtpolicyset_id}/perfmgmtpolicyrules/{perfmgmtpolicyrule_id}"
+	resourceTypeToUrlMap["prismasdwan_performance_policy_rule"] = "/sdwan/v2.3/api/perfmgmtpolicysets/{perfmgmtpolicyset_id}/perfmgmtpolicyrules/{perfmgmtpolicyrule_id}"
 	resourceTypeToUrlMap["prismasdwan_element_toolkit"] = "/sdwan/v2.2/api/elements/{element_id}/elementaccessconfigs"
 	resourceTypeToUrlMap["prismasdwan_element_routing_prefixlist"] = "/sdwan/v2.1/api/sites/{site_id}/elements/{element_id}/routing_prefixlists/{routing_prefixlist_id}"
-	resourceTypeToUrlMap["prismasdwan_element_iot_device_id_config"] = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/deviceidconfigs/{config_id}"
+	resourceTypeToUrlMap["prismasdwan_element_iot_device_id_config"] = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/deviceidconfigs/{deviceid_config_id}"
 	resourceTypeToUrlMap["prismasdwan_security_policy_global_prefix"] = "/sdwan/v2.1/api/ngfwsecuritypolicyglobalprefixes/{prefix_id}"
 	resourceTypeToUrlMap["prismasdwan_element_snmp_agent"] = "/sdwan/v2.1/api/sites/{site_id}/elements/{element_id}/snmpagents/{snmpagent_id}"
-	resourceTypeToUrlMap["prismasdwan_element_bgp_peer"] = "/sdwan/v2.6/api/sites/{site_id}/elements/{element_id}/bgppeers/{bgp_peer_id}"
+	resourceTypeToUrlMap["prismasdwan_element_bgp_peer"] = "/sdwan/v3.0/api/sites/{site_id}/elements/{element_id}/bgppeers/{bgp_peer_id}"
 	resourceTypeToUrlMap["prismasdwan_element_routing_ipcommunitylist"] = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/routing_ipcommunitylists/{config_id}"
-	resourceTypeToUrlMap["prismasdwan_external_ca_config"] = "/sdwan/v2.0/api/externalcaconfigs/{id}"
-	resourceTypeToUrlMap["prismasdwan_site_hub_prefix_filter_profile"] = "/sdwan/v2.0/api/sites/{site_id}/pathprefixdistributionfilters/{id}"
-	resourceTypeToUrlMap["prismasdwan_site_hub_distribution_fabric"] = "/sdwan/v2.0/api/sites/{site_id}/prefixdistributionspokelists/{id}"
+	resourceTypeToUrlMap["prismasdwan_external_ca_config"] = "/sdwan/v2.0/api/externalcaconfigs/{externalcaconfig_id}"
+	resourceTypeToUrlMap["prismasdwan_site_hub_prefix_filter_profile"] = "/sdwan/v2.0/api/sites/{site_id}/pathprefixdistributionfilters/{pathprefixdistributionfilter_id}"
+	resourceTypeToUrlMap["prismasdwan_site_hub_distribution_fabric"] = "/sdwan/v2.0/api/sites/{site_id}/prefixdistributionspokelists/{prefixdistributionspokelist_id}"
 	resourceTypeToUrlMap["prismasdwan_ipfix_template"] = "/sdwan/v2.0/api/ipfixtemplates/{template_id}"
 	resourceTypeToUrlMap["prismasdwan_qos_policy_local_prefix"] = "/sdwan/v2.0/api/prioritypolicylocalprefixes/{priority_policy_id}"
 	resourceTypeToUrlMap["prismasdwan_sdwanapps_config"] = "/sdwan/v2.0/api/sdwanapps/{app_id}/configs/{cid}"
@@ -196,12 +202,11 @@ func (r *newResourceLocatorResource) Configure(_ context.Context, req resource.C
 	resourceTypeToUrlMap["prismasdwan_iot_profile"] = "/sdwan/v2.0/api/deviceidprofiles/{profile_id}"
 	resourceTypeToUrlMap["prismasdwan_nat_policy_pool"] = "/sdwan/v2.0/api/natpolicypools/{natpolicy_pool_id}"
 	resourceTypeToUrlMap["prismasdwan_nat_local_prefix"] = "/sdwan/v2.0/api/natlocalprefixes/{prefix_id}"
-	resourceTypeToUrlMap["prismasdwan_site_hub_cluster_member"] = "/sdwan/v3.0/api/sites/{site_id}/hubclusters/{hub_cluster_id}/hubclustermembers/{hub_cluster_member_id}"
 	resourceTypeToUrlMap["prismasdwan_path_global_prefix"] = "/sdwan/v2.1/api/networkpolicyglobalprefixes/{prefix_id}"
 	resourceTypeToUrlMap["prismasdwan_element_shell"] = "/sdwan/v2.1/api/sites/{site_id}/elementshells/{element_shell_id}"
 	resourceTypeToUrlMap["prismasdwan_nat_global_prefix"] = "/sdwan/v2.0/api/natglobalprefixes/{prefix_id}"
 	resourceTypeToUrlMap["prismasdwan_probe_profile"] = "/sdwan/v2.0/api/probeprofiles/{profile_id}"
-	resourceTypeToUrlMap["prismasdwan_local_prefix_filter"] = "/sdwan/v2.0/api/localprefixfilters/{id}"
+	resourceTypeToUrlMap["prismasdwan_local_prefix_filter"] = "/sdwan/v2.0/api/localprefixfilters/{localprefixfilter_id}"
 	resourceTypeToUrlMap["prismasdwan_element"] = "/sdwan/v3.2/api/elements/{element_id}"
 	resourceTypeToUrlMap["prismasdwan_apn_profile"] = "/sdwan/v2.0/api/apnprofiles/{apnprofile_id}"
 	resourceTypeToUrlMap["prismasdwan_site_iot_snmp_start_node"] = "/sdwan/v2.0/api/sites/{site_id}/deviceidconfigs/{deviceid_config_id}/snmpdiscoverystartnodes/{deviceid_start_node_id}"
@@ -210,12 +215,12 @@ func (r *newResourceLocatorResource) Configure(_ context.Context, req resource.C
 	resourceTypeToUrlMap["prismasdwan_performance_policy_set"] = "/sdwan/v2.0/api/perfmgmtpolicysets/{perfmgmtpolicyset_id}"
 	resourceTypeToUrlMap["prismasdwan_tacacs_plus_profile"] = "/sdwan/v2.0/api/tacacs_plus_profiles/{profile_id}"
 	resourceTypeToUrlMap["prismasdwan_site_dhcp_server"] = "/sdwan/v2.3/api/sites/{site_id}/dhcpservers/{dhcp_server_id}"
-	resourceTypeToUrlMap["prismasdwan_path_policy_rule"] = "/sdwan/v2.4/api/networkpolicysets/{policy_set_id}/networkpolicyrules/{policy_rule_id}"
+	resourceTypeToUrlMap["prismasdwan_path_policy_rule"] = "/sdwan/v2.5/api/networkpolicysets/{policy_set_id}/networkpolicyrules/{policy_rule_id}"
 	resourceTypeToUrlMap["prismasdwan_element_cellular_module"] = "/sdwan/v2.0/api/elements/{element_id}/cellular_modules/{cellular_module_id}"
 	resourceTypeToUrlMap["prismasdwan_element_multicast_global_config"] = "/sdwan/v2.1/api/sites/{site_id}/elements/{element_id}/multicastglobalconfigs/{config_id}"
-	resourceTypeToUrlMap["prismasdwan_element_ospf_config"] = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/ospfconfigs/{ospf_config_id}"
+	resourceTypeToUrlMap["prismasdwan_element_ospf_config"] = "/sdwan/v2.1/api/sites/{site_id}/elements/{element_id}/ospfconfigs/{ospf_config_id}"
 	resourceTypeToUrlMap["prismasdwan_element_syslog_server"] = "/sdwan/v2.3/api/sites/{site_id}/elements/{element_id}/syslogservers/{syslogserver_id}"
-	resourceTypeToUrlMap["prismasdwan_element_tacacs_plus_server"] = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/tacacs_plus_servers/{id}"
+	resourceTypeToUrlMap["prismasdwan_element_tacacs_plus_server"] = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/tacacs_plus_servers/{tacacs_plus_server_id}"
 	resourceTypeToUrlMap["prismasdwan_domain"] = "/sdwan/v2.1/api/servicebindingmaps/{map_id}"
 	resourceTypeToUrlMap["prismasdwan_path_policy_stack"] = "/sdwan/v2.0/api/networkpolicysetstacks/{policy_set_id}"
 	resourceTypeToUrlMap["prismasdwan_element_multicast_rp"] = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/multicastrps/{config_id}"
@@ -228,7 +233,7 @@ func (r *newResourceLocatorResource) Configure(_ context.Context, req resource.C
 	resourceTypeToUrlMap["prismasdwan_service_endpoint"] = "/sdwan/v3.1/api/serviceendpoints/{service_endpoint_id}"
 	resourceTypeToUrlMap["prismasdwan_nat_policy_set_stack"] = "/sdwan/v2.0/api/natpolicysetstacks/{natpolicy_set_stack_id}"
 	resourceTypeToUrlMap["prismasdwan_event_correlation_policy_set"] = "/sdwan/v2.0/api/eventcorrelationpolicysets/{policy_set_id}"
-	resourceTypeToUrlMap["prismasdwan_probe_config"] = "/sdwan/v2.0/api/probeconfigs/{config_id}"
+	resourceTypeToUrlMap["prismasdwan_probe_config"] = "/sdwan/v2.1/api/probeconfigs/{config_id}"
 	resourceTypeToUrlMap["prismasdwan_path_group"] = "/sdwan/v2.1/api/pathgroups/{path_group_id}"
 	resourceTypeToUrlMap["prismasdwan_security_policy_rule"] = "/sdwan/v2.3/api/ngfwsecuritypolicysets/{policy_set_id}/ngfwsecuritypolicyrules/{policy_rule_id}"
 	resourceTypeToUrlMap["prismasdwan_site_ciphers"] = "/sdwan/v2.0/api/sites/{site_id}/siteciphers"
@@ -311,7 +316,14 @@ func (r *newResourceLocatorResource) makeHttpGetLookUp(ctx context.Context, plan
 	// find the path
 	get_path, ok := resourceTypeToUrlMap[plan.ResourceType.ValueString()]
 	if !ok {
-		diagnostic.AddError("could not find supported resource type", plan.ResourceType.ValueString())
+		types := make([]string, 0, len(resourceTypeToUrlMap))
+		for name := range resourceTypeToUrlMap {
+			types = append(types, name)
+		}
+		sort.Strings(types)
+		diagnostic.AddError("could not find supported resource type",
+			fmt.Sprintf("%q is not a supported resource type. Use the name of a resource of this provider, one of: %s",
+				plan.ResourceType.ValueString(), strings.Join(types, ", ")))
 		return
 	}
 

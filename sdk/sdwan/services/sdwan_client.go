@@ -1,15 +1,15 @@
 package services
 
-// This code is automatically generated.
-// Manual changes will be overwritten upon SDK generation.
-
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bhmj/jsonslice"
@@ -25,6 +25,26 @@ var (
 		"qa.api.sase.paloaltonetworks.com": "",
 	}
 )
+
+// Keyed mutex map of ResourceType -> *sync.Mutex.
+// Some APIs use _etag based optimistic locking and reject concurrent requests,
+// so requests for a registered ResourceType are served one at a time.
+var serializedResourceTypes sync.Map
+
+func init() {
+	for _, resourceType := range []string{
+		"prismasdwan_app_def",
+		"prismasdwan_global_prefix_filter",
+		"prismasdwan_path_global_prefix",
+		// concurrent site creates fail with INVALID_REQUEST_DUPLICATE_KEY ("Resource already exists")
+		"prismasdwan_site",
+		"prismasdwan_vrf_context",
+		// rules are written into their policy set, so concurrent creates in one set conflict ("Entity of type PerfMgmtPolicySet")
+		"prismasdwan_performance_policy_rule",
+	} {
+		serializedResourceTypes.Store(resourceType, &sync.Mutex{})
+	}
+}
 
 // Client is the client for the namespace.
 type Client struct {
@@ -58,6 +78,8 @@ func (r *SdwanClientRequestResponse) ToString() string {
 	return string(json_body)
 }
 
+var unresolvedPathParam = regexp.MustCompile(`\{[^}]+\}`)
+
 // executes a http function using sdwan client implementation
 // the request and response data is captured in the same request object for ease of debugging and logging.
 func (c *Client) ExecuteSdwanRequest(ctx context.Context, request *SdwanClientRequestResponse) {
@@ -65,6 +87,18 @@ func (c *Client) ExecuteSdwanRequest(ctx context.Context, request *SdwanClientRe
 	path := request.Path
 	for k, v := range *request.PathParameters {
 		path = strings.ReplaceAll(path, "{"+k+"}", *v)
+	}
+	// a placeholder left in the path would be sent literally, and the api times out on it instead of failing fast
+	if missing := unresolvedPathParam.FindAllString(path, -1); len(missing) > 0 {
+		names := make([]string, len(missing))
+		for i, m := range missing {
+			names[i] = strings.Trim(m, "{}")
+		}
+		err := fmt.Errorf("path parameter %q is required; set x_parameters.%s (request %s %s)",
+			names[0], strings.Join(names, ", x_parameters."), request.Method, request.Path)
+		request.ResponseErr = &err
+		request.FinalPath = &path
+		return
 	}
 	// Path param handling.
 	prefix, ok := Servers[c.client.GetHost()]
@@ -84,7 +118,12 @@ func (c *Client) ExecuteSdwanRequest(ctx context.Context, request *SdwanClientRe
 		request.RequestBody = &request_body
 	}
 
-	// Execute the command.
+	// Execute the command, one at a time if the resource type is serialized.
+	if lock, ok := serializedResourceTypes.Load(request.ResourceType); ok {
+		mutex := lock.(*sync.Mutex)
+		mutex.Lock()
+		defer mutex.Unlock()
+	}
 	r_bytes, r_status, r_err := c.client.Do(ctx, request.Method, path, nil, request.RequestBody, nil)
 	request.ResponseBytes = &r_bytes
 	request.ResponseStatusCode = r_status
@@ -105,6 +144,10 @@ func (c *Client) ExecuteSdwanRequest(ctx context.Context, request *SdwanClientRe
 		request.ResponseErr = &r_err
 		if len(r_bytes) > 0 {
 			err_code, err := jsonslice.Get(r_bytes, "$._error[0].code")
+			if err != nil || len(err_code) == 0 {
+				// some APIs report request errors in _warning and leave _error empty
+				err_code, err = jsonslice.Get(r_bytes, "$._warning[0].code")
+			}
 			if err == nil {
 				// json slice will give you values with quotes
 				err_code_name := string(err_code)

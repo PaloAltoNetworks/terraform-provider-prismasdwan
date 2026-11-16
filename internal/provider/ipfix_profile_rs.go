@@ -36,9 +36,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &ipfixProfileResource{}
-	_ resource.ResourceWithConfigure   = &ipfixProfileResource{}
-	_ resource.ResourceWithImportState = &ipfixProfileResource{}
+	_ resource.Resource                   = &ipfixProfileResource{}
+	_ resource.ResourceWithConfigure      = &ipfixProfileResource{}
+	_ resource.ResourceWithImportState    = &ipfixProfileResource{}
+	_ resource.ResourceWithValidateConfig = &ipfixProfileResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -59,6 +60,12 @@ type ipfixProfileResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *ipfixProfileResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{})...)
+}
+
 // Metadata returns the data source type name.
 func (r *ipfixProfileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_ipfix_profile"
@@ -67,13 +74,14 @@ func (r *ipfixProfileResource) Metadata(_ context.Context, req resource.Metadata
 // Schema defines the schema for this data source.
 func (r *ipfixProfileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Ipfix Profile.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=IPFixProfileScreen
 			// generic x_parameters is added to accomodate path parameters
@@ -82,97 +90,111 @@ func (r *ipfixProfileResource) Schema(_ context.Context, _ resource.SchemaReques
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=collector_config, type=ARRAY_REFERENCE macro=rss_schema
 			"collector_config": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Collector config. At most 4 items. At least 1 items.",
+				Validators:  ListMaxItems(4),
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=host, type=STRING macro=rss_schema
 						"host": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Host.",
 						},
 						// key name holder for attribute: name=host, type=STRING macro=rss_schema
 						// property: name=host_port, type=INTEGER macro=rss_schema
 						"host_port": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Host port.",
 						},
 						// key name holder for attribute: name=host_port, type=INTEGER macro=rss_schema
 						// property: name=ipfixcollectorcontext_id, type=STRING macro=rss_schema
 						"ipfixcollectorcontext_id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Ipfixcollectorcontext id.",
 						},
 						// key name holder for attribute: name=ipfixcollectorcontext_id, type=STRING macro=rss_schema
 						// property: name=max_message_size, type=INTEGER macro=rss_schema
 						"max_message_size": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Max message size.",
 						},
 						// key name holder for attribute: name=max_message_size, type=INTEGER macro=rss_schema
 						// property: name=protocol, type=STRING macro=rss_schema
 						"protocol": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Protocol. Value: one of tcp, udp.",
 						},
 						// key name holder for attribute: name=protocol, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=protocol, type=STRING macro=rss_schema
+			// key name holder for attribute: name=collector_config, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=export_cache_timeout, type=INTEGER macro=rss_schema
 			"export_cache_timeout": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Export cache timeout. Value: between 10 and 600.",
 			},
 			// key name holder for attribute: name=export_cache_timeout, type=INTEGER macro=rss_schema
 			// property: name=filters, type=ARRAY_REFERENCE macro=rss_schema
 			"filters": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Filters. At most 8 items.",
+				Validators:  ListMaxItems(8),
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=app_def_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -181,43 +203,48 @@ func (r *ipfixProfileResource) Schema(_ context.Context, _ resource.SchemaReques
 							Computed:    false,
 							Optional:    true,
 							Sensitive:   false,
+							Description: "App def ids.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=app_def_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=dst_ports, type=ARRAY_REFERENCE macro=rss_schema
 						"dst_ports": rsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Dst ports.",
 							NestedObject: rsschema.NestedAttributeObject{
 								Attributes: map[string]rsschema.Attribute{
 									// property: name=end, type=INTEGER macro=rss_schema
 									"end": rsschema.Int64Attribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "End.",
 									},
 									// key name holder for attribute: name=end, type=INTEGER macro=rss_schema
 									// property: name=start, type=INTEGER macro=rss_schema
 									"start": rsschema.Int64Attribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Start.",
 									},
 									// key name holder for attribute: name=start, type=INTEGER macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=start, type=INTEGER macro=rss_schema
+						// key name holder for attribute: name=dst_ports, type=ARRAY_REFERENCE macro=rss_schema
 						// property: name=dst_prefixes_id, type=STRING macro=rss_schema
 						"dst_prefixes_id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Dst prefixes id.",
 						},
 						// key name holder for attribute: name=dst_prefixes_id, type=STRING macro=rss_schema
 						// property: name=ipfixfiltercontext_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -226,6 +253,7 @@ func (r *ipfixProfileResource) Schema(_ context.Context, _ resource.SchemaReques
 							Computed:    false,
 							Optional:    true,
 							Sensitive:   false,
+							Description: "Ipfixfiltercontext ids.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=ipfixfiltercontext_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -235,6 +263,7 @@ func (r *ipfixProfileResource) Schema(_ context.Context, _ resource.SchemaReques
 							Computed:    false,
 							Optional:    true,
 							Sensitive:   false,
+							Description: "Priority traffic types. Each item: one of P1_Video, P1_Audio, P1_Xact, P1_Bulk, P2_Video, P2_Audio, P2_Xact, P2_Bulk, P3_Video, P3_Audio, P3_Xact, P3_Bulk, P4_Video, P4_Audio, P4_Xact, P4_Bulk.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=priority_traffic_types, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -244,129 +273,145 @@ func (r *ipfixProfileResource) Schema(_ context.Context, _ resource.SchemaReques
 							Computed:    false,
 							Optional:    true,
 							Sensitive:   false,
+							Description: "Protocols. Each item: one of tcp, udp, ospf, ipv6, is-is-over-ipv4, ipv6-nonxt, etherip, ipv6-icmp, igmp, udplite, ipv6-opts, icmp, esp, crtp, ipip, eigrp, egp, gre, l2tpv3, sctp, ip-in-ip, rsvp, pim, scps, mpls-in-ip, ah, vrrp, ipv6-route, igp, ipv6-frag.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=protocols, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=rtp_transport_type, type=STRING macro=rss_schema
 						"rtp_transport_type": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Rtp transport type. Value: one of audio, video.",
 						},
 						// key name holder for attribute: name=rtp_transport_type, type=STRING macro=rss_schema
 						// property: name=src_ports, type=ARRAY_REFERENCE macro=rss_schema
 						"src_ports": rsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Src ports.",
 							NestedObject: rsschema.NestedAttributeObject{
 								Attributes: map[string]rsschema.Attribute{
 									// property: name=end, type=INTEGER macro=rss_schema
 									"end": rsschema.Int64Attribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "End.",
 									},
 									// key name holder for attribute: name=end, type=INTEGER macro=rss_schema
 									// property: name=start, type=INTEGER macro=rss_schema
 									"start": rsschema.Int64Attribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Start.",
 									},
 									// key name holder for attribute: name=start, type=INTEGER macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=start, type=INTEGER macro=rss_schema
+						// key name holder for attribute: name=src_ports, type=ARRAY_REFERENCE macro=rss_schema
 						// property: name=src_prefixes_id, type=STRING macro=rss_schema
 						"src_prefixes_id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Src prefixes id.",
 						},
 						// key name holder for attribute: name=src_prefixes_id, type=STRING macro=rss_schema
 						// property: name=wan_path_direction, type=STRING macro=rss_schema
 						"wan_path_direction": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Wan path direction. Value: one of lan_to_wan, wan_to_lan.",
 						},
 						// key name holder for attribute: name=wan_path_direction, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=wan_path_direction, type=STRING macro=rss_schema
+			// key name holder for attribute: name=filters, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=ipfixtemplate_id, type=STRING macro=rss_schema
 			"ipfixtemplate_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ipfixtemplate id.",
 			},
 			// key name holder for attribute: name=ipfixtemplate_id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=sampler, type=REFERENCE macro=rss_schema
 			"sampler": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Sampler.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=algorithm, type=STRING macro=rss_schema
 					"algorithm": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Algorithm. Value: one of time_based, none.",
 					},
 					// key name holder for attribute: name=algorithm, type=STRING macro=rss_schema
 					// property: name=time_interval, type=INTEGER macro=rss_schema
 					"time_interval": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Time interval.",
 					},
 					// key name holder for attribute: name=time_interval, type=INTEGER macro=rss_schema
 					// property: name=time_spacing, type=INTEGER macro=rss_schema
 					"time_spacing": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Time spacing.",
 					},
 					// key name holder for attribute: name=time_spacing, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=time_spacing, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=sampler, type=REFERENCE macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			"tags": rsschema.SetAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -459,7 +504,8 @@ func (r *ipfixProfileResource) doPost(ctx context.Context, plan *rsModelIPFixPro
 	if plan.Filters == nil {
 		body.Filters = nil
 	} else if len(plan.Filters) == 0 {
-		body.Filters = []sdwan_schema.IPFixFilter{}
+		// api does not accept empty list as missing value
+		body.Filters = nil
 	} else {
 		body.Filters = make([]sdwan_schema.IPFixFilter, 0, len(plan.Filters))
 		for varLoopFiltersIndex, varLoopFilters := range plan.Filters {
@@ -657,7 +703,8 @@ func (r *ipfixProfileResource) doPost(ctx context.Context, plan *rsModelIPFixPro
 	if ans.Filters == nil {
 		state.Filters = nil
 	} else if len(ans.Filters) == 0 {
-		state.Filters = []rsModelIPFixFilter{}
+		// api does not accept empty list as missing value
+		state.Filters = nil
 	} else {
 		state.Filters = make([]rsModelIPFixFilter, 0, len(ans.Filters))
 		for varLoopFiltersIndex, varLoopFilters := range ans.Filters {
@@ -727,6 +774,10 @@ func (r *ipfixProfileResource) doPost(ctx context.Context, plan *rsModelIPFixPro
 			state.Filters[varLoopFiltersIndex].WanPathDirection = types.StringPointerValue(varLoopFilters.WanPathDirection)
 		}
 	}
+	// the configuration states an empty list: keep it
+	if len(ans.Filters) == 0 && plan.Filters != nil && len(plan.Filters) == 0 {
+		state.Filters = plan.Filters
+	}
 	// property: name=id, type=STRING macro=copy_to_state
 	state.Id = types.StringPointerValue(ans.Id)
 	// property: name=ipfixtemplate_id, type=STRING macro=copy_to_state
@@ -751,6 +802,14 @@ func (r *ipfixProfileResource) doPost(ctx context.Context, plan *rsModelIPFixPro
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
@@ -822,7 +881,23 @@ func (r *ipfixProfileResource) doGet(ctx context.Context, state *rsModelIPFixPro
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -874,7 +949,8 @@ func (r *ipfixProfileResource) doGet(ctx context.Context, state *rsModelIPFixPro
 	if ans.Filters == nil {
 		state.Filters = nil
 	} else if len(ans.Filters) == 0 {
-		state.Filters = []rsModelIPFixFilter{}
+		// api does not accept empty list as missing value
+		state.Filters = nil
 	} else {
 		state.Filters = make([]rsModelIPFixFilter, 0, len(ans.Filters))
 		for varLoopFiltersIndex, varLoopFilters := range ans.Filters {
@@ -944,6 +1020,10 @@ func (r *ipfixProfileResource) doGet(ctx context.Context, state *rsModelIPFixPro
 			state.Filters[varLoopFiltersIndex].WanPathDirection = types.StringPointerValue(varLoopFilters.WanPathDirection)
 		}
 	}
+	// the configuration states an empty list: keep it
+	if len(ans.Filters) == 0 && savestate.Filters != nil && len(savestate.Filters) == 0 {
+		state.Filters = savestate.Filters
+	}
 	// property: name=id, type=STRING macro=copy_to_state
 	state.Id = types.StringPointerValue(ans.Id)
 	// property: name=ipfixtemplate_id, type=STRING macro=copy_to_state
@@ -968,6 +1048,14 @@ func (r *ipfixProfileResource) doGet(ctx context.Context, state *rsModelIPFixPro
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	return true
 }
 
@@ -1037,9 +1125,9 @@ func (r *ipfixProfileResource) doPut(ctx context.Context, plan *rsModelIPFixProf
 		body.Schema = Int64ValueOrNil(plan.Schema)
 	}
 	// property: name=collector_config, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.CollectorConfig == nil && (state == nil || state.CollectorConfig == nil) {
+	if plan.CollectorConfig == nil && (!(state != nil) || state.CollectorConfig == nil) {
 		body.CollectorConfig = nil
-	} else if len(plan.CollectorConfig) == 0 && (state == nil || len(state.CollectorConfig) == 0) {
+	} else if len(plan.CollectorConfig) == 0 && (!(state != nil) || len(state.CollectorConfig) == 0) {
 		body.CollectorConfig = []sdwan_schema.CollectorConfig{}
 	} else if len(plan.CollectorConfig) != 0 || (state != nil && len(state.CollectorConfig) != 0) {
 		CollectorConfigToUse := plan.CollectorConfig
@@ -1078,10 +1166,11 @@ func (r *ipfixProfileResource) doPut(ctx context.Context, plan *rsModelIPFixProf
 		body.ExportCacheTimeout = Int64ValueOrNil(plan.ExportCacheTimeout)
 	}
 	// property: name=filters, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.Filters == nil && (state == nil || state.Filters == nil) {
+	if plan.Filters == nil && (!(state != nil) || state.Filters == nil) {
 		body.Filters = nil
-	} else if len(plan.Filters) == 0 && (state == nil || len(state.Filters) == 0) {
-		body.Filters = []sdwan_schema.IPFixFilter{}
+	} else if len(plan.Filters) == 0 && (!(state != nil) || len(state.Filters) == 0) {
+		// api does not accept empty list as missing value
+		body.Filters = nil
 	} else if len(plan.Filters) != 0 || (state != nil && len(state.Filters) != 0) {
 		FiltersToUse := plan.Filters
 		if len(plan.Filters) == 0 {
@@ -1174,26 +1263,31 @@ func (r *ipfixProfileResource) doPut(ctx context.Context, plan *rsModelIPFixProf
 		// copy_from_plan_or_state: body=body.Sampler prefix=rsModel state=state.Sampler plan=plan.Sampler properties=3
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.Sampler prefix=rsModel state=state.Sampler plan=plan.Sampler")
 		// property: name=algorithm, type=STRING macro=copy_from_plan_or_state
-		if state.Sampler != nil {
+		if state != nil && state.Sampler != nil {
 			body.Sampler.Algorithm = ValueStringPointerFromPlanOrState(plan.Sampler.Algorithm, state.Sampler.Algorithm)
 		} else {
 			body.Sampler.Algorithm = StringValueOrNil(plan.Sampler.Algorithm)
 		}
 		// property: name=time_interval, type=INTEGER macro=copy_from_plan_or_state
-		if state.Sampler != nil {
+		if state != nil && state.Sampler != nil {
 			body.Sampler.TimeInterval = ValueInt64PointerFromPlanOrState(plan.Sampler.TimeInterval, state.Sampler.TimeInterval)
 		} else {
 			body.Sampler.TimeInterval = Int64ValueOrNil(plan.Sampler.TimeInterval)
 		}
 		// property: name=time_spacing, type=INTEGER macro=copy_from_plan_or_state
-		if state.Sampler != nil {
+		if state != nil && state.Sampler != nil {
 			body.Sampler.TimeSpacing = ValueInt64PointerFromPlanOrState(plan.Sampler.TimeSpacing, state.Sampler.TimeSpacing)
 		} else {
 			body.Sampler.TimeSpacing = Int64ValueOrNil(plan.Sampler.TimeSpacing)
 		}
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
@@ -1243,6 +1337,12 @@ func (r *ipfixProfileResource) doPut(ctx context.Context, plan *rsModelIPFixProf
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=IPFixProfileScreen
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=11
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -1282,7 +1382,8 @@ func (r *ipfixProfileResource) doPut(ctx context.Context, plan *rsModelIPFixProf
 	if ans.Filters == nil {
 		state.Filters = nil
 	} else if len(ans.Filters) == 0 {
-		state.Filters = []rsModelIPFixFilter{}
+		// api does not accept empty list as missing value
+		state.Filters = nil
 	} else {
 		state.Filters = make([]rsModelIPFixFilter, 0, len(ans.Filters))
 		for varLoopFiltersIndex, varLoopFilters := range ans.Filters {
@@ -1352,6 +1453,10 @@ func (r *ipfixProfileResource) doPut(ctx context.Context, plan *rsModelIPFixProf
 			state.Filters[varLoopFiltersIndex].WanPathDirection = types.StringPointerValue(varLoopFilters.WanPathDirection)
 		}
 	}
+	// the configuration states an empty list: keep it
+	if len(ans.Filters) == 0 && plan.Filters != nil && len(plan.Filters) == 0 {
+		state.Filters = plan.Filters
+	}
 	// property: name=id, type=STRING macro=copy_to_state
 	state.Id = types.StringPointerValue(ans.Id)
 	// property: name=ipfixtemplate_id, type=STRING macro=copy_to_state
@@ -1376,6 +1481,14 @@ func (r *ipfixProfileResource) doPut(ctx context.Context, plan *rsModelIPFixProf
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 

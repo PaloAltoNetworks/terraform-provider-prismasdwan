@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	sdwan "github.com/paloaltonetworks/terraform-provider-prismasdwan/sdk"
@@ -68,13 +69,14 @@ func (d *wanInterfaceLabelDataSource) Metadata(_ context.Context, req datasource
 // Schema defines the schema for this data source.
 func (d *wanInterfaceLabelDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Retrieves a list of Prisma SD-WAN Wan Interface Label items.",
 		Attributes: map[string]dsschema.Attribute{
 			"filters": dsschema.MapAttribute{
 				Required:    true,
 				Computed:    false,
 				Optional:    false,
 				ElementType: types.StringType,
+				Description: "Path parameters used to locate the items to retrieve.",
 			},
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": dsschema.MapAttribute{
@@ -82,192 +84,216 @@ func (d *wanInterfaceLabelDataSource) Schema(_ context.Context, _ datasource.Sch
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Additional path parameters for the data source, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": dsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Entity tag returned by the API, managed automatically by the provider.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": dsschema.Int64Attribute{
-				Required: false,
-				Computed: true,
-				Optional: true,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Description: "Schema version returned by the API, managed automatically by the provider.",
 			},
 			"items": dsschema.ListNestedAttribute{
-				Computed: true,
+				Computed:    true,
+				Description: "The list of items returned by the data source.",
 				NestedObject: dsschema.NestedAttributeObject{
 					Attributes: map[string]dsschema.Attribute{
 						// rest all properties to be read from GET API Schema schema=WANInterfaceLabelScreenV2N6
 						// property: name=_etag, type=INTEGER macro=rss_schema
 						"x_etag": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 						// property: name=_schema, type=INTEGER macro=rss_schema
 						"x_schema": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 						// property: name=app_acceleration_enabled, type=BOOLEAN macro=rss_schema
 						"app_acceleration_enabled": dsschema.BoolAttribute{
-							Required:  true,
-							Computed:  false,
-							Optional:  false,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "App acceleration enabled.",
 						},
 						// key name holder for attribute: name=app_acceleration_enabled, type=BOOLEAN macro=rss_schema
 						// property: name=bwc_enabled, type=BOOLEAN macro=rss_schema
 						"bwc_enabled": dsschema.BoolAttribute{
-							Required:  true,
-							Computed:  false,
-							Optional:  false,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Bwc enabled.",
 						},
 						// key name holder for attribute: name=bwc_enabled, type=BOOLEAN macro=rss_schema
 						// property: name=description, type=STRING macro=rss_schema
 						"description": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Description. Value: at most 256 characters.",
 						},
 						// key name holder for attribute: name=description, type=STRING macro=rss_schema
 						// property: name=id, type=STRING macro=rss_schema
 						"id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=id, type=STRING macro=rss_schema
 						// property: name=l3_reachability, type=REFERENCE macro=rss_schema
 						"l3_reachability": dsschema.SingleNestedAttribute{
-							Required:  true,
-							Computed:  false,
-							Optional:  false,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "L3 reachability.",
 							Attributes: map[string]dsschema.Attribute{
 								// property: name=probe_config_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 								"probe_config_ids": dsschema.ListAttribute{
 									Required:    false,
-									Computed:    false,
-									Optional:    true,
+									Computed:    true,
+									Optional:    false,
 									Sensitive:   false,
+									Description: "Probe config ids.",
 									ElementType: types.StringType,
 								},
 								// key name holder for attribute: name=probe_config_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 								// property: name=use_element_default, type=BOOLEAN macro=rss_schema
 								"use_element_default": dsschema.BoolAttribute{
-									Required:  true,
-									Computed:  false,
-									Optional:  false,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Use element default.",
 								},
 								// key name holder for attribute: name=use_element_default, type=BOOLEAN macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=use_element_default, type=BOOLEAN macro=rss_schema
+						// key name holder for attribute: name=l3_reachability, type=REFERENCE macro=rss_schema
 						// property: name=label, type=STRING macro=rss_schema
 						"label": dsschema.StringAttribute{
-							Required:  true,
-							Computed:  false,
-							Optional:  false,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Label. Value: matching `(public|private)-(([1-9])|([1-2][0-9])|(3[0-2])|(100[0-9]))`.",
 						},
 						// key name holder for attribute: name=label, type=STRING macro=rss_schema
 						// property: name=lqm_enabled, type=BOOLEAN macro=rss_schema
 						"lqm_enabled": dsschema.BoolAttribute{
-							Required:  true,
-							Computed:  false,
-							Optional:  false,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Lqm enabled.",
 						},
 						// key name holder for attribute: name=lqm_enabled, type=BOOLEAN macro=rss_schema
 						// property: name=name, type=STRING macro=rss_schema
 						"name": dsschema.StringAttribute{
-							Required:  true,
-							Computed:  false,
-							Optional:  false,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Name. Value: at most 128 characters.",
 						},
 						// key name holder for attribute: name=name, type=STRING macro=rss_schema
 						// property: name=probe_profile_id, type=STRING macro=rss_schema
 						"probe_profile_id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Probe profile id.",
 						},
 						// key name holder for attribute: name=probe_profile_id, type=STRING macro=rss_schema
 						// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 						"tags": dsschema.SetAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 						// property: name=use_for_application_reachability_probes, type=BOOLEAN macro=rss_schema
 						"use_for_application_reachability_probes": dsschema.BoolAttribute{
-							Required:  true,
-							Computed:  false,
-							Optional:  false,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Use for application reachability probes.",
 						},
 						// key name holder for attribute: name=use_for_application_reachability_probes, type=BOOLEAN macro=rss_schema
 						// property: name=use_for_controller_connections, type=BOOLEAN macro=rss_schema
 						"use_for_controller_connections": dsschema.BoolAttribute{
-							Required:  true,
-							Computed:  false,
-							Optional:  false,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Use for controller connections.",
 						},
 						// key name holder for attribute: name=use_for_controller_connections, type=BOOLEAN macro=rss_schema
 						// property: name=use_lqm_for_non_hub_paths, type=BOOLEAN macro=rss_schema
 						"use_lqm_for_non_hub_paths": dsschema.BoolAttribute{
-							Required:  true,
-							Computed:  false,
-							Optional:  false,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Use lqm for non hub paths.",
 						},
 						// key name holder for attribute: name=use_lqm_for_non_hub_paths, type=BOOLEAN macro=rss_schema
 						// property: name=vpnlink_configuration, type=REFERENCE macro=rss_schema
 						"vpnlink_configuration": dsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Vpnlink configuration.",
 							Attributes: map[string]dsschema.Attribute{
 								// property: name=keep_alive_failure_count, type=INTEGER macro=rss_schema
 								"keep_alive_failure_count": dsschema.Int64Attribute{
-									Required:  true,
-									Computed:  false,
-									Optional:  false,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Keep alive failure count. Value: between 3 and 30.",
 								},
 								// key name holder for attribute: name=keep_alive_failure_count, type=INTEGER macro=rss_schema
 								// property: name=keep_alive_interval, type=INTEGER macro=rss_schema
 								"keep_alive_interval": dsschema.Int64Attribute{
-									Required:  true,
-									Computed:  false,
-									Optional:  false,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Keep alive interval. Value: between 100 and 1740000.",
 								},
 								// key name holder for attribute: name=keep_alive_interval, type=INTEGER macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=keep_alive_interval, type=INTEGER macro=rss_schema
+						// key name holder for attribute: name=vpnlink_configuration, type=REFERENCE macro=rss_schema
 					},
 				},
 			},
@@ -315,17 +341,25 @@ func (d *wanInterfaceLabelDataSource) Read(ctx context.Context, req datasource.R
 
 	// Perform the operation.
 	svc.ExecuteSdwanRequest(ctx, list_request)
+	response_body_string := `{"items":[]}`
 	if list_request.ResponseErr != nil {
-		if IsObjectNotFound(*list_request.ResponseErr) {
-			resp.State.RemoveResource(ctx)
-		} else {
-			resp.Diagnostics.AddError("error reading prismasdwan_wan_interface_label", (*list_request.ResponseErr).Error())
+		// a 404 here means the list endpoint itself is missing, which must not look like "no matches"
+		{
+			resp.Diagnostics.AddError("error reading prismasdwan_wan_interface_label",
+				fmt.Sprintf("%s (GET %s)", (*list_request.ResponseErr).Error(), *list_request.FinalPath))
+			return
 		}
-		return
+	} else {
+		response_body_string = string(*list_request.ResponseBytes)
+		// some endpoints return the one object itself instead of {"items": [...]}: treat it as the only item
+		var body map[string]interface{}
+		if err := json.Unmarshal([]byte(response_body_string), &body); err == nil {
+			if _, isList := body["items"]; !isList && body["id"] != nil {
+				wrapped, _ := json.Marshal(map[string]interface{}{"items": []map[string]interface{}{body}})
+				response_body_string = string(wrapped)
+			}
+		}
 	}
-
-	// read json string from http response
-	response_body_string := string(*list_request.ResponseBytes)
 	tflog.Info(ctx, "lookup response from server", map[string]any{
 		"path": response_body_string,
 	})
@@ -338,7 +372,9 @@ func (d *wanInterfaceLabelDataSource) Read(ctx context.Context, req datasource.R
 		resp.Diagnostics.AddError("error in json unmarshal to generic map in lookup", json_err.Error())
 		return
 	}
-	// ensure its as array
+
+	// no match is an empty list, not null: items[0] and length(items) must work on a miss
+	state_with_filter.Items = []*dsModelWANInterfaceLabelScreenV2N6{} // ensure its as array
 	for _, item := range response.Items {
 		// create json from item
 		item_json, item_err := json.Marshal(item)
@@ -428,6 +464,10 @@ func (d *wanInterfaceLabelDataSource) Read(ctx context.Context, req datasource.R
 		varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 		state.Tags = varTags
 		resp.Diagnostics.Append(errTags.Errors()...)
+		// api does not accept empty list as missing value
+		if len(ans.Tags) == 0 {
+			state.Tags = types.SetNull(types.StringType)
+		}
 		// property: name=use_for_application_reachability_probes, type=BOOLEAN macro=copy_to_state
 		state.UseForApplicationReachabilityProbes = types.BoolPointerValue(ans.UseForApplicationReachabilityProbes)
 		// property: name=use_for_controller_connections, type=BOOLEAN macro=copy_to_state

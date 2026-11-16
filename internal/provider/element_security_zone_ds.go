@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	sdwan "github.com/paloaltonetworks/terraform-provider-prismasdwan/sdk"
@@ -23,7 +24,7 @@ import (
 // | Schema Map Summary (size=goLangStructMap=1)
 // | Computed Resource Name=sites_elements_securityzones
 // +-----------------------------------------------------------------
-// | ElementSecurityZoneScreen HasID=true
+// | ElementSecurityZoneScreenV2N1 HasID=true
 // +-----------------------------------------------------------------
 
 // Data source.
@@ -51,11 +52,11 @@ type elementSecurityZoneDataSource struct {
 }
 
 type dsModelWithFilterElementSecurityZone struct {
-	Filters      types.Map                           `tfsdk:"filters"`
-	TfParameters types.Map                           `tfsdk:"x_parameters"` // Generic Map for Path Ids
-	Etag         types.Int64                         `tfsdk:"x_etag"`       // propertyName=_etag type=INTEGER
-	Schema       types.Int64                         `tfsdk:"x_schema"`     // propertyName=_schema type=INTEGER
-	Items        []*dsModelElementSecurityZoneScreen `tfsdk:"items"`
+	Filters      types.Map                               `tfsdk:"filters"`
+	TfParameters types.Map                               `tfsdk:"x_parameters"` // Generic Map for Path Ids
+	Etag         types.Int64                             `tfsdk:"x_etag"`       // propertyName=_etag type=INTEGER
+	Schema       types.Int64                             `tfsdk:"x_schema"`     // propertyName=_schema type=INTEGER
+	Items        []*dsModelElementSecurityZoneScreenV2N1 `tfsdk:"items"`
 }
 
 // Metadata returns the data source type name.
@@ -66,13 +67,14 @@ func (d *elementSecurityZoneDataSource) Metadata(_ context.Context, req datasour
 // Schema defines the schema for this data source.
 func (d *elementSecurityZoneDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Retrieves a list of Prisma SD-WAN Element Security Zone items.",
 		Attributes: map[string]dsschema.Attribute{
 			"filters": dsschema.MapAttribute{
 				Required:    true,
 				Computed:    false,
 				Optional:    false,
 				ElementType: types.StringType,
+				Description: "Path parameters used to locate the items to retrieve.",
 			},
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": dsschema.MapAttribute{
@@ -80,92 +82,122 @@ func (d *elementSecurityZoneDataSource) Schema(_ context.Context, _ datasource.S
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Additional path parameters for the data source, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": dsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Entity tag returned by the API, managed automatically by the provider.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": dsschema.Int64Attribute{
-				Required: false,
-				Computed: true,
-				Optional: true,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Description: "Schema version returned by the API, managed automatically by the provider.",
 			},
 			"items": dsschema.ListNestedAttribute{
-				Computed: true,
+				Computed:    true,
+				Description: "The list of items returned by the data source.",
 				NestedObject: dsschema.NestedAttributeObject{
 					Attributes: map[string]dsschema.Attribute{
-						// rest all properties to be read from GET API Schema schema=ElementSecurityZoneScreen
+						// rest all properties to be read from GET API Schema schema=ElementSecurityZoneScreenV2N1
 						// property: name=_etag, type=INTEGER macro=rss_schema
 						"x_etag": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 						// property: name=_schema, type=INTEGER macro=rss_schema
 						"x_schema": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 						// property: name=id, type=STRING macro=rss_schema
 						"id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=id, type=STRING macro=rss_schema
 						// property: name=interface_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"interface_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Interface ids. Each item: matching `[0-9]{1,30}`.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=interface_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=lannetwork_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"lannetwork_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Lannetwork ids. Each item: matching `[0-9]{1,30}`.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=lannetwork_ids, type=ARRAY_PRIMITIVE macro=rss_schema
+						// property: name=pa_network_id, type=STRING macro=rss_schema
+						"pa_network_id": dsschema.StringAttribute{
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Pa network id.",
+						},
+						// key name holder for attribute: name=pa_network_id, type=STRING macro=rss_schema
+						// property: name=site_id, type=STRING macro=rss_schema
+						"site_id": dsschema.StringAttribute{
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Site id. Value: at most 50 characters, matching `^-?[0-9]{1,50}$`.",
+						},
+						// key name holder for attribute: name=site_id, type=STRING macro=rss_schema
 						// property: name=waninterface_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"waninterface_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Waninterface ids. Each item: matching `[0-9]{1,30}`.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=waninterface_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=wanoverlay_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"wanoverlay_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Wanoverlay ids. Each item: matching `[0-9]{1,30}`.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=wanoverlay_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=zone_id, type=STRING macro=rss_schema
 						"zone_id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Zone id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
 						},
 						// key name holder for attribute: name=zone_id, type=STRING macro=rss_schema
 					},
@@ -204,7 +236,7 @@ func (d *elementSecurityZoneDataSource) Read(ctx context.Context, req datasource
 	svc := sdwan_client.NewClient(d.client)
 
 	// Prepare input for the API endpoint.
-	get_path := "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/securityzones/{security_zone_id}"
+	get_path := "/sdwan/v2.1/api/sites/{site_id}/elements/{element_id}/securityzones/{security_zone_id}"
 	list_request := &sdwan_client.SdwanClientRequestResponse{}
 	list_request.Method = "GET"
 	list_request.Path = get_path[:strings.LastIndex(get_path, "/")]
@@ -215,17 +247,25 @@ func (d *elementSecurityZoneDataSource) Read(ctx context.Context, req datasource
 
 	// Perform the operation.
 	svc.ExecuteSdwanRequest(ctx, list_request)
+	response_body_string := `{"items":[]}`
 	if list_request.ResponseErr != nil {
-		if IsObjectNotFound(*list_request.ResponseErr) {
-			resp.State.RemoveResource(ctx)
-		} else {
-			resp.Diagnostics.AddError("error reading prismasdwan_element_security_zone", (*list_request.ResponseErr).Error())
+		// a 404 here means the list endpoint itself is missing, which must not look like "no matches"
+		{
+			resp.Diagnostics.AddError("error reading prismasdwan_element_security_zone",
+				fmt.Sprintf("%s (GET %s)", (*list_request.ResponseErr).Error(), *list_request.FinalPath))
+			return
 		}
-		return
+	} else {
+		response_body_string = string(*list_request.ResponseBytes)
+		// some endpoints return the one object itself instead of {"items": [...]}: treat it as the only item
+		var body map[string]interface{}
+		if err := json.Unmarshal([]byte(response_body_string), &body); err == nil {
+			if _, isList := body["items"]; !isList && body["id"] != nil {
+				wrapped, _ := json.Marshal(map[string]interface{}{"items": []map[string]interface{}{body}})
+				response_body_string = string(wrapped)
+			}
+		}
 	}
-
-	// read json string from http response
-	response_body_string := string(*list_request.ResponseBytes)
 	tflog.Info(ctx, "lookup response from server", map[string]any{
 		"path": response_body_string,
 	})
@@ -238,7 +278,9 @@ func (d *elementSecurityZoneDataSource) Read(ctx context.Context, req datasource
 		resp.Diagnostics.AddError("error in json unmarshal to generic map in lookup", json_err.Error())
 		return
 	}
-	// ensure its as array
+
+	// no match is an empty list, not null: items[0] and length(items) must work on a miss
+	state_with_filter.Items = []*dsModelElementSecurityZoneScreenV2N1{} // ensure its as array
 	for _, item := range response.Items {
 		// create json from item
 		item_json, item_err := json.Marshal(item)
@@ -275,20 +317,20 @@ func (d *elementSecurityZoneDataSource) Read(ctx context.Context, req datasource
 		}
 
 		// Store the answer to state.
-		var state dsModelElementSecurityZoneScreen
+		var state dsModelElementSecurityZoneScreenV2N1
 
 		// start copying attributes
-		var ans sdwan_schema.ElementSecurityZoneScreen
+		var ans sdwan_schema.ElementSecurityZoneScreenV2N1
 		// copy from json response
 		json_err := json.Unmarshal(item_json, &ans)
 		// if found, exit
 		if json_err != nil {
-			resp.Diagnostics.AddError("error in json unmarshal to ElementSecurityZoneScreen", json_err.Error())
+			resp.Diagnostics.AddError("error in json unmarshal to ElementSecurityZoneScreenV2N1", json_err.Error())
 			return
 		}
 
-		// lets copy all items into state schema=ElementSecurityZoneScreen
-		// copy_to_state: state=state prefix=dsModel ans=ans properties=8
+		// lets copy all items into state schema=ElementSecurityZoneScreenV2N1
+		// copy_to_state: state=state prefix=dsModel ans=ans properties=10
 		tflog.Debug(ctx, "copy_to_state state=state prefix=dsModel ans=ans")
 		// property: name=_etag, type=INTEGER macro=copy_to_state
 		state.Etag = types.Int64PointerValue(ans.Etag)
@@ -304,6 +346,10 @@ func (d *elementSecurityZoneDataSource) Read(ctx context.Context, req datasource
 		varLannetworkIds, errLannetworkIds := types.ListValueFrom(ctx, types.StringType, ans.LannetworkIds)
 		state.LannetworkIds = varLannetworkIds
 		resp.Diagnostics.Append(errLannetworkIds.Errors()...)
+		// property: name=pa_network_id, type=STRING macro=copy_to_state
+		state.PaNetworkId = types.StringPointerValue(ans.PaNetworkId)
+		// property: name=site_id, type=STRING macro=copy_to_state
+		state.SiteId = types.StringPointerValue(ans.SiteId)
 		// property: name=waninterface_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 		varWaninterfaceIds, errWaninterfaceIds := types.ListValueFrom(ctx, types.StringType, ans.WaninterfaceIds)
 		state.WaninterfaceIds = varWaninterfaceIds

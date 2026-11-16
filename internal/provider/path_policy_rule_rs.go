@@ -27,19 +27,20 @@ import (
 // | Schema Map Summary (size=goLangStructMap=6)
 // | Computed Resource Name=networkpolicysets_networkpolicyrules
 // +-----------------------------------------------------------------
-// | BestPathConfig HasID=false
-// | UserGroup HasID=false
-// | WANPath HasID=false
-// | PathsAllowedV2N1 HasID=false
+// | WANPathV2N5 HasID=false
+// | PathsAllowedV2N5 HasID=false
 // | ServiceContext HasID=false
-// | NetworkPolicyRuleScreenV2N4 HasID=true
+// | UserGroup HasID=false
+// | ProbeMetricInfo HasID=false
+// | NetworkPolicyRuleScreenV2N5 HasID=true
 // +-----------------------------------------------------------------
 
 // Resource.
 var (
-	_ resource.Resource                = &pathPolicyRuleResource{}
-	_ resource.ResourceWithConfigure   = &pathPolicyRuleResource{}
-	_ resource.ResourceWithImportState = &pathPolicyRuleResource{}
+	_ resource.Resource                   = &pathPolicyRuleResource{}
+	_ resource.ResourceWithConfigure      = &pathPolicyRuleResource{}
+	_ resource.ResourceWithImportState    = &pathPolicyRuleResource{}
+	_ resource.ResourceWithValidateConfig = &pathPolicyRuleResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -60,6 +61,12 @@ type pathPolicyRuleResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *pathPolicyRuleResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"policy_set_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *pathPolicyRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_path_policy_rule"
@@ -68,36 +75,40 @@ func (r *pathPolicyRuleResource) Metadata(_ context.Context, req resource.Metada
 // Schema defines the schema for this data source.
 func (r *pathPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Path Policy Rule.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
-			// rest all properties to be read from GET API Schema schema=NetworkPolicyRuleScreenV2N4
+			// rest all properties to be read from GET API Schema schema=NetworkPolicyRuleScreenV2N5
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=app_def_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -106,49 +117,56 @@ func (r *pathPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "App def ids. At most 256 items.",
+				Validators:  ListMaxItems(256),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=app_def_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=best_path_config, type=REFERENCE macro=rss_schema
 			"best_path_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Best path config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=metric, type=STRING macro=rss_schema
 					"metric": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Metric. Value: one of latency, jitter, packet_loss, init_failure_pct, dns_txn_failure_pct.",
 					},
 					// key name holder for attribute: name=metric, type=STRING macro=rss_schema
 					// property: name=metric_type, type=STRING macro=rss_schema
 					"metric_type": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Metric type. Value: one of probe, lqm.",
 					},
 					// key name holder for attribute: name=metric_type, type=STRING macro=rss_schema
 					// property: name=probe_config_id, type=STRING macro=rss_schema
 					"probe_config_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Probe config id.",
 					},
 					// key name holder for attribute: name=probe_config_id, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=probe_config_id, type=STRING macro=rss_schema
+			// key name holder for attribute: name=best_path_config, type=REFERENCE macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -157,207 +175,232 @@ func (r *pathPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Dest device ids. At most 10 items.",
+				Validators:  ListMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=destination_prefixes_id, type=STRING macro=rss_schema
 			"destination_prefixes_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Destination prefixes id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
 			},
 			// key name holder for attribute: name=destination_prefixes_id, type=STRING macro=rss_schema
 			// property: name=enabled, type=BOOLEAN macro=rss_schema
 			"enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Enabled.",
 			},
 			// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=network_context_id, type=STRING macro=rss_schema
 			"network_context_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Network context id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
 			},
 			// key name holder for attribute: name=network_context_id, type=STRING macro=rss_schema
 			// property: name=order_number, type=INTEGER macro=rss_schema
 			"order_number": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Order number. Value: between 1 and 65535.",
 			},
 			// key name holder for attribute: name=order_number, type=INTEGER macro=rss_schema
 			// property: name=paths_allowed, type=REFERENCE macro=rss_schema
 			"paths_allowed": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Paths allowed.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=active_paths, type=ARRAY_REFERENCE macro=rss_schema
 					"active_paths": rsschema.ListNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Active paths.",
 						NestedObject: rsschema.NestedAttributeObject{
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=label, type=STRING macro=rss_schema
 								"label": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Label.",
 								},
 								// key name holder for attribute: name=label, type=STRING macro=rss_schema
 								// property: name=path_type, type=STRING macro=rss_schema
 								"path_type": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Path type. Value: one of vpn, direct, servicelink, pa_vpn.",
 								},
 								// key name holder for attribute: name=path_type, type=STRING macro=rss_schema
 							},
 						},
 					},
-					// key name holder for attribute: name=path_type, type=STRING macro=rss_schema
+					// key name holder for attribute: name=active_paths, type=ARRAY_REFERENCE macro=rss_schema
 					// property: name=backup_paths, type=ARRAY_REFERENCE macro=rss_schema
 					"backup_paths": rsschema.ListNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Backup paths.",
 						NestedObject: rsschema.NestedAttributeObject{
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=label, type=STRING macro=rss_schema
 								"label": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Label.",
 								},
 								// key name holder for attribute: name=label, type=STRING macro=rss_schema
 								// property: name=path_type, type=STRING macro=rss_schema
 								"path_type": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Path type. Value: one of vpn, direct, servicelink, pa_vpn.",
 								},
 								// key name holder for attribute: name=path_type, type=STRING macro=rss_schema
 							},
 						},
 					},
-					// key name holder for attribute: name=path_type, type=STRING macro=rss_schema
+					// key name holder for attribute: name=backup_paths, type=ARRAY_REFERENCE macro=rss_schema
 					// property: name=l3_failure_paths, type=ARRAY_REFERENCE macro=rss_schema
 					"l3_failure_paths": rsschema.ListNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "L3 failure paths.",
 						NestedObject: rsschema.NestedAttributeObject{
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=label, type=STRING macro=rss_schema
 								"label": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Label.",
 								},
 								// key name holder for attribute: name=label, type=STRING macro=rss_schema
 								// property: name=path_type, type=STRING macro=rss_schema
 								"path_type": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Path type. Value: one of vpn, direct, servicelink, pa_vpn.",
 								},
 								// key name holder for attribute: name=path_type, type=STRING macro=rss_schema
 							},
 						},
 					},
-					// key name holder for attribute: name=path_type, type=STRING macro=rss_schema
+					// key name holder for attribute: name=l3_failure_paths, type=ARRAY_REFERENCE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=path_type, type=STRING macro=rss_schema
+			// key name holder for attribute: name=paths_allowed, type=REFERENCE macro=rss_schema
 			// property: name=service_context, type=REFERENCE macro=rss_schema
 			"service_context": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Service context.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=active_service_label_id, type=STRING macro=rss_schema
 					"active_service_label_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Active service label id.",
 					},
 					// key name holder for attribute: name=active_service_label_id, type=STRING macro=rss_schema
 					// property: name=active_service_label_type, type=STRING macro=rss_schema
 					"active_service_label_type": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Active service label type. Value: one of cg-transit, non-cg-transit, sase.",
 					},
 					// key name holder for attribute: name=active_service_label_type, type=STRING macro=rss_schema
 					// property: name=backup_service_label_id, type=STRING macro=rss_schema
 					"backup_service_label_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Backup service label id.",
 					},
 					// key name holder for attribute: name=backup_service_label_id, type=STRING macro=rss_schema
 					// property: name=backup_service_label_type, type=STRING macro=rss_schema
 					"backup_service_label_type": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Backup service label type. Value: one of cg-transit, non-cg-transit, sase.",
 					},
 					// key name holder for attribute: name=backup_service_label_type, type=STRING macro=rss_schema
 					// property: name=type, type=STRING macro=rss_schema
 					"type": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Type. Value: one of allowed-transit, required-transit.",
 					},
 					// key name holder for attribute: name=type, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=type, type=STRING macro=rss_schema
+			// key name holder for attribute: name=service_context, type=REFERENCE macro=rss_schema
 			// property: name=source_prefixes_id, type=STRING macro=rss_schema
 			"source_prefixes_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Source prefixes id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
 			},
 			// key name holder for attribute: name=source_prefixes_id, type=STRING macro=rss_schema
 			// property: name=src_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -366,6 +409,8 @@ func (r *pathPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Src device ids. At most 256 items.",
+				Validators:  ListMaxItems(256),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=src_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -375,15 +420,18 @@ func (r *pathPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=user_or_group, type=REFERENCE macro=rss_schema
 			"user_or_group": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "User or group.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=user_group_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 					"user_group_ids": rsschema.ListAttribute{
@@ -391,6 +439,7 @@ func (r *pathPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "User group ids.",
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=user_group_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -400,12 +449,13 @@ func (r *pathPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "User ids.",
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=user_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=user_ids, type=ARRAY_PRIMITIVE macro=rss_schema
+			// key name holder for attribute: name=user_or_group, type=REFERENCE macro=rss_schema
 		},
 	}
 }
@@ -432,7 +482,7 @@ func (r *pathPolicyRuleResource) GetHttpStatusCode(request *sdwan_client.SdwanCl
 	}
 }
 
-func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetworkPolicyRuleScreenV2N4, state *rsModelNetworkPolicyRuleScreenV2N4, resp *resource.CreateResponse) bool {
+func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetworkPolicyRuleScreenV2N5, state *rsModelNetworkPolicyRuleScreenV2N5, resp *resource.CreateResponse) bool {
 	tflog.Info(ctx, "executing http post for prismasdwan_path_policy_rule")
 	// Basic logging.
 	tflog.Info(ctx, "performing resource create", map[string]any{
@@ -444,7 +494,7 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 	create_request := &sdwan_client.SdwanClientRequestResponse{}
 	create_request.ResourceType = "prismasdwan_path_policy_rule"
 	create_request.Method = "POST"
-	create_request.Path = "/sdwan/v2.4/api/networkpolicysets/{policy_set_id}/networkpolicyrules"
+	create_request.Path = "/sdwan/v2.5/api/networkpolicysets/{policy_set_id}/networkpolicyrules"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, plan.TfParameters)
@@ -454,7 +504,7 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.NetworkPolicyRuleScreenV2N4{}
+	var body = &sdwan_schema.NetworkPolicyRuleScreenV2N5{}
 
 	// copy from plan to body
 	// copy_from_plan: body=body prefix=rsModel plan=plan properties=18
@@ -467,7 +517,7 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 	body.AppDefIds = ListStringValueOrNil(ctx, plan.AppDefIds)
 	// property: name=best_path_config, type=REFERENCE macro=copy_from_plan
 	if plan.BestPathConfig != nil {
-		body.BestPathConfig = &sdwan_schema.BestPathConfig{}
+		body.BestPathConfig = &sdwan_schema.ProbeMetricInfo{}
 		// copy_from_plan: body=body.BestPathConfig prefix=rsModel plan=plan.BestPathConfig properties=3
 		tflog.Debug(ctx, "copy_from_plan body=body.BestPathConfig prefix=rsModel plan=plan.BestPathConfig")
 		// property: name=metric, type=STRING macro=copy_from_plan
@@ -495,19 +545,19 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 	body.OrderNumber = Int64ValueOrNil(plan.OrderNumber)
 	// property: name=paths_allowed, type=REFERENCE macro=copy_from_plan
 	if plan.PathsAllowed != nil {
-		body.PathsAllowed = &sdwan_schema.PathsAllowedV2N1{}
+		body.PathsAllowed = &sdwan_schema.PathsAllowedV2N5{}
 		// copy_from_plan: body=body.PathsAllowed prefix=rsModel plan=plan.PathsAllowed properties=3
 		tflog.Debug(ctx, "copy_from_plan body=body.PathsAllowed prefix=rsModel plan=plan.PathsAllowed")
 		// property: name=active_paths, type=ARRAY_REFERENCE macro=copy_from_plan
 		if plan.PathsAllowed.ActivePaths == nil {
 			body.PathsAllowed.ActivePaths = nil
 		} else if len(plan.PathsAllowed.ActivePaths) == 0 {
-			body.PathsAllowed.ActivePaths = []sdwan_schema.WANPath{}
+			body.PathsAllowed.ActivePaths = []sdwan_schema.WANPathV2N5{}
 		} else {
-			body.PathsAllowed.ActivePaths = make([]sdwan_schema.WANPath, 0, len(plan.PathsAllowed.ActivePaths))
+			body.PathsAllowed.ActivePaths = make([]sdwan_schema.WANPathV2N5, 0, len(plan.PathsAllowed.ActivePaths))
 			for varLoopActivePathsIndex, varLoopActivePaths := range plan.PathsAllowed.ActivePaths {
 				// add a new item
-				body.PathsAllowed.ActivePaths = append(body.PathsAllowed.ActivePaths, sdwan_schema.WANPath{})
+				body.PathsAllowed.ActivePaths = append(body.PathsAllowed.ActivePaths, sdwan_schema.WANPathV2N5{})
 				// copy_from_plan: body=body.PathsAllowed.ActivePaths[varLoopActivePathsIndex] prefix=rsModel plan=varLoopActivePaths properties=2
 				tflog.Debug(ctx, "copy_from_plan body=body.PathsAllowed.ActivePaths[varLoopActivePathsIndex] prefix=rsModel plan=varLoopActivePaths")
 				// property: name=label, type=STRING macro=copy_from_plan
@@ -520,12 +570,12 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 		if plan.PathsAllowed.BackupPaths == nil {
 			body.PathsAllowed.BackupPaths = nil
 		} else if len(plan.PathsAllowed.BackupPaths) == 0 {
-			body.PathsAllowed.BackupPaths = []sdwan_schema.WANPath{}
+			body.PathsAllowed.BackupPaths = []sdwan_schema.WANPathV2N5{}
 		} else {
-			body.PathsAllowed.BackupPaths = make([]sdwan_schema.WANPath, 0, len(plan.PathsAllowed.BackupPaths))
+			body.PathsAllowed.BackupPaths = make([]sdwan_schema.WANPathV2N5, 0, len(plan.PathsAllowed.BackupPaths))
 			for varLoopBackupPathsIndex, varLoopBackupPaths := range plan.PathsAllowed.BackupPaths {
 				// add a new item
-				body.PathsAllowed.BackupPaths = append(body.PathsAllowed.BackupPaths, sdwan_schema.WANPath{})
+				body.PathsAllowed.BackupPaths = append(body.PathsAllowed.BackupPaths, sdwan_schema.WANPathV2N5{})
 				// copy_from_plan: body=body.PathsAllowed.BackupPaths[varLoopBackupPathsIndex] prefix=rsModel plan=varLoopBackupPaths properties=2
 				tflog.Debug(ctx, "copy_from_plan body=body.PathsAllowed.BackupPaths[varLoopBackupPathsIndex] prefix=rsModel plan=varLoopBackupPaths")
 				// property: name=label, type=STRING macro=copy_from_plan
@@ -538,12 +588,12 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 		if plan.PathsAllowed.L3FailurePaths == nil {
 			body.PathsAllowed.L3FailurePaths = nil
 		} else if len(plan.PathsAllowed.L3FailurePaths) == 0 {
-			body.PathsAllowed.L3FailurePaths = []sdwan_schema.WANPath{}
+			body.PathsAllowed.L3FailurePaths = []sdwan_schema.WANPathV2N5{}
 		} else {
-			body.PathsAllowed.L3FailurePaths = make([]sdwan_schema.WANPath, 0, len(plan.PathsAllowed.L3FailurePaths))
+			body.PathsAllowed.L3FailurePaths = make([]sdwan_schema.WANPathV2N5, 0, len(plan.PathsAllowed.L3FailurePaths))
 			for varLoopL3FailurePathsIndex, varLoopL3FailurePaths := range plan.PathsAllowed.L3FailurePaths {
 				// add a new item
-				body.PathsAllowed.L3FailurePaths = append(body.PathsAllowed.L3FailurePaths, sdwan_schema.WANPath{})
+				body.PathsAllowed.L3FailurePaths = append(body.PathsAllowed.L3FailurePaths, sdwan_schema.WANPathV2N5{})
 				// copy_from_plan: body=body.PathsAllowed.L3FailurePaths[varLoopL3FailurePathsIndex] prefix=rsModel plan=varLoopL3FailurePaths properties=2
 				tflog.Debug(ctx, "copy_from_plan body=body.PathsAllowed.L3FailurePaths[varLoopL3FailurePathsIndex] prefix=rsModel plan=varLoopL3FailurePaths")
 				// property: name=label, type=STRING macro=copy_from_plan
@@ -589,7 +639,7 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct NetworkPolicyRuleScreenV2N4 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct NetworkPolicyRuleScreenV2N5 to JSON:", err.Error())
 		return false
 	}
 
@@ -632,12 +682,12 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.NetworkPolicyRuleScreenV2N4
+	var ans sdwan_schema.NetworkPolicyRuleScreenV2N5
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to NetworkPolicyRuleScreenV2N4 in create", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to NetworkPolicyRuleScreenV2N5 in create", json_err.Error())
 		return false
 	}
 
@@ -662,7 +712,7 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 	state.TfParameters = plan.TfParameters
 	tflog.Info(ctx, "created prismasdwan_path_policy_rule with ID", map[string]any{"tfid": state.Tfid.ValueString()})
 
-	// Store the answer to state. schema=NetworkPolicyRuleScreenV2N4
+	// Store the answer to state. schema=NetworkPolicyRuleScreenV2N5
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=18
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -677,7 +727,7 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 	if ans.BestPathConfig == nil {
 		state.BestPathConfig = nil
 	} else {
-		state.BestPathConfig = &rsModelBestPathConfig{}
+		state.BestPathConfig = &rsModelProbeMetricInfo{}
 		// copy_to_state: state=state.BestPathConfig prefix=rsModel ans=ans.BestPathConfig properties=3
 		tflog.Debug(ctx, "copy_to_state state=state.BestPathConfig prefix=rsModel ans=ans.BestPathConfig")
 		// property: name=metric, type=STRING macro=copy_to_state
@@ -709,19 +759,19 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 	if ans.PathsAllowed == nil {
 		state.PathsAllowed = nil
 	} else {
-		state.PathsAllowed = &rsModelPathsAllowedV2N1{}
+		state.PathsAllowed = &rsModelPathsAllowedV2N5{}
 		// copy_to_state: state=state.PathsAllowed prefix=rsModel ans=ans.PathsAllowed properties=3
 		tflog.Debug(ctx, "copy_to_state state=state.PathsAllowed prefix=rsModel ans=ans.PathsAllowed")
 		// property: name=active_paths, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.PathsAllowed.ActivePaths == nil {
 			state.PathsAllowed.ActivePaths = nil
 		} else if len(ans.PathsAllowed.ActivePaths) == 0 {
-			state.PathsAllowed.ActivePaths = []rsModelWANPath{}
+			state.PathsAllowed.ActivePaths = []rsModelWANPathV2N5{}
 		} else {
-			state.PathsAllowed.ActivePaths = make([]rsModelWANPath, 0, len(ans.PathsAllowed.ActivePaths))
+			state.PathsAllowed.ActivePaths = make([]rsModelWANPathV2N5, 0, len(ans.PathsAllowed.ActivePaths))
 			for varLoopActivePathsIndex, varLoopActivePaths := range ans.PathsAllowed.ActivePaths {
 				// add a new item
-				state.PathsAllowed.ActivePaths = append(state.PathsAllowed.ActivePaths, rsModelWANPath{})
+				state.PathsAllowed.ActivePaths = append(state.PathsAllowed.ActivePaths, rsModelWANPathV2N5{})
 				// copy_to_state: state=state.PathsAllowed.ActivePaths[varLoopActivePathsIndex] prefix=rsModel ans=varLoopActivePaths properties=2
 				tflog.Debug(ctx, "copy_to_state state=state.PathsAllowed.ActivePaths[varLoopActivePathsIndex] prefix=rsModel ans=varLoopActivePaths")
 				// property: name=label, type=STRING macro=copy_to_state
@@ -734,12 +784,12 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 		if ans.PathsAllowed.BackupPaths == nil {
 			state.PathsAllowed.BackupPaths = nil
 		} else if len(ans.PathsAllowed.BackupPaths) == 0 {
-			state.PathsAllowed.BackupPaths = []rsModelWANPath{}
+			state.PathsAllowed.BackupPaths = []rsModelWANPathV2N5{}
 		} else {
-			state.PathsAllowed.BackupPaths = make([]rsModelWANPath, 0, len(ans.PathsAllowed.BackupPaths))
+			state.PathsAllowed.BackupPaths = make([]rsModelWANPathV2N5, 0, len(ans.PathsAllowed.BackupPaths))
 			for varLoopBackupPathsIndex, varLoopBackupPaths := range ans.PathsAllowed.BackupPaths {
 				// add a new item
-				state.PathsAllowed.BackupPaths = append(state.PathsAllowed.BackupPaths, rsModelWANPath{})
+				state.PathsAllowed.BackupPaths = append(state.PathsAllowed.BackupPaths, rsModelWANPathV2N5{})
 				// copy_to_state: state=state.PathsAllowed.BackupPaths[varLoopBackupPathsIndex] prefix=rsModel ans=varLoopBackupPaths properties=2
 				tflog.Debug(ctx, "copy_to_state state=state.PathsAllowed.BackupPaths[varLoopBackupPathsIndex] prefix=rsModel ans=varLoopBackupPaths")
 				// property: name=label, type=STRING macro=copy_to_state
@@ -752,12 +802,12 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 		if ans.PathsAllowed.L3FailurePaths == nil {
 			state.PathsAllowed.L3FailurePaths = nil
 		} else if len(ans.PathsAllowed.L3FailurePaths) == 0 {
-			state.PathsAllowed.L3FailurePaths = []rsModelWANPath{}
+			state.PathsAllowed.L3FailurePaths = []rsModelWANPathV2N5{}
 		} else {
-			state.PathsAllowed.L3FailurePaths = make([]rsModelWANPath, 0, len(ans.PathsAllowed.L3FailurePaths))
+			state.PathsAllowed.L3FailurePaths = make([]rsModelWANPathV2N5, 0, len(ans.PathsAllowed.L3FailurePaths))
 			for varLoopL3FailurePathsIndex, varLoopL3FailurePaths := range ans.PathsAllowed.L3FailurePaths {
 				// add a new item
-				state.PathsAllowed.L3FailurePaths = append(state.PathsAllowed.L3FailurePaths, rsModelWANPath{})
+				state.PathsAllowed.L3FailurePaths = append(state.PathsAllowed.L3FailurePaths, rsModelWANPathV2N5{})
 				// copy_to_state: state=state.PathsAllowed.L3FailurePaths[varLoopL3FailurePathsIndex] prefix=rsModel ans=varLoopL3FailurePaths properties=2
 				tflog.Debug(ctx, "copy_to_state state=state.PathsAllowed.L3FailurePaths[varLoopL3FailurePathsIndex] prefix=rsModel ans=varLoopL3FailurePaths")
 				// property: name=label, type=STRING macro=copy_to_state
@@ -795,6 +845,14 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=user_or_group, type=REFERENCE macro=copy_to_state
 	if ans.UserOrGroup == nil {
 		state.UserOrGroup = nil
@@ -814,7 +872,7 @@ func (r *pathPolicyRuleResource) doPost(ctx context.Context, plan *rsModelNetwor
 	return true
 }
 
-func (r *pathPolicyRuleResource) doGet(ctx context.Context, state *rsModelNetworkPolicyRuleScreenV2N4, savestate *rsModelNetworkPolicyRuleScreenV2N4, State *tfsdk.State, resp *resource.ReadResponse) bool {
+func (r *pathPolicyRuleResource) doGet(ctx context.Context, state *rsModelNetworkPolicyRuleScreenV2N5, savestate *rsModelNetworkPolicyRuleScreenV2N5, State *tfsdk.State, resp *resource.ReadResponse) bool {
 	// Basic logging.
 	tfid := savestate.Tfid.ValueString()
 	tflog.Info(ctx, "performing resource read", map[string]any{
@@ -836,7 +894,7 @@ func (r *pathPolicyRuleResource) doGet(ctx context.Context, state *rsModelNetwor
 	read_request := &sdwan_client.SdwanClientRequestResponse{}
 	read_request.ResourceType = "prismasdwan_path_policy_rule"
 	read_request.Method = "GET"
-	read_request.Path = "/sdwan/v2.4/api/networkpolicysets/{policy_set_id}/networkpolicyrules/{policy_rule_id}"
+	read_request.Path = "/sdwan/v2.5/api/networkpolicysets/{policy_set_id}/networkpolicyrules/{policy_rule_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, savestate.TfParameters)
@@ -878,21 +936,37 @@ func (r *pathPolicyRuleResource) doGet(ctx context.Context, state *rsModelNetwor
 	tflog.Debug(ctx, "http json override: set response_body_string::_schema")
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
-	// Store the answer to state. schema=NetworkPolicyRuleScreenV2N4
+	// Store the answer to state. schema=NetworkPolicyRuleScreenV2N5
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
 	// start copying attributes
-	var ans sdwan_schema.NetworkPolicyRuleScreenV2N4
+	var ans sdwan_schema.NetworkPolicyRuleScreenV2N5
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to NetworkPolicyRuleScreenV2N4 in read", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to NetworkPolicyRuleScreenV2N5 in read", json_err.Error())
 		return false
 	}
 	// lets copy all items into state
@@ -910,7 +984,7 @@ func (r *pathPolicyRuleResource) doGet(ctx context.Context, state *rsModelNetwor
 	if ans.BestPathConfig == nil {
 		state.BestPathConfig = nil
 	} else {
-		state.BestPathConfig = &rsModelBestPathConfig{}
+		state.BestPathConfig = &rsModelProbeMetricInfo{}
 		// copy_to_state: state=state.BestPathConfig prefix=rsModel ans=ans.BestPathConfig properties=3
 		tflog.Debug(ctx, "copy_to_state state=state.BestPathConfig prefix=rsModel ans=ans.BestPathConfig")
 		// property: name=metric, type=STRING macro=copy_to_state
@@ -942,19 +1016,19 @@ func (r *pathPolicyRuleResource) doGet(ctx context.Context, state *rsModelNetwor
 	if ans.PathsAllowed == nil {
 		state.PathsAllowed = nil
 	} else {
-		state.PathsAllowed = &rsModelPathsAllowedV2N1{}
+		state.PathsAllowed = &rsModelPathsAllowedV2N5{}
 		// copy_to_state: state=state.PathsAllowed prefix=rsModel ans=ans.PathsAllowed properties=3
 		tflog.Debug(ctx, "copy_to_state state=state.PathsAllowed prefix=rsModel ans=ans.PathsAllowed")
 		// property: name=active_paths, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.PathsAllowed.ActivePaths == nil {
 			state.PathsAllowed.ActivePaths = nil
 		} else if len(ans.PathsAllowed.ActivePaths) == 0 {
-			state.PathsAllowed.ActivePaths = []rsModelWANPath{}
+			state.PathsAllowed.ActivePaths = []rsModelWANPathV2N5{}
 		} else {
-			state.PathsAllowed.ActivePaths = make([]rsModelWANPath, 0, len(ans.PathsAllowed.ActivePaths))
+			state.PathsAllowed.ActivePaths = make([]rsModelWANPathV2N5, 0, len(ans.PathsAllowed.ActivePaths))
 			for varLoopActivePathsIndex, varLoopActivePaths := range ans.PathsAllowed.ActivePaths {
 				// add a new item
-				state.PathsAllowed.ActivePaths = append(state.PathsAllowed.ActivePaths, rsModelWANPath{})
+				state.PathsAllowed.ActivePaths = append(state.PathsAllowed.ActivePaths, rsModelWANPathV2N5{})
 				// copy_to_state: state=state.PathsAllowed.ActivePaths[varLoopActivePathsIndex] prefix=rsModel ans=varLoopActivePaths properties=2
 				tflog.Debug(ctx, "copy_to_state state=state.PathsAllowed.ActivePaths[varLoopActivePathsIndex] prefix=rsModel ans=varLoopActivePaths")
 				// property: name=label, type=STRING macro=copy_to_state
@@ -967,12 +1041,12 @@ func (r *pathPolicyRuleResource) doGet(ctx context.Context, state *rsModelNetwor
 		if ans.PathsAllowed.BackupPaths == nil {
 			state.PathsAllowed.BackupPaths = nil
 		} else if len(ans.PathsAllowed.BackupPaths) == 0 {
-			state.PathsAllowed.BackupPaths = []rsModelWANPath{}
+			state.PathsAllowed.BackupPaths = []rsModelWANPathV2N5{}
 		} else {
-			state.PathsAllowed.BackupPaths = make([]rsModelWANPath, 0, len(ans.PathsAllowed.BackupPaths))
+			state.PathsAllowed.BackupPaths = make([]rsModelWANPathV2N5, 0, len(ans.PathsAllowed.BackupPaths))
 			for varLoopBackupPathsIndex, varLoopBackupPaths := range ans.PathsAllowed.BackupPaths {
 				// add a new item
-				state.PathsAllowed.BackupPaths = append(state.PathsAllowed.BackupPaths, rsModelWANPath{})
+				state.PathsAllowed.BackupPaths = append(state.PathsAllowed.BackupPaths, rsModelWANPathV2N5{})
 				// copy_to_state: state=state.PathsAllowed.BackupPaths[varLoopBackupPathsIndex] prefix=rsModel ans=varLoopBackupPaths properties=2
 				tflog.Debug(ctx, "copy_to_state state=state.PathsAllowed.BackupPaths[varLoopBackupPathsIndex] prefix=rsModel ans=varLoopBackupPaths")
 				// property: name=label, type=STRING macro=copy_to_state
@@ -985,12 +1059,12 @@ func (r *pathPolicyRuleResource) doGet(ctx context.Context, state *rsModelNetwor
 		if ans.PathsAllowed.L3FailurePaths == nil {
 			state.PathsAllowed.L3FailurePaths = nil
 		} else if len(ans.PathsAllowed.L3FailurePaths) == 0 {
-			state.PathsAllowed.L3FailurePaths = []rsModelWANPath{}
+			state.PathsAllowed.L3FailurePaths = []rsModelWANPathV2N5{}
 		} else {
-			state.PathsAllowed.L3FailurePaths = make([]rsModelWANPath, 0, len(ans.PathsAllowed.L3FailurePaths))
+			state.PathsAllowed.L3FailurePaths = make([]rsModelWANPathV2N5, 0, len(ans.PathsAllowed.L3FailurePaths))
 			for varLoopL3FailurePathsIndex, varLoopL3FailurePaths := range ans.PathsAllowed.L3FailurePaths {
 				// add a new item
-				state.PathsAllowed.L3FailurePaths = append(state.PathsAllowed.L3FailurePaths, rsModelWANPath{})
+				state.PathsAllowed.L3FailurePaths = append(state.PathsAllowed.L3FailurePaths, rsModelWANPathV2N5{})
 				// copy_to_state: state=state.PathsAllowed.L3FailurePaths[varLoopL3FailurePathsIndex] prefix=rsModel ans=varLoopL3FailurePaths properties=2
 				tflog.Debug(ctx, "copy_to_state state=state.PathsAllowed.L3FailurePaths[varLoopL3FailurePathsIndex] prefix=rsModel ans=varLoopL3FailurePaths")
 				// property: name=label, type=STRING macro=copy_to_state
@@ -1028,6 +1102,14 @@ func (r *pathPolicyRuleResource) doGet(ctx context.Context, state *rsModelNetwor
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=user_or_group, type=REFERENCE macro=copy_to_state
 	if ans.UserOrGroup == nil {
 		state.UserOrGroup = nil
@@ -1047,7 +1129,7 @@ func (r *pathPolicyRuleResource) doGet(ctx context.Context, state *rsModelNetwor
 	return true
 }
 
-func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetworkPolicyRuleScreenV2N4, state *rsModelNetworkPolicyRuleScreenV2N4, State *tfsdk.State, resp *resource.UpdateResponse) bool {
+func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetworkPolicyRuleScreenV2N5, state *rsModelNetworkPolicyRuleScreenV2N5, State *tfsdk.State, resp *resource.UpdateResponse) bool {
 	state_tfid := state.Tfid.ValueString()
 	plan_tfid := plan.Tfid.ValueString()
 	// Basic logging.
@@ -1075,7 +1157,7 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 	put_request := &sdwan_client.SdwanClientRequestResponse{}
 	put_request.ResourceType = "prismasdwan_path_policy_rule"
 	put_request.Method = "PUT"
-	put_request.Path = "/sdwan/v2.4/api/networkpolicysets/{policy_set_id}/networkpolicyrules/{policy_rule_id}"
+	put_request.Path = "/sdwan/v2.5/api/networkpolicysets/{policy_set_id}/networkpolicyrules/{policy_rule_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -1094,7 +1176,7 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.NetworkPolicyRuleScreenV2N4{}
+	var body = &sdwan_schema.NetworkPolicyRuleScreenV2N5{}
 
 	// now we create the JSON request from the state/plan created by TF
 	// below copy code generated from macro copy_from_plan_or_state
@@ -1113,28 +1195,33 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 		body.Schema = Int64ValueOrNil(plan.Schema)
 	}
 	// property: name=app_def_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.AppDefIds = ListStringValueOrNil(ctx, plan.AppDefIds)
+	if state != nil && plan.AppDefIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.AppDefIds = ListStringValueOrNil(ctx, state.AppDefIds)
+	} else {
+		body.AppDefIds = ListStringValueOrNil(ctx, plan.AppDefIds)
+	}
 	// property: name=best_path_config, type=REFERENCE macro=copy_from_plan_or_state
 	if plan.BestPathConfig == nil {
 		body.BestPathConfig = nil
 	} else {
-		body.BestPathConfig = &sdwan_schema.BestPathConfig{}
+		body.BestPathConfig = &sdwan_schema.ProbeMetricInfo{}
 		// copy_from_plan_or_state: body=body.BestPathConfig prefix=rsModel state=state.BestPathConfig plan=plan.BestPathConfig properties=3
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.BestPathConfig prefix=rsModel state=state.BestPathConfig plan=plan.BestPathConfig")
 		// property: name=metric, type=STRING macro=copy_from_plan_or_state
-		if state.BestPathConfig != nil {
+		if state != nil && state.BestPathConfig != nil {
 			body.BestPathConfig.Metric = ValueStringPointerFromPlanOrState(plan.BestPathConfig.Metric, state.BestPathConfig.Metric)
 		} else {
 			body.BestPathConfig.Metric = StringValueOrNil(plan.BestPathConfig.Metric)
 		}
 		// property: name=metric_type, type=STRING macro=copy_from_plan_or_state
-		if state.BestPathConfig != nil {
+		if state != nil && state.BestPathConfig != nil {
 			body.BestPathConfig.MetricType = ValueStringPointerFromPlanOrState(plan.BestPathConfig.MetricType, state.BestPathConfig.MetricType)
 		} else {
 			body.BestPathConfig.MetricType = StringValueOrNil(plan.BestPathConfig.MetricType)
 		}
 		// property: name=probe_config_id, type=STRING macro=copy_from_plan_or_state
-		if state.BestPathConfig != nil {
+		if state != nil && state.BestPathConfig != nil {
 			body.BestPathConfig.ProbeConfigId = ValueStringPointerFromPlanOrState(plan.BestPathConfig.ProbeConfigId, state.BestPathConfig.ProbeConfigId)
 		} else {
 			body.BestPathConfig.ProbeConfigId = StringValueOrNil(plan.BestPathConfig.ProbeConfigId)
@@ -1147,7 +1234,12 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 		body.Description = StringValueOrNil(plan.Description)
 	}
 	// property: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.DestDeviceIds = ListStringValueOrNil(ctx, plan.DestDeviceIds)
+	if state != nil && plan.DestDeviceIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.DestDeviceIds = ListStringValueOrNil(ctx, state.DestDeviceIds)
+	} else {
+		body.DestDeviceIds = ListStringValueOrNil(ctx, plan.DestDeviceIds)
+	}
 	// property: name=destination_prefixes_id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.DestinationPrefixesId = ValueStringPointerFromPlanOrState(plan.DestinationPrefixesId, state.DestinationPrefixesId)
@@ -1188,23 +1280,23 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 	if plan.PathsAllowed == nil {
 		body.PathsAllowed = nil
 	} else {
-		body.PathsAllowed = &sdwan_schema.PathsAllowedV2N1{}
+		body.PathsAllowed = &sdwan_schema.PathsAllowedV2N5{}
 		// copy_from_plan_or_state: body=body.PathsAllowed prefix=rsModel state=state.PathsAllowed plan=plan.PathsAllowed properties=3
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.PathsAllowed prefix=rsModel state=state.PathsAllowed plan=plan.PathsAllowed")
 		// property: name=active_paths, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-		if plan.PathsAllowed.ActivePaths == nil && (state.PathsAllowed == nil || state.PathsAllowed.ActivePaths == nil) {
+		if plan.PathsAllowed.ActivePaths == nil && (!(state != nil && state.PathsAllowed != nil) || state.PathsAllowed.ActivePaths == nil) {
 			body.PathsAllowed.ActivePaths = nil
-		} else if len(plan.PathsAllowed.ActivePaths) == 0 && (state.PathsAllowed == nil || len(state.PathsAllowed.ActivePaths) == 0) {
-			body.PathsAllowed.ActivePaths = []sdwan_schema.WANPath{}
-		} else if len(plan.PathsAllowed.ActivePaths) != 0 || (state.PathsAllowed != nil && len(state.PathsAllowed.ActivePaths) != 0) {
+		} else if len(plan.PathsAllowed.ActivePaths) == 0 && (!(state != nil && state.PathsAllowed != nil) || len(state.PathsAllowed.ActivePaths) == 0) {
+			body.PathsAllowed.ActivePaths = []sdwan_schema.WANPathV2N5{}
+		} else if len(plan.PathsAllowed.ActivePaths) != 0 || (state != nil && state.PathsAllowed != nil && len(state.PathsAllowed.ActivePaths) != 0) {
 			ActivePathsToUse := plan.PathsAllowed.ActivePaths
 			if len(plan.PathsAllowed.ActivePaths) == 0 {
 				ActivePathsToUse = state.PathsAllowed.ActivePaths
 			}
-			body.PathsAllowed.ActivePaths = make([]sdwan_schema.WANPath, 0, len(ActivePathsToUse))
+			body.PathsAllowed.ActivePaths = make([]sdwan_schema.WANPathV2N5, 0, len(ActivePathsToUse))
 			for varLoopActivePathsIndex, varLoopActivePaths := range ActivePathsToUse {
 				// add a new item
-				body.PathsAllowed.ActivePaths = append(body.PathsAllowed.ActivePaths, sdwan_schema.WANPath{})
+				body.PathsAllowed.ActivePaths = append(body.PathsAllowed.ActivePaths, sdwan_schema.WANPathV2N5{})
 				// since we have chosen to stick with either the plan or state, we need to simply copy child properties
 				// copy_from_plan: body=body.PathsAllowed.ActivePaths[varLoopActivePathsIndex] prefix=rsModel plan=varLoopActivePaths properties=2
 				tflog.Debug(ctx, "copy_from_plan body=body.PathsAllowed.ActivePaths[varLoopActivePathsIndex] prefix=rsModel plan=varLoopActivePaths")
@@ -1215,19 +1307,19 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 			}
 		}
 		// property: name=backup_paths, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-		if plan.PathsAllowed.BackupPaths == nil && (state.PathsAllowed == nil || state.PathsAllowed.BackupPaths == nil) {
+		if plan.PathsAllowed.BackupPaths == nil && (!(state != nil && state.PathsAllowed != nil) || state.PathsAllowed.BackupPaths == nil) {
 			body.PathsAllowed.BackupPaths = nil
-		} else if len(plan.PathsAllowed.BackupPaths) == 0 && (state.PathsAllowed == nil || len(state.PathsAllowed.BackupPaths) == 0) {
-			body.PathsAllowed.BackupPaths = []sdwan_schema.WANPath{}
-		} else if len(plan.PathsAllowed.BackupPaths) != 0 || (state.PathsAllowed != nil && len(state.PathsAllowed.BackupPaths) != 0) {
+		} else if len(plan.PathsAllowed.BackupPaths) == 0 && (!(state != nil && state.PathsAllowed != nil) || len(state.PathsAllowed.BackupPaths) == 0) {
+			body.PathsAllowed.BackupPaths = []sdwan_schema.WANPathV2N5{}
+		} else if len(plan.PathsAllowed.BackupPaths) != 0 || (state != nil && state.PathsAllowed != nil && len(state.PathsAllowed.BackupPaths) != 0) {
 			BackupPathsToUse := plan.PathsAllowed.BackupPaths
 			if len(plan.PathsAllowed.BackupPaths) == 0 {
 				BackupPathsToUse = state.PathsAllowed.BackupPaths
 			}
-			body.PathsAllowed.BackupPaths = make([]sdwan_schema.WANPath, 0, len(BackupPathsToUse))
+			body.PathsAllowed.BackupPaths = make([]sdwan_schema.WANPathV2N5, 0, len(BackupPathsToUse))
 			for varLoopBackupPathsIndex, varLoopBackupPaths := range BackupPathsToUse {
 				// add a new item
-				body.PathsAllowed.BackupPaths = append(body.PathsAllowed.BackupPaths, sdwan_schema.WANPath{})
+				body.PathsAllowed.BackupPaths = append(body.PathsAllowed.BackupPaths, sdwan_schema.WANPathV2N5{})
 				// since we have chosen to stick with either the plan or state, we need to simply copy child properties
 				// copy_from_plan: body=body.PathsAllowed.BackupPaths[varLoopBackupPathsIndex] prefix=rsModel plan=varLoopBackupPaths properties=2
 				tflog.Debug(ctx, "copy_from_plan body=body.PathsAllowed.BackupPaths[varLoopBackupPathsIndex] prefix=rsModel plan=varLoopBackupPaths")
@@ -1238,19 +1330,19 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 			}
 		}
 		// property: name=l3_failure_paths, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-		if plan.PathsAllowed.L3FailurePaths == nil && (state.PathsAllowed == nil || state.PathsAllowed.L3FailurePaths == nil) {
+		if plan.PathsAllowed.L3FailurePaths == nil && (!(state != nil && state.PathsAllowed != nil) || state.PathsAllowed.L3FailurePaths == nil) {
 			body.PathsAllowed.L3FailurePaths = nil
-		} else if len(plan.PathsAllowed.L3FailurePaths) == 0 && (state.PathsAllowed == nil || len(state.PathsAllowed.L3FailurePaths) == 0) {
-			body.PathsAllowed.L3FailurePaths = []sdwan_schema.WANPath{}
-		} else if len(plan.PathsAllowed.L3FailurePaths) != 0 || (state.PathsAllowed != nil && len(state.PathsAllowed.L3FailurePaths) != 0) {
+		} else if len(plan.PathsAllowed.L3FailurePaths) == 0 && (!(state != nil && state.PathsAllowed != nil) || len(state.PathsAllowed.L3FailurePaths) == 0) {
+			body.PathsAllowed.L3FailurePaths = []sdwan_schema.WANPathV2N5{}
+		} else if len(plan.PathsAllowed.L3FailurePaths) != 0 || (state != nil && state.PathsAllowed != nil && len(state.PathsAllowed.L3FailurePaths) != 0) {
 			L3FailurePathsToUse := plan.PathsAllowed.L3FailurePaths
 			if len(plan.PathsAllowed.L3FailurePaths) == 0 {
 				L3FailurePathsToUse = state.PathsAllowed.L3FailurePaths
 			}
-			body.PathsAllowed.L3FailurePaths = make([]sdwan_schema.WANPath, 0, len(L3FailurePathsToUse))
+			body.PathsAllowed.L3FailurePaths = make([]sdwan_schema.WANPathV2N5, 0, len(L3FailurePathsToUse))
 			for varLoopL3FailurePathsIndex, varLoopL3FailurePaths := range L3FailurePathsToUse {
 				// add a new item
-				body.PathsAllowed.L3FailurePaths = append(body.PathsAllowed.L3FailurePaths, sdwan_schema.WANPath{})
+				body.PathsAllowed.L3FailurePaths = append(body.PathsAllowed.L3FailurePaths, sdwan_schema.WANPathV2N5{})
 				// since we have chosen to stick with either the plan or state, we need to simply copy child properties
 				// copy_from_plan: body=body.PathsAllowed.L3FailurePaths[varLoopL3FailurePathsIndex] prefix=rsModel plan=varLoopL3FailurePaths properties=2
 				tflog.Debug(ctx, "copy_from_plan body=body.PathsAllowed.L3FailurePaths[varLoopL3FailurePathsIndex] prefix=rsModel plan=varLoopL3FailurePaths")
@@ -1269,31 +1361,31 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 		// copy_from_plan_or_state: body=body.ServiceContext prefix=rsModel state=state.ServiceContext plan=plan.ServiceContext properties=5
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.ServiceContext prefix=rsModel state=state.ServiceContext plan=plan.ServiceContext")
 		// property: name=active_service_label_id, type=STRING macro=copy_from_plan_or_state
-		if state.ServiceContext != nil {
+		if state != nil && state.ServiceContext != nil {
 			body.ServiceContext.ActiveServiceLabelId = ValueStringPointerFromPlanOrState(plan.ServiceContext.ActiveServiceLabelId, state.ServiceContext.ActiveServiceLabelId)
 		} else {
 			body.ServiceContext.ActiveServiceLabelId = StringValueOrNil(plan.ServiceContext.ActiveServiceLabelId)
 		}
 		// property: name=active_service_label_type, type=STRING macro=copy_from_plan_or_state
-		if state.ServiceContext != nil {
+		if state != nil && state.ServiceContext != nil {
 			body.ServiceContext.ActiveServiceLabelType = ValueStringPointerFromPlanOrState(plan.ServiceContext.ActiveServiceLabelType, state.ServiceContext.ActiveServiceLabelType)
 		} else {
 			body.ServiceContext.ActiveServiceLabelType = StringValueOrNil(plan.ServiceContext.ActiveServiceLabelType)
 		}
 		// property: name=backup_service_label_id, type=STRING macro=copy_from_plan_or_state
-		if state.ServiceContext != nil {
+		if state != nil && state.ServiceContext != nil {
 			body.ServiceContext.BackupServiceLabelId = ValueStringPointerFromPlanOrState(plan.ServiceContext.BackupServiceLabelId, state.ServiceContext.BackupServiceLabelId)
 		} else {
 			body.ServiceContext.BackupServiceLabelId = StringValueOrNil(plan.ServiceContext.BackupServiceLabelId)
 		}
 		// property: name=backup_service_label_type, type=STRING macro=copy_from_plan_or_state
-		if state.ServiceContext != nil {
+		if state != nil && state.ServiceContext != nil {
 			body.ServiceContext.BackupServiceLabelType = ValueStringPointerFromPlanOrState(plan.ServiceContext.BackupServiceLabelType, state.ServiceContext.BackupServiceLabelType)
 		} else {
 			body.ServiceContext.BackupServiceLabelType = StringValueOrNil(plan.ServiceContext.BackupServiceLabelType)
 		}
 		// property: name=type, type=STRING macro=copy_from_plan_or_state
-		if state.ServiceContext != nil {
+		if state != nil && state.ServiceContext != nil {
 			body.ServiceContext.Type = ValueStringPointerFromPlanOrState(plan.ServiceContext.Type, state.ServiceContext.Type)
 		} else {
 			body.ServiceContext.Type = StringValueOrNil(plan.ServiceContext.Type)
@@ -1306,9 +1398,19 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 		body.SourcePrefixesId = StringValueOrNil(plan.SourcePrefixesId)
 	}
 	// property: name=src_device_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.SrcDeviceIds = ListStringValueOrNil(ctx, plan.SrcDeviceIds)
+	if state != nil && plan.SrcDeviceIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.SrcDeviceIds = ListStringValueOrNil(ctx, state.SrcDeviceIds)
+	} else {
+		body.SrcDeviceIds = ListStringValueOrNil(ctx, plan.SrcDeviceIds)
+	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=user_or_group, type=REFERENCE macro=copy_from_plan_or_state
 	if plan.UserOrGroup == nil {
 		body.UserOrGroup = nil
@@ -1317,15 +1419,25 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 		// copy_from_plan_or_state: body=body.UserOrGroup prefix=rsModel state=state.UserOrGroup plan=plan.UserOrGroup properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.UserOrGroup prefix=rsModel state=state.UserOrGroup plan=plan.UserOrGroup")
 		// property: name=user_group_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.UserOrGroup.UserGroupIds = ListStringValueOrNil(ctx, plan.UserOrGroup.UserGroupIds)
+		if state != nil && state.UserOrGroup != nil && plan.UserOrGroup.UserGroupIds.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.UserOrGroup.UserGroupIds = ListStringValueOrNil(ctx, state.UserOrGroup.UserGroupIds)
+		} else {
+			body.UserOrGroup.UserGroupIds = ListStringValueOrNil(ctx, plan.UserOrGroup.UserGroupIds)
+		}
 		// property: name=user_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.UserOrGroup.UserIds = ListStringValueOrNil(ctx, plan.UserOrGroup.UserIds)
+		if state != nil && state.UserOrGroup != nil && plan.UserOrGroup.UserIds.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.UserOrGroup.UserIds = ListStringValueOrNil(ctx, state.UserOrGroup.UserIds)
+		} else {
+			body.UserOrGroup.UserIds = ListStringValueOrNil(ctx, plan.UserOrGroup.UserIds)
+		}
 	}
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct NetworkPolicyRuleScreenV2N4 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct NetworkPolicyRuleScreenV2N5 to JSON:", err.Error())
 		return false
 	}
 
@@ -1361,16 +1473,22 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.NetworkPolicyRuleScreenV2N4
+	var ans sdwan_schema.NetworkPolicyRuleScreenV2N5
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to NetworkPolicyRuleScreenV2N4 in update", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to NetworkPolicyRuleScreenV2N5 in update", json_err.Error())
 		return false
 	}
 
-	// Store the answer to state. schema=NetworkPolicyRuleScreenV2N4
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
+	// Store the answer to state. schema=NetworkPolicyRuleScreenV2N5
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=18
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -1385,7 +1503,7 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 	if ans.BestPathConfig == nil {
 		state.BestPathConfig = nil
 	} else {
-		state.BestPathConfig = &rsModelBestPathConfig{}
+		state.BestPathConfig = &rsModelProbeMetricInfo{}
 		// copy_to_state: state=state.BestPathConfig prefix=rsModel ans=ans.BestPathConfig properties=3
 		tflog.Debug(ctx, "copy_to_state state=state.BestPathConfig prefix=rsModel ans=ans.BestPathConfig")
 		// property: name=metric, type=STRING macro=copy_to_state
@@ -1417,19 +1535,19 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 	if ans.PathsAllowed == nil {
 		state.PathsAllowed = nil
 	} else {
-		state.PathsAllowed = &rsModelPathsAllowedV2N1{}
+		state.PathsAllowed = &rsModelPathsAllowedV2N5{}
 		// copy_to_state: state=state.PathsAllowed prefix=rsModel ans=ans.PathsAllowed properties=3
 		tflog.Debug(ctx, "copy_to_state state=state.PathsAllowed prefix=rsModel ans=ans.PathsAllowed")
 		// property: name=active_paths, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.PathsAllowed.ActivePaths == nil {
 			state.PathsAllowed.ActivePaths = nil
 		} else if len(ans.PathsAllowed.ActivePaths) == 0 {
-			state.PathsAllowed.ActivePaths = []rsModelWANPath{}
+			state.PathsAllowed.ActivePaths = []rsModelWANPathV2N5{}
 		} else {
-			state.PathsAllowed.ActivePaths = make([]rsModelWANPath, 0, len(ans.PathsAllowed.ActivePaths))
+			state.PathsAllowed.ActivePaths = make([]rsModelWANPathV2N5, 0, len(ans.PathsAllowed.ActivePaths))
 			for varLoopActivePathsIndex, varLoopActivePaths := range ans.PathsAllowed.ActivePaths {
 				// add a new item
-				state.PathsAllowed.ActivePaths = append(state.PathsAllowed.ActivePaths, rsModelWANPath{})
+				state.PathsAllowed.ActivePaths = append(state.PathsAllowed.ActivePaths, rsModelWANPathV2N5{})
 				// copy_to_state: state=state.PathsAllowed.ActivePaths[varLoopActivePathsIndex] prefix=rsModel ans=varLoopActivePaths properties=2
 				tflog.Debug(ctx, "copy_to_state state=state.PathsAllowed.ActivePaths[varLoopActivePathsIndex] prefix=rsModel ans=varLoopActivePaths")
 				// property: name=label, type=STRING macro=copy_to_state
@@ -1442,12 +1560,12 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 		if ans.PathsAllowed.BackupPaths == nil {
 			state.PathsAllowed.BackupPaths = nil
 		} else if len(ans.PathsAllowed.BackupPaths) == 0 {
-			state.PathsAllowed.BackupPaths = []rsModelWANPath{}
+			state.PathsAllowed.BackupPaths = []rsModelWANPathV2N5{}
 		} else {
-			state.PathsAllowed.BackupPaths = make([]rsModelWANPath, 0, len(ans.PathsAllowed.BackupPaths))
+			state.PathsAllowed.BackupPaths = make([]rsModelWANPathV2N5, 0, len(ans.PathsAllowed.BackupPaths))
 			for varLoopBackupPathsIndex, varLoopBackupPaths := range ans.PathsAllowed.BackupPaths {
 				// add a new item
-				state.PathsAllowed.BackupPaths = append(state.PathsAllowed.BackupPaths, rsModelWANPath{})
+				state.PathsAllowed.BackupPaths = append(state.PathsAllowed.BackupPaths, rsModelWANPathV2N5{})
 				// copy_to_state: state=state.PathsAllowed.BackupPaths[varLoopBackupPathsIndex] prefix=rsModel ans=varLoopBackupPaths properties=2
 				tflog.Debug(ctx, "copy_to_state state=state.PathsAllowed.BackupPaths[varLoopBackupPathsIndex] prefix=rsModel ans=varLoopBackupPaths")
 				// property: name=label, type=STRING macro=copy_to_state
@@ -1460,12 +1578,12 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 		if ans.PathsAllowed.L3FailurePaths == nil {
 			state.PathsAllowed.L3FailurePaths = nil
 		} else if len(ans.PathsAllowed.L3FailurePaths) == 0 {
-			state.PathsAllowed.L3FailurePaths = []rsModelWANPath{}
+			state.PathsAllowed.L3FailurePaths = []rsModelWANPathV2N5{}
 		} else {
-			state.PathsAllowed.L3FailurePaths = make([]rsModelWANPath, 0, len(ans.PathsAllowed.L3FailurePaths))
+			state.PathsAllowed.L3FailurePaths = make([]rsModelWANPathV2N5, 0, len(ans.PathsAllowed.L3FailurePaths))
 			for varLoopL3FailurePathsIndex, varLoopL3FailurePaths := range ans.PathsAllowed.L3FailurePaths {
 				// add a new item
-				state.PathsAllowed.L3FailurePaths = append(state.PathsAllowed.L3FailurePaths, rsModelWANPath{})
+				state.PathsAllowed.L3FailurePaths = append(state.PathsAllowed.L3FailurePaths, rsModelWANPathV2N5{})
 				// copy_to_state: state=state.PathsAllowed.L3FailurePaths[varLoopL3FailurePathsIndex] prefix=rsModel ans=varLoopL3FailurePaths properties=2
 				tflog.Debug(ctx, "copy_to_state state=state.PathsAllowed.L3FailurePaths[varLoopL3FailurePathsIndex] prefix=rsModel ans=varLoopL3FailurePaths")
 				// property: name=label, type=STRING macro=copy_to_state
@@ -1503,6 +1621,14 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=user_or_group, type=REFERENCE macro=copy_to_state
 	if ans.UserOrGroup == nil {
 		state.UserOrGroup = nil
@@ -1522,7 +1648,7 @@ func (r *pathPolicyRuleResource) doPut(ctx context.Context, plan *rsModelNetwork
 	return true
 }
 
-func (r *pathPolicyRuleResource) doDelete(ctx context.Context, state *rsModelNetworkPolicyRuleScreenV2N4, resp *resource.DeleteResponse) bool {
+func (r *pathPolicyRuleResource) doDelete(ctx context.Context, state *rsModelNetworkPolicyRuleScreenV2N5, resp *resource.DeleteResponse) bool {
 	// read object id
 	tfid := state.Tfid.ValueString()
 	// Basic logging.
@@ -1543,7 +1669,7 @@ func (r *pathPolicyRuleResource) doDelete(ctx context.Context, state *rsModelNet
 	delete_request := &sdwan_client.SdwanClientRequestResponse{}
 	delete_request.ResourceType = "prismasdwan_path_policy_rule"
 	delete_request.Method = "DELETE"
-	delete_request.Path = "/sdwan/v2.4/api/networkpolicysets/{policy_set_id}/networkpolicyrules/{policy_rule_id}"
+	delete_request.Path = "/sdwan/v2.5/api/networkpolicysets/{policy_set_id}/networkpolicyrules/{policy_rule_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -1577,14 +1703,14 @@ func (r *pathPolicyRuleResource) doDelete(ctx context.Context, state *rsModelNet
 // Path Parameters are encoded into TfID itself
 func (r *pathPolicyRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "executing resource create for prismasdwan_path_policy_rule")
-	var plan rsModelNetworkPolicyRuleScreenV2N4
+	var plan rsModelNetworkPolicyRuleScreenV2N5
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// make post call
-	var state rsModelNetworkPolicyRuleScreenV2N4
+	var state rsModelNetworkPolicyRuleScreenV2N5
 	if r.doPost(ctx, &plan, &state, resp) {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	}
@@ -1596,7 +1722,7 @@ func (r *pathPolicyRuleResource) Create(ctx context.Context, req resource.Create
 func (r *pathPolicyRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 	tflog.Info(ctx, "executing resource read for prismasdwan_path_policy_rule")
-	var savestate, state rsModelNetworkPolicyRuleScreenV2N4
+	var savestate, state rsModelNetworkPolicyRuleScreenV2N5
 	resp.Diagnostics.Append(req.State.Get(ctx, &savestate)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -1615,7 +1741,7 @@ func (r *pathPolicyRuleResource) Read(ctx context.Context, req resource.ReadRequ
 func (r *pathPolicyRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
 	tflog.Info(ctx, "executing resource update for prismasdwan_path_policy_rule")
-	var plan, state rsModelNetworkPolicyRuleScreenV2N4
+	var plan, state rsModelNetworkPolicyRuleScreenV2N5
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -1639,7 +1765,7 @@ func (r *pathPolicyRuleResource) Update(ctx context.Context, req resource.Update
 func (r *pathPolicyRuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 
 	tflog.Info(ctx, "executing resource delete for prismasdwan_path_policy_rule")
-	var state rsModelNetworkPolicyRuleScreenV2N4
+	var state rsModelNetworkPolicyRuleScreenV2N5
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {

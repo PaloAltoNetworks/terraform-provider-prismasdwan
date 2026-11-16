@@ -31,14 +31,15 @@ import (
 // | ExtendedTag HasID=false
 // | Location HasID=false
 // | Address HasID=false
-// | SiteScreenV4N12 HasID=true
+// | SiteScreenV4N13 HasID=true
 // +-----------------------------------------------------------------
 
 // Resource.
 var (
-	_ resource.Resource                = &siteResource{}
-	_ resource.ResourceWithConfigure   = &siteResource{}
-	_ resource.ResourceWithImportState = &siteResource{}
+	_ resource.Resource                   = &siteResource{}
+	_ resource.ResourceWithConfigure      = &siteResource{}
+	_ resource.ResourceWithImportState    = &siteResource{}
+	_ resource.ResourceWithValidateConfig = &siteResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -59,6 +60,12 @@ type siteResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *siteResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{})...)
+}
+
 // Metadata returns the data source type name.
 func (r *siteResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_site"
@@ -67,343 +74,395 @@ func (r *siteResource) Metadata(_ context.Context, req resource.MetadataRequest,
 // Schema defines the schema for this data source.
 func (r *siteResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Site.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
-			// rest all properties to be read from GET API Schema schema=SiteScreenV4N12
+			// rest all properties to be read from GET API Schema schema=SiteScreenV4N13
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=address, type=REFERENCE macro=rss_schema
 			"address": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Address.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=city, type=STRING macro=rss_schema
 					"city": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "City. Value: at most 100 characters.",
 					},
 					// key name holder for attribute: name=city, type=STRING macro=rss_schema
 					// property: name=country, type=STRING macro=rss_schema
 					"country": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Country. Value: at most 100 characters.",
 					},
 					// key name holder for attribute: name=country, type=STRING macro=rss_schema
 					// property: name=post_code, type=STRING macro=rss_schema
 					"post_code": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Post code. Value: at most 100 characters.",
 					},
 					// key name holder for attribute: name=post_code, type=STRING macro=rss_schema
 					// property: name=state, type=STRING macro=rss_schema
 					"state": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "State. Value: at most 100 characters.",
 					},
 					// key name holder for attribute: name=state, type=STRING macro=rss_schema
 					// property: name=street, type=STRING macro=rss_schema
 					"street": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Street. Value: at most 100 characters.",
 					},
 					// key name holder for attribute: name=street, type=STRING macro=rss_schema
 					// property: name=street2, type=STRING macro=rss_schema
 					"street2": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Street2. Value: at most 100 characters.",
 					},
 					// key name holder for attribute: name=street2, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=street2, type=STRING macro=rss_schema
+			// key name holder for attribute: name=address, type=REFERENCE macro=rss_schema
 			// property: name=admin_state, type=STRING macro=rss_schema
 			"admin_state": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Admin state. Value: one of monitor, active, disabled.",
 			},
 			// key name holder for attribute: name=admin_state, type=STRING macro=rss_schema
 			// property: name=app_acceleration_enabled, type=BOOLEAN macro=rss_schema
 			"app_acceleration_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "App acceleration enabled.",
 			},
 			// key name holder for attribute: name=app_acceleration_enabled, type=BOOLEAN macro=rss_schema
 			// property: name=branch_gateway, type=BOOLEAN macro=rss_schema
 			"branch_gateway": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Branch gateway.",
 			},
 			// key name holder for attribute: name=branch_gateway, type=BOOLEAN macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 1024 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=element_cluster_role, type=STRING macro=rss_schema
 			"element_cluster_role": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    true,
+				Computed:    false,
+				Optional:    false,
+				Sensitive:   false,
+				Description: "Element cluster role. Value: one of NONE, HUB, SPOKE, PA_WE_BR, PA_WE_DC, PA_CONN.",
 			},
 			// key name holder for attribute: name=element_cluster_role, type=STRING macro=rss_schema
+			// property: name=element_system_limit_profile_id, type=STRING macro=rss_schema
+			"element_system_limit_profile_id": rsschema.StringAttribute{
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Element system limit profile id.",
+			},
+			// key name holder for attribute: name=element_system_limit_profile_id, type=STRING macro=rss_schema
 			// property: name=extended_tags, type=ARRAY_REFERENCE macro=rss_schema
 			"extended_tags": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Extended tags. At most 10 items.",
+				Validators:  ListMaxItems(10),
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=key, type=STRING macro=rss_schema
 						"key": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Key.",
 						},
 						// key name holder for attribute: name=key, type=STRING macro=rss_schema
 						// property: name=value, type=STRING macro=rss_schema
 						"value": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Value.",
 						},
 						// key name holder for attribute: name=value, type=STRING macro=rss_schema
 						// property: name=value_type, type=STRING macro=rss_schema
 						"value_type": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Value type.",
 						},
 						// key name holder for attribute: name=value_type, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=value_type, type=STRING macro=rss_schema
+			// key name holder for attribute: name=extended_tags, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=location, type=REFERENCE macro=rss_schema
 			"location": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Location.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=description, type=STRING macro=rss_schema
 					"description": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Description.",
 					},
 					// key name holder for attribute: name=description, type=STRING macro=rss_schema
 					// property: name=latitude, type=NUMBER macro=rss_schema
 					"latitude": rsschema.Float64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Latitude. Value: between -90 and 90.",
 					},
 					// key name holder for attribute: name=latitude, type=NUMBER macro=rss_schema
 					// property: name=longitude, type=NUMBER macro=rss_schema
 					"longitude": rsschema.Float64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Longitude. Value: between -180 and 180.",
 					},
 					// key name holder for attribute: name=longitude, type=NUMBER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=longitude, type=NUMBER macro=rss_schema
+			// key name holder for attribute: name=location, type=REFERENCE macro=rss_schema
 			// property: name=multicast_peer_group_id, type=STRING macro=rss_schema
 			"multicast_peer_group_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Multicast peer group id.",
 			},
 			// key name holder for attribute: name=multicast_peer_group_id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=nat_policysetstack_id, type=STRING macro=rss_schema
 			"nat_policysetstack_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Nat policysetstack id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`.",
 			},
 			// key name holder for attribute: name=nat_policysetstack_id, type=STRING macro=rss_schema
 			// property: name=network_policysetstack_id, type=STRING macro=rss_schema
 			"network_policysetstack_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Network policysetstack id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=network_policysetstack_id, type=STRING macro=rss_schema
 			// property: name=perfmgmt_policysetstack_id, type=STRING macro=rss_schema
 			"perfmgmt_policysetstack_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Perfmgmt policysetstack id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=perfmgmt_policysetstack_id, type=STRING macro=rss_schema
 			// property: name=policy_set_id, type=STRING macro=rss_schema
 			"policy_set_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Policy set id.",
 			},
 			// key name holder for attribute: name=policy_set_id, type=STRING macro=rss_schema
 			// property: name=prefer_lan_default_over_wan_default_route, type=BOOLEAN macro=rss_schema
 			"prefer_lan_default_over_wan_default_route": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Prefer lan default over wan default route.",
 			},
 			// key name holder for attribute: name=prefer_lan_default_over_wan_default_route, type=BOOLEAN macro=rss_schema
 			// property: name=priority_policysetstack_id, type=STRING macro=rss_schema
 			"priority_policysetstack_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Priority policysetstack id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=priority_policysetstack_id, type=STRING macro=rss_schema
 			// property: name=security_policyset_id, type=STRING macro=rss_schema
 			"security_policyset_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Security policyset id.",
 			},
 			// key name holder for attribute: name=security_policyset_id, type=STRING macro=rss_schema
 			// property: name=security_policysetstack_id, type=STRING macro=rss_schema
 			"security_policysetstack_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Security policysetstack id.",
 			},
 			// key name holder for attribute: name=security_policysetstack_id, type=STRING macro=rss_schema
 			// property: name=service_binding, type=STRING macro=rss_schema
 			"service_binding": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Service binding.",
 			},
 			// key name holder for attribute: name=service_binding, type=STRING macro=rss_schema
 			// property: name=sgi_config, type=REFERENCE macro=rss_schema
 			"sgi_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Sgi config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=sgi_tag, type=INTEGER macro=rss_schema
 					"sgi_tag": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Sgi tag. Value: between 1 and 65533.",
 					},
 					// key name holder for attribute: name=sgi_tag, type=INTEGER macro=rss_schema
 					// property: name=sgi_vendor_id, type=STRING macro=rss_schema
 					"sgi_vendor_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Sgi vendor id. Value: one of SGI_VENDOR_ID_TYPE_8909.",
 					},
 					// key name holder for attribute: name=sgi_vendor_id, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=sgi_vendor_id, type=STRING macro=rss_schema
+			// key name holder for attribute: name=sgi_config, type=REFERENCE macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			"tags": rsschema.SetAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 1024 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=vrf_context_profile_id, type=STRING macro=rss_schema
 			"vrf_context_profile_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Vrf context profile id. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=vrf_context_profile_id, type=STRING macro=rss_schema
 		},
@@ -432,7 +491,7 @@ func (r *siteResource) GetHttpStatusCode(request *sdwan_client.SdwanClientReques
 	}
 }
 
-func (r *siteResource) doPost(ctx context.Context, plan *rsModelSiteScreenV4N12, state *rsModelSiteScreenV4N12, resp *resource.CreateResponse) bool {
+func (r *siteResource) doPost(ctx context.Context, plan *rsModelSiteScreenV4N13, state *rsModelSiteScreenV4N13, resp *resource.CreateResponse) bool {
 	tflog.Info(ctx, "executing http post for prismasdwan_site")
 	// Basic logging.
 	tflog.Info(ctx, "performing resource create", map[string]any{
@@ -444,7 +503,7 @@ func (r *siteResource) doPost(ctx context.Context, plan *rsModelSiteScreenV4N12,
 	create_request := &sdwan_client.SdwanClientRequestResponse{}
 	create_request.ResourceType = "prismasdwan_site"
 	create_request.Method = "POST"
-	create_request.Path = "/sdwan/v4.12/api/sites"
+	create_request.Path = "/sdwan/v4.13/api/sites"
 
 	// copy parameters from plan always
 	params := make(map[string]*string)
@@ -454,10 +513,10 @@ func (r *siteResource) doPost(ctx context.Context, plan *rsModelSiteScreenV4N12,
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.SiteScreenV4N12{}
+	var body = &sdwan_schema.SiteScreenV4N13{}
 
 	// copy from plan to body
-	// copy_from_plan: body=body prefix=rsModel plan=plan properties=25
+	// copy_from_plan: body=body prefix=rsModel plan=plan properties=26
 	tflog.Debug(ctx, "copy_from_plan body=body prefix=rsModel plan=plan")
 	// property: name=_etag, type=INTEGER macro=copy_from_plan
 	body.Etag = Int64ValueOrNil(plan.Etag)
@@ -491,6 +550,8 @@ func (r *siteResource) doPost(ctx context.Context, plan *rsModelSiteScreenV4N12,
 	body.Description = StringValueOrNil(plan.Description)
 	// property: name=element_cluster_role, type=STRING macro=copy_from_plan
 	body.ElementClusterRole = StringValueOrNil(plan.ElementClusterRole)
+	// property: name=element_system_limit_profile_id, type=STRING macro=copy_from_plan
+	body.ElementSystemLimitProfileId = StringValueOrNil(plan.ElementSystemLimitProfileId)
 	// property: name=extended_tags, type=ARRAY_REFERENCE macro=copy_from_plan
 	if plan.ExtendedTags == nil {
 		body.ExtendedTags = nil
@@ -565,7 +626,7 @@ func (r *siteResource) doPost(ctx context.Context, plan *rsModelSiteScreenV4N12,
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct SiteScreenV4N12 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct SiteScreenV4N13 to JSON:", err.Error())
 		return false
 	}
 
@@ -608,12 +669,12 @@ func (r *siteResource) doPost(ctx context.Context, plan *rsModelSiteScreenV4N12,
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.SiteScreenV4N12
+	var ans sdwan_schema.SiteScreenV4N13
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to SiteScreenV4N12 in create", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to SiteScreenV4N13 in create", json_err.Error())
 		return false
 	}
 
@@ -638,8 +699,8 @@ func (r *siteResource) doPost(ctx context.Context, plan *rsModelSiteScreenV4N12,
 	state.TfParameters = plan.TfParameters
 	tflog.Info(ctx, "created prismasdwan_site with ID", map[string]any{"tfid": state.Tfid.ValueString()})
 
-	// Store the answer to state. schema=SiteScreenV4N12
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=25
+	// Store the answer to state. schema=SiteScreenV4N13
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=26
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
@@ -675,6 +736,8 @@ func (r *siteResource) doPost(ctx context.Context, plan *rsModelSiteScreenV4N12,
 	state.Description = types.StringPointerValue(ans.Description)
 	// property: name=element_cluster_role, type=STRING macro=copy_to_state
 	state.ElementClusterRole = types.StringPointerValue(ans.ElementClusterRole)
+	// property: name=element_system_limit_profile_id, type=STRING macro=copy_to_state
+	state.ElementSystemLimitProfileId = types.StringPointerValue(ans.ElementSystemLimitProfileId)
 	// property: name=extended_tags, type=ARRAY_REFERENCE macro=copy_to_state
 	if ans.ExtendedTags == nil {
 		state.ExtendedTags = nil
@@ -708,8 +771,18 @@ func (r *siteResource) doPost(ctx context.Context, plan *rsModelSiteScreenV4N12,
 		state.Location.Description = types.StringPointerValue(ans.Location.Description)
 		// property: name=latitude, type=NUMBER macro=copy_to_state
 		state.Location.Latitude = types.Float64PointerValue(ans.Location.Latitude)
+		// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+		// value when the answer is the same number to six decimals
+		if plan.Location != nil {
+			state.Location.Latitude = Float64KeepPlanWhenNear(ans.Location.Latitude, plan.Location.Latitude)
+		}
 		// property: name=longitude, type=NUMBER macro=copy_to_state
 		state.Location.Longitude = types.Float64PointerValue(ans.Location.Longitude)
+		// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+		// value when the answer is the same number to six decimals
+		if plan.Location != nil {
+			state.Location.Longitude = Float64KeepPlanWhenNear(ans.Location.Longitude, plan.Location.Longitude)
+		}
 	}
 	// property: name=multicast_peer_group_id, type=STRING macro=copy_to_state
 	state.MulticastPeerGroupId = types.StringPointerValue(ans.MulticastPeerGroupId)
@@ -749,12 +822,20 @@ func (r *siteResource) doPost(ctx context.Context, plan *rsModelSiteScreenV4N12,
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=vrf_context_profile_id, type=STRING macro=copy_to_state
 	state.VrfContextProfileId = types.StringPointerValue(ans.VrfContextProfileId)
 	return true
 }
 
-func (r *siteResource) doGet(ctx context.Context, state *rsModelSiteScreenV4N12, savestate *rsModelSiteScreenV4N12, State *tfsdk.State, resp *resource.ReadResponse) bool {
+func (r *siteResource) doGet(ctx context.Context, state *rsModelSiteScreenV4N13, savestate *rsModelSiteScreenV4N13, State *tfsdk.State, resp *resource.ReadResponse) bool {
 	// Basic logging.
 	tfid := savestate.Tfid.ValueString()
 	tflog.Info(ctx, "performing resource read", map[string]any{
@@ -776,7 +857,7 @@ func (r *siteResource) doGet(ctx context.Context, state *rsModelSiteScreenV4N12,
 	read_request := &sdwan_client.SdwanClientRequestResponse{}
 	read_request.ResourceType = "prismasdwan_site"
 	read_request.Method = "GET"
-	read_request.Path = "/sdwan/v4.12/api/sites/{site_id}"
+	read_request.Path = "/sdwan/v4.13/api/sites/{site_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, savestate.TfParameters)
@@ -818,25 +899,41 @@ func (r *siteResource) doGet(ctx context.Context, state *rsModelSiteScreenV4N12,
 	tflog.Debug(ctx, "http json override: set response_body_string::_schema")
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
-	// Store the answer to state. schema=SiteScreenV4N12
+	// Store the answer to state. schema=SiteScreenV4N13
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
 	// start copying attributes
-	var ans sdwan_schema.SiteScreenV4N12
+	var ans sdwan_schema.SiteScreenV4N13
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to SiteScreenV4N12 in read", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to SiteScreenV4N13 in read", json_err.Error())
 		return false
 	}
 	// lets copy all items into state
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=25
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=26
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
@@ -872,6 +969,8 @@ func (r *siteResource) doGet(ctx context.Context, state *rsModelSiteScreenV4N12,
 	state.Description = types.StringPointerValue(ans.Description)
 	// property: name=element_cluster_role, type=STRING macro=copy_to_state
 	state.ElementClusterRole = types.StringPointerValue(ans.ElementClusterRole)
+	// property: name=element_system_limit_profile_id, type=STRING macro=copy_to_state
+	state.ElementSystemLimitProfileId = types.StringPointerValue(ans.ElementSystemLimitProfileId)
 	// property: name=extended_tags, type=ARRAY_REFERENCE macro=copy_to_state
 	if ans.ExtendedTags == nil {
 		state.ExtendedTags = nil
@@ -905,8 +1004,18 @@ func (r *siteResource) doGet(ctx context.Context, state *rsModelSiteScreenV4N12,
 		state.Location.Description = types.StringPointerValue(ans.Location.Description)
 		// property: name=latitude, type=NUMBER macro=copy_to_state
 		state.Location.Latitude = types.Float64PointerValue(ans.Location.Latitude)
+		// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+		// value when the answer is the same number to six decimals
+		if savestate.Location != nil {
+			state.Location.Latitude = Float64KeepPlanWhenNear(ans.Location.Latitude, savestate.Location.Latitude)
+		}
 		// property: name=longitude, type=NUMBER macro=copy_to_state
 		state.Location.Longitude = types.Float64PointerValue(ans.Location.Longitude)
+		// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+		// value when the answer is the same number to six decimals
+		if savestate.Location != nil {
+			state.Location.Longitude = Float64KeepPlanWhenNear(ans.Location.Longitude, savestate.Location.Longitude)
+		}
 	}
 	// property: name=multicast_peer_group_id, type=STRING macro=copy_to_state
 	state.MulticastPeerGroupId = types.StringPointerValue(ans.MulticastPeerGroupId)
@@ -946,12 +1055,20 @@ func (r *siteResource) doGet(ctx context.Context, state *rsModelSiteScreenV4N12,
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=vrf_context_profile_id, type=STRING macro=copy_to_state
 	state.VrfContextProfileId = types.StringPointerValue(ans.VrfContextProfileId)
 	return true
 }
 
-func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N12, state *rsModelSiteScreenV4N12, State *tfsdk.State, resp *resource.UpdateResponse) bool {
+func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N13, state *rsModelSiteScreenV4N13, State *tfsdk.State, resp *resource.UpdateResponse) bool {
 	state_tfid := state.Tfid.ValueString()
 	plan_tfid := plan.Tfid.ValueString()
 	// Basic logging.
@@ -979,7 +1096,7 @@ func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N12, 
 	put_request := &sdwan_client.SdwanClientRequestResponse{}
 	put_request.ResourceType = "prismasdwan_site"
 	put_request.Method = "PUT"
-	put_request.Path = "/sdwan/v4.12/api/sites/{site_id}"
+	put_request.Path = "/sdwan/v4.13/api/sites/{site_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -998,11 +1115,11 @@ func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N12, 
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.SiteScreenV4N12{}
+	var body = &sdwan_schema.SiteScreenV4N13{}
 
 	// now we create the JSON request from the state/plan created by TF
 	// below copy code generated from macro copy_from_plan_or_state
-	// copy_from_plan_or_state: body=body prefix=rsModel state=state plan=plan properties=25
+	// copy_from_plan_or_state: body=body prefix=rsModel state=state plan=plan properties=26
 	tflog.Debug(ctx, "copy_from_plan_or_state body=body prefix=rsModel state=state plan=plan")
 	// property: name=_etag, type=INTEGER macro=copy_from_plan_or_state
 	if state != nil {
@@ -1024,37 +1141,37 @@ func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N12, 
 		// copy_from_plan_or_state: body=body.Address prefix=rsModel state=state.Address plan=plan.Address properties=6
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.Address prefix=rsModel state=state.Address plan=plan.Address")
 		// property: name=city, type=STRING macro=copy_from_plan_or_state
-		if state.Address != nil {
+		if state != nil && state.Address != nil {
 			body.Address.City = ValueStringPointerFromPlanOrState(plan.Address.City, state.Address.City)
 		} else {
 			body.Address.City = StringValueOrNil(plan.Address.City)
 		}
 		// property: name=country, type=STRING macro=copy_from_plan_or_state
-		if state.Address != nil {
+		if state != nil && state.Address != nil {
 			body.Address.Country = ValueStringPointerFromPlanOrState(plan.Address.Country, state.Address.Country)
 		} else {
 			body.Address.Country = StringValueOrNil(plan.Address.Country)
 		}
 		// property: name=post_code, type=STRING macro=copy_from_plan_or_state
-		if state.Address != nil {
+		if state != nil && state.Address != nil {
 			body.Address.PostCode = ValueStringPointerFromPlanOrState(plan.Address.PostCode, state.Address.PostCode)
 		} else {
 			body.Address.PostCode = StringValueOrNil(plan.Address.PostCode)
 		}
 		// property: name=state, type=STRING macro=copy_from_plan_or_state
-		if state.Address != nil {
+		if state != nil && state.Address != nil {
 			body.Address.State = ValueStringPointerFromPlanOrState(plan.Address.State, state.Address.State)
 		} else {
 			body.Address.State = StringValueOrNil(plan.Address.State)
 		}
 		// property: name=street, type=STRING macro=copy_from_plan_or_state
-		if state.Address != nil {
+		if state != nil && state.Address != nil {
 			body.Address.Street = ValueStringPointerFromPlanOrState(plan.Address.Street, state.Address.Street)
 		} else {
 			body.Address.Street = StringValueOrNil(plan.Address.Street)
 		}
 		// property: name=street2, type=STRING macro=copy_from_plan_or_state
-		if state.Address != nil {
+		if state != nil && state.Address != nil {
 			body.Address.Street2 = ValueStringPointerFromPlanOrState(plan.Address.Street2, state.Address.Street2)
 		} else {
 			body.Address.Street2 = StringValueOrNil(plan.Address.Street2)
@@ -1090,10 +1207,16 @@ func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N12, 
 	} else {
 		body.ElementClusterRole = StringValueOrNil(plan.ElementClusterRole)
 	}
+	// property: name=element_system_limit_profile_id, type=STRING macro=copy_from_plan_or_state
+	if state != nil {
+		body.ElementSystemLimitProfileId = ValueStringPointerFromPlanOrState(plan.ElementSystemLimitProfileId, state.ElementSystemLimitProfileId)
+	} else {
+		body.ElementSystemLimitProfileId = StringValueOrNil(plan.ElementSystemLimitProfileId)
+	}
 	// property: name=extended_tags, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.ExtendedTags == nil && (state == nil || state.ExtendedTags == nil) {
+	if plan.ExtendedTags == nil && (!(state != nil) || state.ExtendedTags == nil) {
 		body.ExtendedTags = nil
-	} else if len(plan.ExtendedTags) == 0 && (state == nil || len(state.ExtendedTags) == 0) {
+	} else if len(plan.ExtendedTags) == 0 && (!(state != nil) || len(state.ExtendedTags) == 0) {
 		body.ExtendedTags = []sdwan_schema.ExtendedTag{}
 	} else if len(plan.ExtendedTags) != 0 || (state != nil && len(state.ExtendedTags) != 0) {
 		ExtendedTagsToUse := plan.ExtendedTags
@@ -1129,19 +1252,19 @@ func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N12, 
 		// copy_from_plan_or_state: body=body.Location prefix=rsModel state=state.Location plan=plan.Location properties=3
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.Location prefix=rsModel state=state.Location plan=plan.Location")
 		// property: name=description, type=STRING macro=copy_from_plan_or_state
-		if state.Location != nil {
+		if state != nil && state.Location != nil {
 			body.Location.Description = ValueStringPointerFromPlanOrState(plan.Location.Description, state.Location.Description)
 		} else {
 			body.Location.Description = StringValueOrNil(plan.Location.Description)
 		}
 		// property: name=latitude, type=NUMBER macro=copy_from_plan_or_state
-		if state.Location != nil {
+		if state != nil && state.Location != nil {
 			body.Location.Latitude = ValueFloat64PointerFromPlanOrState(plan.Location.Latitude, state.Location.Latitude)
 		} else {
 			body.Location.Latitude = Float64ValueOrNil(plan.Location.Latitude)
 		}
 		// property: name=longitude, type=NUMBER macro=copy_from_plan_or_state
-		if state.Location != nil {
+		if state != nil && state.Location != nil {
 			body.Location.Longitude = ValueFloat64PointerFromPlanOrState(plan.Location.Longitude, state.Location.Longitude)
 		} else {
 			body.Location.Longitude = Float64ValueOrNil(plan.Location.Longitude)
@@ -1221,20 +1344,25 @@ func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N12, 
 		// copy_from_plan_or_state: body=body.SgiConfig prefix=rsModel state=state.SgiConfig plan=plan.SgiConfig properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.SgiConfig prefix=rsModel state=state.SgiConfig plan=plan.SgiConfig")
 		// property: name=sgi_tag, type=INTEGER macro=copy_from_plan_or_state
-		if state.SgiConfig != nil {
+		if state != nil && state.SgiConfig != nil {
 			body.SgiConfig.SgiTag = ValueInt64PointerFromPlanOrState(plan.SgiConfig.SgiTag, state.SgiConfig.SgiTag)
 		} else {
 			body.SgiConfig.SgiTag = Int64ValueOrNil(plan.SgiConfig.SgiTag)
 		}
 		// property: name=sgi_vendor_id, type=STRING macro=copy_from_plan_or_state
-		if state.SgiConfig != nil {
+		if state != nil && state.SgiConfig != nil {
 			body.SgiConfig.SgiVendorId = ValueStringPointerFromPlanOrState(plan.SgiConfig.SgiVendorId, state.SgiConfig.SgiVendorId)
 		} else {
 			body.SgiConfig.SgiVendorId = StringValueOrNil(plan.SgiConfig.SgiVendorId)
 		}
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=vrf_context_profile_id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.VrfContextProfileId = ValueStringPointerFromPlanOrState(plan.VrfContextProfileId, state.VrfContextProfileId)
@@ -1245,7 +1373,7 @@ func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N12, 
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct SiteScreenV4N12 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct SiteScreenV4N13 to JSON:", err.Error())
 		return false
 	}
 
@@ -1281,17 +1409,23 @@ func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N12, 
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.SiteScreenV4N12
+	var ans sdwan_schema.SiteScreenV4N13
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to SiteScreenV4N12 in update", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to SiteScreenV4N13 in update", json_err.Error())
 		return false
 	}
 
-	// Store the answer to state. schema=SiteScreenV4N12
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=25
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
+	// Store the answer to state. schema=SiteScreenV4N13
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=26
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
@@ -1327,6 +1461,8 @@ func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N12, 
 	state.Description = types.StringPointerValue(ans.Description)
 	// property: name=element_cluster_role, type=STRING macro=copy_to_state
 	state.ElementClusterRole = types.StringPointerValue(ans.ElementClusterRole)
+	// property: name=element_system_limit_profile_id, type=STRING macro=copy_to_state
+	state.ElementSystemLimitProfileId = types.StringPointerValue(ans.ElementSystemLimitProfileId)
 	// property: name=extended_tags, type=ARRAY_REFERENCE macro=copy_to_state
 	if ans.ExtendedTags == nil {
 		state.ExtendedTags = nil
@@ -1360,8 +1496,18 @@ func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N12, 
 		state.Location.Description = types.StringPointerValue(ans.Location.Description)
 		// property: name=latitude, type=NUMBER macro=copy_to_state
 		state.Location.Latitude = types.Float64PointerValue(ans.Location.Latitude)
+		// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+		// value when the answer is the same number to six decimals
+		if plan.Location != nil {
+			state.Location.Latitude = Float64KeepPlanWhenNear(ans.Location.Latitude, plan.Location.Latitude)
+		}
 		// property: name=longitude, type=NUMBER macro=copy_to_state
 		state.Location.Longitude = types.Float64PointerValue(ans.Location.Longitude)
+		// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+		// value when the answer is the same number to six decimals
+		if plan.Location != nil {
+			state.Location.Longitude = Float64KeepPlanWhenNear(ans.Location.Longitude, plan.Location.Longitude)
+		}
 	}
 	// property: name=multicast_peer_group_id, type=STRING macro=copy_to_state
 	state.MulticastPeerGroupId = types.StringPointerValue(ans.MulticastPeerGroupId)
@@ -1401,12 +1547,20 @@ func (r *siteResource) doPut(ctx context.Context, plan *rsModelSiteScreenV4N12, 
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=vrf_context_profile_id, type=STRING macro=copy_to_state
 	state.VrfContextProfileId = types.StringPointerValue(ans.VrfContextProfileId)
 	return true
 }
 
-func (r *siteResource) doDelete(ctx context.Context, state *rsModelSiteScreenV4N12, resp *resource.DeleteResponse) bool {
+func (r *siteResource) doDelete(ctx context.Context, state *rsModelSiteScreenV4N13, resp *resource.DeleteResponse) bool {
 	// read object id
 	tfid := state.Tfid.ValueString()
 	// Basic logging.
@@ -1427,7 +1581,7 @@ func (r *siteResource) doDelete(ctx context.Context, state *rsModelSiteScreenV4N
 	delete_request := &sdwan_client.SdwanClientRequestResponse{}
 	delete_request.ResourceType = "prismasdwan_site"
 	delete_request.Method = "DELETE"
-	delete_request.Path = "/sdwan/v4.12/api/sites/{site_id}"
+	delete_request.Path = "/sdwan/v4.13/api/sites/{site_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -1461,14 +1615,14 @@ func (r *siteResource) doDelete(ctx context.Context, state *rsModelSiteScreenV4N
 // Path Parameters are encoded into TfID itself
 func (r *siteResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "executing resource create for prismasdwan_site")
-	var plan rsModelSiteScreenV4N12
+	var plan rsModelSiteScreenV4N13
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// make post call
-	var state rsModelSiteScreenV4N12
+	var state rsModelSiteScreenV4N13
 	if r.doPost(ctx, &plan, &state, resp) {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	}
@@ -1480,7 +1634,7 @@ func (r *siteResource) Create(ctx context.Context, req resource.CreateRequest, r
 func (r *siteResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 	tflog.Info(ctx, "executing resource read for prismasdwan_site")
-	var savestate, state rsModelSiteScreenV4N12
+	var savestate, state rsModelSiteScreenV4N13
 	resp.Diagnostics.Append(req.State.Get(ctx, &savestate)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -1499,7 +1653,7 @@ func (r *siteResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 func (r *siteResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
 	tflog.Info(ctx, "executing resource update for prismasdwan_site")
-	var plan, state rsModelSiteScreenV4N12
+	var plan, state rsModelSiteScreenV4N13
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -1523,11 +1677,28 @@ func (r *siteResource) Update(ctx context.Context, req resource.UpdateRequest, r
 func (r *siteResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 
 	tflog.Info(ctx, "executing resource delete for prismasdwan_site")
-	var state rsModelSiteScreenV4N12
+	var state rsModelSiteScreenV4N13
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	// The API refuses to delete a site that still has a multicast peer group (DELETE_FORBIDDEN_MULTICAST_PEER_GROUP_EXISTS),
+	// and the group cannot be deleted while a site is attached (MULTICAST_PEER_GROUP_IN_USE): detach it first, the way the
+	// portal does, with a PUT whose multicast_peer_group_id is null.
+	if !state.MulticastPeerGroupId.IsNull() && !state.MulticastPeerGroupId.IsUnknown() && state.MulticastPeerGroupId.ValueString() != "" {
+		detach := state
+		detach.MulticastPeerGroupId = types.StringNull()
+		update_resp := &resource.UpdateResponse{
+			Diagnostics: resp.Diagnostics,
+			State:       resp.State,
+			Private:     resp.Private,
+		}
+		if !r.doPut(ctx, &detach, &state, &resp.State, update_resp) {
+			resp.Diagnostics.Append(update_resp.Diagnostics...)
+			return
+		}
 	}
 
 	// make a delete call

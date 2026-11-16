@@ -30,14 +30,15 @@ import (
 // | AggregatePrefixes HasID=false
 // | RouteAggregation HasID=false
 // | BGPConfig HasID=false
-// | BGPPeerConfigScreenV2N6 HasID=true
+// | BGPPeerConfigScreenV3 HasID=true
 // +-----------------------------------------------------------------
 
 // Resource.
 var (
-	_ resource.Resource                = &elementBgpPeerResource{}
-	_ resource.ResourceWithConfigure   = &elementBgpPeerResource{}
-	_ resource.ResourceWithImportState = &elementBgpPeerResource{}
+	_ resource.Resource                   = &elementBgpPeerResource{}
+	_ resource.ResourceWithConfigure      = &elementBgpPeerResource{}
+	_ resource.ResourceWithImportState    = &elementBgpPeerResource{}
+	_ resource.ResourceWithValidateConfig = &elementBgpPeerResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -58,6 +59,12 @@ type elementBgpPeerResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *elementBgpPeerResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id", "element_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *elementBgpPeerResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_element_bgp_peer"
@@ -66,211 +73,237 @@ func (r *elementBgpPeerResource) Metadata(_ context.Context, req resource.Metada
 // Schema defines the schema for this data source.
 func (r *elementBgpPeerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Element Bgp Peer.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
-			// rest all properties to be read from GET API Schema schema=BGPPeerConfigScreenV2N6
+			// rest all properties to be read from GET API Schema schema=BGPPeerConfigScreenV3
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=advertise_default_route, type=BOOLEAN macro=rss_schema
 			"advertise_default_route": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Advertise default route.",
 			},
 			// key name holder for attribute: name=advertise_default_route, type=BOOLEAN macro=rss_schema
 			// property: name=allow_v4_prefixes, type=BOOLEAN macro=rss_schema
 			"allow_v4_prefixes": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Allow v4 prefixes.",
 			},
 			// key name holder for attribute: name=allow_v4_prefixes, type=BOOLEAN macro=rss_schema
 			// property: name=allow_v6_prefixes, type=BOOLEAN macro=rss_schema
 			"allow_v6_prefixes": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Allow v6 prefixes.",
 			},
 			// key name holder for attribute: name=allow_v6_prefixes, type=BOOLEAN macro=rss_schema
 			// property: name=bgp_config, type=REFERENCE macro=rss_schema
 			"bgp_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Bgp config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=adv_interval, type=INTEGER macro=rss_schema
 					"adv_interval": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Adv interval.",
 					},
 					// key name holder for attribute: name=adv_interval, type=INTEGER macro=rss_schema
 					// property: name=hold_time, type=INTEGER macro=rss_schema
 					"hold_time": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Hold time.",
 					},
 					// key name holder for attribute: name=hold_time, type=INTEGER macro=rss_schema
 					// property: name=keepalive_time, type=INTEGER macro=rss_schema
 					"keepalive_time": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Keepalive time.",
 					},
 					// key name holder for attribute: name=keepalive_time, type=INTEGER macro=rss_schema
 					// property: name=local_as_num, type=STRING macro=rss_schema
 					"local_as_num": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Local as num.",
 					},
 					// key name holder for attribute: name=local_as_num, type=STRING macro=rss_schema
 					// property: name=md5_secret, type=STRING macro=rss_schema
 					"md5_secret": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: true,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Md5 secret.",
 					},
 					// key name holder for attribute: name=md5_secret, type=STRING macro=rss_schema
 					"md5_secret_internal_key_name": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  true,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute md5_secret, managed automatically by the provider.",
 					},
 					// property: name=multi_hop_limit, type=INTEGER macro=rss_schema
 					"multi_hop_limit": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Multi hop limit.",
 					},
 					// key name holder for attribute: name=multi_hop_limit, type=INTEGER macro=rss_schema
 					// property: name=peer_auth_type, type=STRING macro=rss_schema
 					"peer_auth_type": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Peer auth type. Value: one of md5, none.",
 					},
 					// key name holder for attribute: name=peer_auth_type, type=STRING macro=rss_schema
 					// property: name=peer_retry_time, type=INTEGER macro=rss_schema
 					"peer_retry_time": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Peer retry time.",
 					},
 					// key name holder for attribute: name=peer_retry_time, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=peer_retry_time, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=bgp_config, type=REFERENCE macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 1024 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=peer_ip, type=STRING macro=rss_schema
 			"peer_ip": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Peer ip.",
 			},
 			// key name holder for attribute: name=peer_ip, type=STRING macro=rss_schema
 			// property: name=peer_ip_v6, type=STRING macro=rss_schema
 			"peer_ip_v6": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Peer ip v6.",
 			},
 			// key name holder for attribute: name=peer_ip_v6, type=STRING macro=rss_schema
 			// property: name=peer_type, type=STRING macro=rss_schema
 			"peer_type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Peer type.",
 			},
 			// key name holder for attribute: name=peer_type, type=STRING macro=rss_schema
 			// property: name=remote_as_num, type=STRING macro=rss_schema
 			"remote_as_num": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Remote as num. Value: at least 1 characters.",
 			},
 			// key name holder for attribute: name=remote_as_num, type=STRING macro=rss_schema
 			// property: name=route_aggregation, type=REFERENCE macro=rss_schema
 			"route_aggregation": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Route aggregation.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=aggregate_prefixes, type=ARRAY_REFERENCE macro=rss_schema
 					"aggregate_prefixes": rsschema.ListNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Aggregate prefixes.",
 						NestedObject: rsschema.NestedAttributeObject{
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=ip_prefixes, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -279,86 +312,96 @@ func (r *elementBgpPeerResource) Schema(_ context.Context, _ resource.SchemaRequ
 									Computed:    false,
 									Optional:    true,
 									Sensitive:   false,
+									Description: "Ip prefixes.",
 									ElementType: types.StringType,
 								},
 								// key name holder for attribute: name=ip_prefixes, type=ARRAY_PRIMITIVE macro=rss_schema
 								// property: name=type, type=STRING macro=rss_schema
 								"type": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Type. Value: one of ipv4, ipv6, ipv4v6.",
 								},
 								// key name holder for attribute: name=type, type=STRING macro=rss_schema
 							},
 						},
 					},
-					// key name holder for attribute: name=type, type=STRING macro=rss_schema
+					// key name holder for attribute: name=aggregate_prefixes, type=ARRAY_REFERENCE macro=rss_schema
 					// property: name=aggregate_type, type=STRING macro=rss_schema
 					"aggregate_type": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Aggregate type. Value: one of unaggregated, aggregate-auto, aggregate-manual, aggregate-manual-summary-only, default.",
 					},
 					// key name holder for attribute: name=aggregate_type, type=STRING macro=rss_schema
 					// property: name=ipv4_prefix_list_id, type=STRING macro=rss_schema
 					"ipv4_prefix_list_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Ipv4 prefix list id.",
 					},
 					// key name holder for attribute: name=ipv4_prefix_list_id, type=STRING macro=rss_schema
 					// property: name=ipv6_prefix_list_id, type=STRING macro=rss_schema
 					"ipv6_prefix_list_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Ipv6 prefix list id.",
 					},
 					// key name holder for attribute: name=ipv6_prefix_list_id, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=ipv6_prefix_list_id, type=STRING macro=rss_schema
+			// key name holder for attribute: name=route_aggregation, type=REFERENCE macro=rss_schema
 			// property: name=route_map_in_id, type=STRING macro=rss_schema
 			"route_map_in_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Route map in id.",
 			},
 			// key name holder for attribute: name=route_map_in_id, type=STRING macro=rss_schema
 			// property: name=route_map_out_id, type=STRING macro=rss_schema
 			"route_map_out_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Route map out id.",
 			},
 			// key name holder for attribute: name=route_map_out_id, type=STRING macro=rss_schema
 			// property: name=router_id, type=STRING macro=rss_schema
 			"router_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Router id.",
 			},
 			// key name holder for attribute: name=router_id, type=STRING macro=rss_schema
 			// property: name=scope, type=STRING macro=rss_schema
 			"scope": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Scope. Value: one of global, local.",
 			},
 			// key name holder for attribute: name=scope, type=STRING macro=rss_schema
 			// property: name=shutdown, type=BOOLEAN macro=rss_schema
 			"shutdown": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Shutdown.",
 			},
 			// key name holder for attribute: name=shutdown, type=BOOLEAN macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -367,31 +410,36 @@ func (r *elementBgpPeerResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 1024 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=update_source, type=STRING macro=rss_schema
 			"update_source": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Update source.",
 			},
 			// key name holder for attribute: name=update_source, type=STRING macro=rss_schema
 			// property: name=update_source_v6, type=STRING macro=rss_schema
 			"update_source_v6": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Update source v6.",
 			},
 			// key name holder for attribute: name=update_source_v6, type=STRING macro=rss_schema
 			// property: name=vrf_context_id, type=STRING macro=rss_schema
 			"vrf_context_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Vrf context id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`.",
 			},
 			// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
 		},
@@ -420,7 +468,7 @@ func (r *elementBgpPeerResource) GetHttpStatusCode(request *sdwan_client.SdwanCl
 	}
 }
 
-func (r *elementBgpPeerResource) doPost(ctx context.Context, plan *rsModelBGPPeerConfigScreenV2N6, state *rsModelBGPPeerConfigScreenV2N6, resp *resource.CreateResponse) bool {
+func (r *elementBgpPeerResource) doPost(ctx context.Context, plan *rsModelBGPPeerConfigScreenV3, state *rsModelBGPPeerConfigScreenV3, resp *resource.CreateResponse) bool {
 	tflog.Info(ctx, "executing http post for prismasdwan_element_bgp_peer")
 	// Basic logging.
 	tflog.Info(ctx, "performing resource create", map[string]any{
@@ -432,7 +480,7 @@ func (r *elementBgpPeerResource) doPost(ctx context.Context, plan *rsModelBGPPee
 	create_request := &sdwan_client.SdwanClientRequestResponse{}
 	create_request.ResourceType = "prismasdwan_element_bgp_peer"
 	create_request.Method = "POST"
-	create_request.Path = "/sdwan/v2.6/api/sites/{site_id}/elements/{element_id}/bgppeers"
+	create_request.Path = "/sdwan/v3.0/api/sites/{site_id}/elements/{element_id}/bgppeers"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, plan.TfParameters)
@@ -442,7 +490,7 @@ func (r *elementBgpPeerResource) doPost(ctx context.Context, plan *rsModelBGPPee
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.BGPPeerConfigScreenV2N6{}
+	var body = &sdwan_schema.BGPPeerConfigScreenV3{}
 
 	// copy from plan to body
 	// copy_from_plan: body=body prefix=rsModel plan=plan properties=23
@@ -545,7 +593,7 @@ func (r *elementBgpPeerResource) doPost(ctx context.Context, plan *rsModelBGPPee
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct BGPPeerConfigScreenV2N6 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct BGPPeerConfigScreenV3 to JSON:", err.Error())
 		return false
 	}
 
@@ -558,6 +606,9 @@ func (r *elementBgpPeerResource) doPost(ctx context.Context, plan *rsModelBGPPee
 	request_body_string, _ = sjson.Delete(request_body_string, "_etag")
 	tflog.Debug(ctx, "http json override: set request_body_string::_schema")
 	request_body_string, _ = sjson.Set(request_body_string, "_schema", 0)
+	// inject overrides
+	tflog.Debug(ctx, "http json override: delete request_body_string::router_id")
+	request_body_string, _ = sjson.Delete(request_body_string, "router_id")
 	// copy pointer
 	create_request.RequestBody = &request_body_string
 
@@ -588,12 +639,12 @@ func (r *elementBgpPeerResource) doPost(ctx context.Context, plan *rsModelBGPPee
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.BGPPeerConfigScreenV2N6
+	var ans sdwan_schema.BGPPeerConfigScreenV3
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to BGPPeerConfigScreenV2N6 in create", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to BGPPeerConfigScreenV3 in create", json_err.Error())
 		return false
 	}
 
@@ -618,7 +669,7 @@ func (r *elementBgpPeerResource) doPost(ctx context.Context, plan *rsModelBGPPee
 	state.TfParameters = plan.TfParameters
 	tflog.Info(ctx, "created prismasdwan_element_bgp_peer with ID", map[string]any{"tfid": state.Tfid.ValueString()})
 
-	// Store the answer to state. schema=BGPPeerConfigScreenV2N6
+	// Store the answer to state. schema=BGPPeerConfigScreenV3
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=23
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -647,13 +698,19 @@ func (r *elementBgpPeerResource) doPost(ctx context.Context, plan *rsModelBGPPee
 		// property: name=local_as_num, type=STRING macro=copy_to_state
 		state.BgpConfig.LocalAsNum = types.StringPointerValue(ans.BgpConfig.LocalAsNum)
 		// property: name=md5_secret, type=STRING macro=copy_to_state
-		state.BgpConfig.Md5Secret = types.StringPointerValue(plan.BgpConfig.Md5Secret.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.BgpConfig.Md5SecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.BgpConfig.Md5Secret = types.StringNull()
+		if plan.BgpConfig != nil {
+			state.BgpConfig.Md5Secret = types.StringPointerValue(plan.BgpConfig.Md5Secret.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.BgpConfig.Md5Secret.IsNull() {
-			encryptedMd5Secret, _ := Encrypt([]byte(state.BgpConfig.Md5Secret.String()))
-			resp.Private.SetKey(ctx, state.BgpConfig.Md5SecretInternalKeyName.String(), []byte(encryptedMd5Secret))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedMd5Secret, _ := Encrypt([]byte(state.BgpConfig.Md5Secret.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedMd5SecretJson, _ := json.Marshal(encryptedMd5Secret)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.BgpConfig.Md5SecretInternalKeyName.String(), encryptedMd5SecretJson)...)
 		}
 		// property: name=multi_hop_limit, type=INTEGER macro=copy_to_state
 		state.BgpConfig.MultiHopLimit = types.Int64PointerValue(ans.BgpConfig.MultiHopLimit)
@@ -724,6 +781,14 @@ func (r *elementBgpPeerResource) doPost(ctx context.Context, plan *rsModelBGPPee
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=update_source, type=STRING macro=copy_to_state
 	state.UpdateSource = types.StringPointerValue(ans.UpdateSource)
 	// property: name=update_source_v6, type=STRING macro=copy_to_state
@@ -733,7 +798,7 @@ func (r *elementBgpPeerResource) doPost(ctx context.Context, plan *rsModelBGPPee
 	return true
 }
 
-func (r *elementBgpPeerResource) doGet(ctx context.Context, state *rsModelBGPPeerConfigScreenV2N6, savestate *rsModelBGPPeerConfigScreenV2N6, State *tfsdk.State, resp *resource.ReadResponse) bool {
+func (r *elementBgpPeerResource) doGet(ctx context.Context, state *rsModelBGPPeerConfigScreenV3, savestate *rsModelBGPPeerConfigScreenV3, State *tfsdk.State, resp *resource.ReadResponse) bool {
 	// Basic logging.
 	tfid := savestate.Tfid.ValueString()
 	tflog.Info(ctx, "performing resource read", map[string]any{
@@ -755,7 +820,7 @@ func (r *elementBgpPeerResource) doGet(ctx context.Context, state *rsModelBGPPee
 	read_request := &sdwan_client.SdwanClientRequestResponse{}
 	read_request.ResourceType = "prismasdwan_element_bgp_peer"
 	read_request.Method = "GET"
-	read_request.Path = "/sdwan/v2.6/api/sites/{site_id}/elements/{element_id}/bgppeers/{bgp_peer_id}"
+	read_request.Path = "/sdwan/v3.0/api/sites/{site_id}/elements/{element_id}/bgppeers/{bgp_peer_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, savestate.TfParameters)
@@ -797,21 +862,37 @@ func (r *elementBgpPeerResource) doGet(ctx context.Context, state *rsModelBGPPee
 	tflog.Debug(ctx, "http json override: set response_body_string::_schema")
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
-	// Store the answer to state. schema=BGPPeerConfigScreenV2N6
+	// Store the answer to state. schema=BGPPeerConfigScreenV3
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
 	// start copying attributes
-	var ans sdwan_schema.BGPPeerConfigScreenV2N6
+	var ans sdwan_schema.BGPPeerConfigScreenV3
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to BGPPeerConfigScreenV2N6 in read", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to BGPPeerConfigScreenV3 in read", json_err.Error())
 		return false
 	}
 	// lets copy all items into state
@@ -843,10 +924,15 @@ func (r *elementBgpPeerResource) doGet(ctx context.Context, state *rsModelBGPPee
 		// property: name=local_as_num, type=STRING macro=copy_to_state
 		state.BgpConfig.LocalAsNum = types.StringPointerValue(ans.BgpConfig.LocalAsNum)
 		// property: name=md5_secret, type=STRING macro=copy_to_state
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.BgpConfig != nil {
+			state.BgpConfig.Md5SecretInternalKeyName = savestate.BgpConfig.Md5SecretInternalKeyName
+		}
 		encryptedMd5SecretKeyName := state.BgpConfig.Md5SecretInternalKeyName.String()
 		encryptedMd5SecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedMd5SecretKeyName)
-		if encryptedMd5SecretValueBytes != nil {
-			decryptedMd5Secret, _ := Decrypt(string(encryptedMd5SecretValueBytes))
+		var encryptedMd5SecretValue string
+		if encryptedMd5SecretValueBytes != nil && json.Unmarshal(encryptedMd5SecretValueBytes, &encryptedMd5SecretValue) == nil {
+			decryptedMd5Secret, _ := Decrypt(encryptedMd5SecretValue)
 			state.BgpConfig.Md5Secret = types.StringValue(decryptedMd5Secret)
 		}
 		// property: name=multi_hop_limit, type=INTEGER macro=copy_to_state
@@ -918,6 +1004,14 @@ func (r *elementBgpPeerResource) doGet(ctx context.Context, state *rsModelBGPPee
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=update_source, type=STRING macro=copy_to_state
 	state.UpdateSource = types.StringPointerValue(ans.UpdateSource)
 	// property: name=update_source_v6, type=STRING macro=copy_to_state
@@ -927,7 +1021,7 @@ func (r *elementBgpPeerResource) doGet(ctx context.Context, state *rsModelBGPPee
 	return true
 }
 
-func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeerConfigScreenV2N6, state *rsModelBGPPeerConfigScreenV2N6, State *tfsdk.State, resp *resource.UpdateResponse) bool {
+func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeerConfigScreenV3, state *rsModelBGPPeerConfigScreenV3, State *tfsdk.State, resp *resource.UpdateResponse) bool {
 	state_tfid := state.Tfid.ValueString()
 	plan_tfid := plan.Tfid.ValueString()
 	// Basic logging.
@@ -955,7 +1049,7 @@ func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeer
 	put_request := &sdwan_client.SdwanClientRequestResponse{}
 	put_request.ResourceType = "prismasdwan_element_bgp_peer"
 	put_request.Method = "PUT"
-	put_request.Path = "/sdwan/v2.6/api/sites/{site_id}/elements/{element_id}/bgppeers/{bgp_peer_id}"
+	put_request.Path = "/sdwan/v3.0/api/sites/{site_id}/elements/{element_id}/bgppeers/{bgp_peer_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -974,7 +1068,7 @@ func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeer
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.BGPPeerConfigScreenV2N6{}
+	var body = &sdwan_schema.BGPPeerConfigScreenV3{}
 
 	// now we create the JSON request from the state/plan created by TF
 	// below copy code generated from macro copy_from_plan_or_state
@@ -1018,49 +1112,49 @@ func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeer
 		// copy_from_plan_or_state: body=body.BgpConfig prefix=rsModel state=state.BgpConfig plan=plan.BgpConfig properties=8
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.BgpConfig prefix=rsModel state=state.BgpConfig plan=plan.BgpConfig")
 		// property: name=adv_interval, type=INTEGER macro=copy_from_plan_or_state
-		if state.BgpConfig != nil {
+		if state != nil && state.BgpConfig != nil {
 			body.BgpConfig.AdvInterval = ValueInt64PointerFromPlanOrState(plan.BgpConfig.AdvInterval, state.BgpConfig.AdvInterval)
 		} else {
 			body.BgpConfig.AdvInterval = Int64ValueOrNil(plan.BgpConfig.AdvInterval)
 		}
 		// property: name=hold_time, type=INTEGER macro=copy_from_plan_or_state
-		if state.BgpConfig != nil {
+		if state != nil && state.BgpConfig != nil {
 			body.BgpConfig.HoldTime = ValueInt64PointerFromPlanOrState(plan.BgpConfig.HoldTime, state.BgpConfig.HoldTime)
 		} else {
 			body.BgpConfig.HoldTime = Int64ValueOrNil(plan.BgpConfig.HoldTime)
 		}
 		// property: name=keepalive_time, type=INTEGER macro=copy_from_plan_or_state
-		if state.BgpConfig != nil {
+		if state != nil && state.BgpConfig != nil {
 			body.BgpConfig.KeepaliveTime = ValueInt64PointerFromPlanOrState(plan.BgpConfig.KeepaliveTime, state.BgpConfig.KeepaliveTime)
 		} else {
 			body.BgpConfig.KeepaliveTime = Int64ValueOrNil(plan.BgpConfig.KeepaliveTime)
 		}
 		// property: name=local_as_num, type=STRING macro=copy_from_plan_or_state
-		if state.BgpConfig != nil {
+		if state != nil && state.BgpConfig != nil {
 			body.BgpConfig.LocalAsNum = ValueStringPointerFromPlanOrState(plan.BgpConfig.LocalAsNum, state.BgpConfig.LocalAsNum)
 		} else {
 			body.BgpConfig.LocalAsNum = StringValueOrNil(plan.BgpConfig.LocalAsNum)
 		}
 		// property: name=md5_secret, type=STRING macro=copy_from_plan_or_state
-		if state.BgpConfig != nil {
+		if state != nil && state.BgpConfig != nil {
 			body.BgpConfig.Md5Secret = ValueStringPointerFromPlanOrState(plan.BgpConfig.Md5Secret, state.BgpConfig.Md5Secret)
 		} else {
 			body.BgpConfig.Md5Secret = StringValueOrNil(plan.BgpConfig.Md5Secret)
 		}
 		// property: name=multi_hop_limit, type=INTEGER macro=copy_from_plan_or_state
-		if state.BgpConfig != nil {
+		if state != nil && state.BgpConfig != nil {
 			body.BgpConfig.MultiHopLimit = ValueInt64PointerFromPlanOrState(plan.BgpConfig.MultiHopLimit, state.BgpConfig.MultiHopLimit)
 		} else {
 			body.BgpConfig.MultiHopLimit = Int64ValueOrNil(plan.BgpConfig.MultiHopLimit)
 		}
 		// property: name=peer_auth_type, type=STRING macro=copy_from_plan_or_state
-		if state.BgpConfig != nil {
+		if state != nil && state.BgpConfig != nil {
 			body.BgpConfig.PeerAuthType = ValueStringPointerFromPlanOrState(plan.BgpConfig.PeerAuthType, state.BgpConfig.PeerAuthType)
 		} else {
 			body.BgpConfig.PeerAuthType = StringValueOrNil(plan.BgpConfig.PeerAuthType)
 		}
 		// property: name=peer_retry_time, type=INTEGER macro=copy_from_plan_or_state
-		if state.BgpConfig != nil {
+		if state != nil && state.BgpConfig != nil {
 			body.BgpConfig.PeerRetryTime = ValueInt64PointerFromPlanOrState(plan.BgpConfig.PeerRetryTime, state.BgpConfig.PeerRetryTime)
 		} else {
 			body.BgpConfig.PeerRetryTime = Int64ValueOrNil(plan.BgpConfig.PeerRetryTime)
@@ -1116,11 +1210,11 @@ func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeer
 		// copy_from_plan_or_state: body=body.RouteAggregation prefix=rsModel state=state.RouteAggregation plan=plan.RouteAggregation properties=4
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.RouteAggregation prefix=rsModel state=state.RouteAggregation plan=plan.RouteAggregation")
 		// property: name=aggregate_prefixes, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-		if plan.RouteAggregation.AggregatePrefixes == nil && (state.RouteAggregation == nil || state.RouteAggregation.AggregatePrefixes == nil) {
+		if plan.RouteAggregation.AggregatePrefixes == nil && (!(state != nil && state.RouteAggregation != nil) || state.RouteAggregation.AggregatePrefixes == nil) {
 			body.RouteAggregation.AggregatePrefixes = nil
-		} else if len(plan.RouteAggregation.AggregatePrefixes) == 0 && (state.RouteAggregation == nil || len(state.RouteAggregation.AggregatePrefixes) == 0) {
+		} else if len(plan.RouteAggregation.AggregatePrefixes) == 0 && (!(state != nil && state.RouteAggregation != nil) || len(state.RouteAggregation.AggregatePrefixes) == 0) {
 			body.RouteAggregation.AggregatePrefixes = []sdwan_schema.AggregatePrefixes{}
-		} else if len(plan.RouteAggregation.AggregatePrefixes) != 0 || (state.RouteAggregation != nil && len(state.RouteAggregation.AggregatePrefixes) != 0) {
+		} else if len(plan.RouteAggregation.AggregatePrefixes) != 0 || (state != nil && state.RouteAggregation != nil && len(state.RouteAggregation.AggregatePrefixes) != 0) {
 			AggregatePrefixesToUse := plan.RouteAggregation.AggregatePrefixes
 			if len(plan.RouteAggregation.AggregatePrefixes) == 0 {
 				AggregatePrefixesToUse = state.RouteAggregation.AggregatePrefixes
@@ -1139,19 +1233,19 @@ func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeer
 			}
 		}
 		// property: name=aggregate_type, type=STRING macro=copy_from_plan_or_state
-		if state.RouteAggregation != nil {
+		if state != nil && state.RouteAggregation != nil {
 			body.RouteAggregation.AggregateType = ValueStringPointerFromPlanOrState(plan.RouteAggregation.AggregateType, state.RouteAggregation.AggregateType)
 		} else {
 			body.RouteAggregation.AggregateType = StringValueOrNil(plan.RouteAggregation.AggregateType)
 		}
 		// property: name=ipv4_prefix_list_id, type=STRING macro=copy_from_plan_or_state
-		if state.RouteAggregation != nil {
+		if state != nil && state.RouteAggregation != nil {
 			body.RouteAggregation.Ipv4PrefixListId = ValueStringPointerFromPlanOrState(plan.RouteAggregation.Ipv4PrefixListId, state.RouteAggregation.Ipv4PrefixListId)
 		} else {
 			body.RouteAggregation.Ipv4PrefixListId = StringValueOrNil(plan.RouteAggregation.Ipv4PrefixListId)
 		}
 		// property: name=ipv6_prefix_list_id, type=STRING macro=copy_from_plan_or_state
-		if state.RouteAggregation != nil {
+		if state != nil && state.RouteAggregation != nil {
 			body.RouteAggregation.Ipv6PrefixListId = ValueStringPointerFromPlanOrState(plan.RouteAggregation.Ipv6PrefixListId, state.RouteAggregation.Ipv6PrefixListId)
 		} else {
 			body.RouteAggregation.Ipv6PrefixListId = StringValueOrNil(plan.RouteAggregation.Ipv6PrefixListId)
@@ -1188,7 +1282,12 @@ func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeer
 		body.Shutdown = BoolValueOrNil(plan.Shutdown)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=update_source, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.UpdateSource = ValueStringPointerFromPlanOrState(plan.UpdateSource, state.UpdateSource)
@@ -1211,12 +1310,15 @@ func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeer
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct BGPPeerConfigScreenV2N6 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct BGPPeerConfigScreenV3 to JSON:", err.Error())
 		return false
 	}
 
 	// process http json path
 	request_body_string := string(json_body)
+	// inject overrides
+	tflog.Debug(ctx, "http json override: delete request_body_string::router_id")
+	request_body_string, _ = sjson.Delete(request_body_string, "router_id")
 	// copy pointer
 	put_request.RequestBody = &request_body_string
 
@@ -1247,16 +1349,22 @@ func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeer
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.BGPPeerConfigScreenV2N6
+	var ans sdwan_schema.BGPPeerConfigScreenV3
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to BGPPeerConfigScreenV2N6 in update", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to BGPPeerConfigScreenV3 in update", json_err.Error())
 		return false
 	}
 
-	// Store the answer to state. schema=BGPPeerConfigScreenV2N6
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
+	// Store the answer to state. schema=BGPPeerConfigScreenV3
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=23
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -1285,13 +1393,19 @@ func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeer
 		// property: name=local_as_num, type=STRING macro=copy_to_state
 		state.BgpConfig.LocalAsNum = types.StringPointerValue(ans.BgpConfig.LocalAsNum)
 		// property: name=md5_secret, type=STRING macro=copy_to_state
-		state.BgpConfig.Md5Secret = types.StringPointerValue(plan.BgpConfig.Md5Secret.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.BgpConfig.Md5SecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.BgpConfig.Md5Secret = types.StringNull()
+		if plan.BgpConfig != nil {
+			state.BgpConfig.Md5Secret = types.StringPointerValue(plan.BgpConfig.Md5Secret.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.BgpConfig.Md5Secret.IsNull() {
-			encryptedMd5Secret, _ := Encrypt([]byte(state.BgpConfig.Md5Secret.String()))
-			resp.Private.SetKey(ctx, state.BgpConfig.Md5SecretInternalKeyName.String(), []byte(encryptedMd5Secret))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedMd5Secret, _ := Encrypt([]byte(state.BgpConfig.Md5Secret.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedMd5SecretJson, _ := json.Marshal(encryptedMd5Secret)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.BgpConfig.Md5SecretInternalKeyName.String(), encryptedMd5SecretJson)...)
 		}
 		// property: name=multi_hop_limit, type=INTEGER macro=copy_to_state
 		state.BgpConfig.MultiHopLimit = types.Int64PointerValue(ans.BgpConfig.MultiHopLimit)
@@ -1362,6 +1476,14 @@ func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeer
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=update_source, type=STRING macro=copy_to_state
 	state.UpdateSource = types.StringPointerValue(ans.UpdateSource)
 	// property: name=update_source_v6, type=STRING macro=copy_to_state
@@ -1371,7 +1493,7 @@ func (r *elementBgpPeerResource) doPut(ctx context.Context, plan *rsModelBGPPeer
 	return true
 }
 
-func (r *elementBgpPeerResource) doDelete(ctx context.Context, state *rsModelBGPPeerConfigScreenV2N6, resp *resource.DeleteResponse) bool {
+func (r *elementBgpPeerResource) doDelete(ctx context.Context, state *rsModelBGPPeerConfigScreenV3, resp *resource.DeleteResponse) bool {
 	// read object id
 	tfid := state.Tfid.ValueString()
 	// Basic logging.
@@ -1392,7 +1514,7 @@ func (r *elementBgpPeerResource) doDelete(ctx context.Context, state *rsModelBGP
 	delete_request := &sdwan_client.SdwanClientRequestResponse{}
 	delete_request.ResourceType = "prismasdwan_element_bgp_peer"
 	delete_request.Method = "DELETE"
-	delete_request.Path = "/sdwan/v2.6/api/sites/{site_id}/elements/{element_id}/bgppeers/{bgp_peer_id}"
+	delete_request.Path = "/sdwan/v3.0/api/sites/{site_id}/elements/{element_id}/bgppeers/{bgp_peer_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -1426,14 +1548,14 @@ func (r *elementBgpPeerResource) doDelete(ctx context.Context, state *rsModelBGP
 // Path Parameters are encoded into TfID itself
 func (r *elementBgpPeerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "executing resource create for prismasdwan_element_bgp_peer")
-	var plan rsModelBGPPeerConfigScreenV2N6
+	var plan rsModelBGPPeerConfigScreenV3
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// make post call
-	var state rsModelBGPPeerConfigScreenV2N6
+	var state rsModelBGPPeerConfigScreenV3
 	if r.doPost(ctx, &plan, &state, resp) {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	}
@@ -1445,7 +1567,7 @@ func (r *elementBgpPeerResource) Create(ctx context.Context, req resource.Create
 func (r *elementBgpPeerResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 	tflog.Info(ctx, "executing resource read for prismasdwan_element_bgp_peer")
-	var savestate, state rsModelBGPPeerConfigScreenV2N6
+	var savestate, state rsModelBGPPeerConfigScreenV3
 	resp.Diagnostics.Append(req.State.Get(ctx, &savestate)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -1464,7 +1586,7 @@ func (r *elementBgpPeerResource) Read(ctx context.Context, req resource.ReadRequ
 func (r *elementBgpPeerResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
 	tflog.Info(ctx, "executing resource update for prismasdwan_element_bgp_peer")
-	var plan, state rsModelBGPPeerConfigScreenV2N6
+	var plan, state rsModelBGPPeerConfigScreenV3
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -1488,7 +1610,7 @@ func (r *elementBgpPeerResource) Update(ctx context.Context, req resource.Update
 func (r *elementBgpPeerResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 
 	tflog.Info(ctx, "executing resource delete for prismasdwan_element_bgp_peer")
-	var state rsModelBGPPeerConfigScreenV2N6
+	var state rsModelBGPPeerConfigScreenV3
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {

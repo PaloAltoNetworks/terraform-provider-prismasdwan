@@ -27,15 +27,16 @@ import (
 // | Schema Map Summary (size=goLangStructMap=2)
 // | Computed Resource Name=probeconfigs
 // +-----------------------------------------------------------------
-// | ProbeEndpoint HasID=false
-// | ProbeConfigScreen HasID=true
+// | ProbeEndpointV2N1 HasID=false
+// | ProbeConfigScreenV2N1 HasID=true
 // +-----------------------------------------------------------------
 
 // Resource.
 var (
-	_ resource.Resource                = &probeConfigResource{}
-	_ resource.ResourceWithConfigure   = &probeConfigResource{}
-	_ resource.ResourceWithImportState = &probeConfigResource{}
+	_ resource.Resource                   = &probeConfigResource{}
+	_ resource.ResourceWithConfigure      = &probeConfigResource{}
+	_ resource.ResourceWithImportState    = &probeConfigResource{}
+	_ resource.ResourceWithValidateConfig = &probeConfigResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -56,6 +57,12 @@ type probeConfigResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *probeConfigResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{})...)
+}
+
 // Metadata returns the data source type name.
 func (r *probeConfigResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_probe_config"
@@ -64,84 +71,94 @@ func (r *probeConfigResource) Metadata(_ context.Context, req resource.MetadataR
 // Schema defines the schema for this data source.
 func (r *probeConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Probe Config.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
-			// rest all properties to be read from GET API Schema schema=ProbeConfigScreen
+			// rest all properties to be read from GET API Schema schema=ProbeConfigScreenV2N1
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=enabled, type=BOOLEAN macro=rss_schema
 			"enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Enabled. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 			// property: name=endpoints, type=ARRAY_REFERENCE macro=rss_schema
 			"endpoints": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Endpoints.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=allow_insecure_https_connection, type=BOOLEAN macro=rss_schema
 						"allow_insecure_https_connection": rsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Allow insecure https connection.",
 						},
 						// key name holder for attribute: name=allow_insecure_https_connection, type=BOOLEAN macro=rss_schema
 						// property: name=dns_server_ip, type=STRING macro=rss_schema
 						"dns_server_ip": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Dns server ip.",
 						},
 						// key name holder for attribute: name=dns_server_ip, type=STRING macro=rss_schema
 						// property: name=fqdn, type=STRING macro=rss_schema
 						"fqdn": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Fqdn.",
 						},
 						// key name holder for attribute: name=fqdn, type=STRING macro=rss_schema
 						// property: name=http_response_codes, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -150,23 +167,26 @@ func (r *probeConfigResource) Schema(_ context.Context, _ resource.SchemaRequest
 							Computed:    true,
 							Optional:    true,
 							Sensitive:   false,
+							Description: "Http response codes. Filled in by the server when it is not set.",
 							ElementType: types.Int64Type,
 						},
 						// key name holder for attribute: name=http_response_codes, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=http_response_string, type=STRING macro=rss_schema
 						"http_response_string": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Http response string.",
 						},
 						// key name holder for attribute: name=http_response_string, type=STRING macro=rss_schema
 						// property: name=ipv4_address, type=STRING macro=rss_schema
 						"ipv4_address": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Ipv4 address.",
 						},
 						// key name holder for attribute: name=ipv4_address, type=STRING macro=rss_schema
 						// property: name=path_types, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -175,51 +195,57 @@ func (r *probeConfigResource) Schema(_ context.Context, _ resource.SchemaRequest
 							Computed:    false,
 							Optional:    true,
 							Sensitive:   false,
+							Description: "Path types. Each item: one of vpn, direct, servicelink, pa_vpn, all.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=path_types, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=probe_count, type=INTEGER macro=rss_schema
 						"probe_count": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Probe count.",
 						},
 						// key name holder for attribute: name=probe_count, type=INTEGER macro=rss_schema
 						// property: name=probe_cycle_duration, type=INTEGER macro=rss_schema
 						"probe_cycle_duration": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Probe cycle duration.",
 						},
 						// key name holder for attribute: name=probe_cycle_duration, type=INTEGER macro=rss_schema
 						// property: name=protocol, type=STRING macro=rss_schema
 						"protocol": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Protocol. Value: one of http, https, icmp, dns.",
 						},
 						// key name holder for attribute: name=protocol, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=protocol, type=STRING macro=rss_schema
+			// key name holder for attribute: name=endpoints, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -228,6 +254,8 @@ func (r *probeConfigResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -257,7 +285,7 @@ func (r *probeConfigResource) GetHttpStatusCode(request *sdwan_client.SdwanClien
 	}
 }
 
-func (r *probeConfigResource) doPost(ctx context.Context, plan *rsModelProbeConfigScreen, state *rsModelProbeConfigScreen, resp *resource.CreateResponse) bool {
+func (r *probeConfigResource) doPost(ctx context.Context, plan *rsModelProbeConfigScreenV2N1, state *rsModelProbeConfigScreenV2N1, resp *resource.CreateResponse) bool {
 	tflog.Info(ctx, "executing http post for prismasdwan_probe_config")
 	// Basic logging.
 	tflog.Info(ctx, "performing resource create", map[string]any{
@@ -269,7 +297,7 @@ func (r *probeConfigResource) doPost(ctx context.Context, plan *rsModelProbeConf
 	create_request := &sdwan_client.SdwanClientRequestResponse{}
 	create_request.ResourceType = "prismasdwan_probe_config"
 	create_request.Method = "POST"
-	create_request.Path = "/sdwan/v2.0/api/probeconfigs"
+	create_request.Path = "/sdwan/v2.1/api/probeconfigs"
 
 	// copy parameters from plan always
 	params := make(map[string]*string)
@@ -279,7 +307,7 @@ func (r *probeConfigResource) doPost(ctx context.Context, plan *rsModelProbeConf
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.ProbeConfigScreen{}
+	var body = &sdwan_schema.ProbeConfigScreenV2N1{}
 
 	// copy from plan to body
 	// copy_from_plan: body=body prefix=rsModel plan=plan properties=8
@@ -296,12 +324,12 @@ func (r *probeConfigResource) doPost(ctx context.Context, plan *rsModelProbeConf
 	if plan.Endpoints == nil {
 		body.Endpoints = nil
 	} else if len(plan.Endpoints) == 0 {
-		body.Endpoints = []sdwan_schema.ProbeEndpoint{}
+		body.Endpoints = []sdwan_schema.ProbeEndpointV2N1{}
 	} else {
-		body.Endpoints = make([]sdwan_schema.ProbeEndpoint, 0, len(plan.Endpoints))
+		body.Endpoints = make([]sdwan_schema.ProbeEndpointV2N1, 0, len(plan.Endpoints))
 		for varLoopEndpointsIndex, varLoopEndpoints := range plan.Endpoints {
 			// add a new item
-			body.Endpoints = append(body.Endpoints, sdwan_schema.ProbeEndpoint{})
+			body.Endpoints = append(body.Endpoints, sdwan_schema.ProbeEndpointV2N1{})
 			// copy_from_plan: body=body.Endpoints[varLoopEndpointsIndex] prefix=rsModel plan=varLoopEndpoints properties=10
 			tflog.Debug(ctx, "copy_from_plan body=body.Endpoints[varLoopEndpointsIndex] prefix=rsModel plan=varLoopEndpoints")
 			// property: name=allow_insecure_https_connection, type=BOOLEAN macro=copy_from_plan
@@ -340,7 +368,7 @@ func (r *probeConfigResource) doPost(ctx context.Context, plan *rsModelProbeConf
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct ProbeConfigScreen to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct ProbeConfigScreenV2N1 to JSON:", err.Error())
 		return false
 	}
 
@@ -383,12 +411,12 @@ func (r *probeConfigResource) doPost(ctx context.Context, plan *rsModelProbeConf
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.ProbeConfigScreen
+	var ans sdwan_schema.ProbeConfigScreenV2N1
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to ProbeConfigScreen in create", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to ProbeConfigScreenV2N1 in create", json_err.Error())
 		return false
 	}
 
@@ -413,7 +441,7 @@ func (r *probeConfigResource) doPost(ctx context.Context, plan *rsModelProbeConf
 	state.TfParameters = plan.TfParameters
 	tflog.Info(ctx, "created prismasdwan_probe_config with ID", map[string]any{"tfid": state.Tfid.ValueString()})
 
-	// Store the answer to state. schema=ProbeConfigScreen
+	// Store the answer to state. schema=ProbeConfigScreenV2N1
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=8
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -428,12 +456,12 @@ func (r *probeConfigResource) doPost(ctx context.Context, plan *rsModelProbeConf
 	if ans.Endpoints == nil {
 		state.Endpoints = nil
 	} else if len(ans.Endpoints) == 0 {
-		state.Endpoints = []rsModelProbeEndpoint{}
+		state.Endpoints = []rsModelProbeEndpointV2N1{}
 	} else {
-		state.Endpoints = make([]rsModelProbeEndpoint, 0, len(ans.Endpoints))
+		state.Endpoints = make([]rsModelProbeEndpointV2N1, 0, len(ans.Endpoints))
 		for varLoopEndpointsIndex, varLoopEndpoints := range ans.Endpoints {
 			// add a new item
-			state.Endpoints = append(state.Endpoints, rsModelProbeEndpoint{})
+			state.Endpoints = append(state.Endpoints, rsModelProbeEndpointV2N1{})
 			// copy_to_state: state=state.Endpoints[varLoopEndpointsIndex] prefix=rsModel ans=varLoopEndpoints properties=10
 			tflog.Debug(ctx, "copy_to_state state=state.Endpoints[varLoopEndpointsIndex] prefix=rsModel ans=varLoopEndpoints")
 			// property: name=allow_insecure_https_connection, type=BOOLEAN macro=copy_to_state
@@ -449,6 +477,10 @@ func (r *probeConfigResource) doPost(ctx context.Context, plan *rsModelProbeConf
 			// api does not accept empty list as missing value
 			if len(varLoopEndpoints.HttpResponseCodes) == 0 {
 				state.Endpoints[varLoopEndpointsIndex].HttpResponseCodes = types.ListNull(types.Int64Type)
+			}
+			// the configuration states an empty list: keep it
+			if len(plan.Endpoints) > varLoopEndpointsIndex && len(varLoopEndpoints.HttpResponseCodes) == 0 && !plan.Endpoints[varLoopEndpointsIndex].HttpResponseCodes.IsNull() && !plan.Endpoints[varLoopEndpointsIndex].HttpResponseCodes.IsUnknown() && len(plan.Endpoints[varLoopEndpointsIndex].HttpResponseCodes.Elements()) == 0 {
+				state.Endpoints[varLoopEndpointsIndex].HttpResponseCodes = plan.Endpoints[varLoopEndpointsIndex].HttpResponseCodes
 			}
 			// property: name=http_response_string, type=STRING macro=copy_to_state
 			state.Endpoints[varLoopEndpointsIndex].HttpResponseString = types.StringPointerValue(varLoopEndpoints.HttpResponseString)
@@ -474,10 +506,18 @@ func (r *probeConfigResource) doPost(ctx context.Context, plan *rsModelProbeConf
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
-func (r *probeConfigResource) doGet(ctx context.Context, state *rsModelProbeConfigScreen, savestate *rsModelProbeConfigScreen, State *tfsdk.State, resp *resource.ReadResponse) bool {
+func (r *probeConfigResource) doGet(ctx context.Context, state *rsModelProbeConfigScreenV2N1, savestate *rsModelProbeConfigScreenV2N1, State *tfsdk.State, resp *resource.ReadResponse) bool {
 	// Basic logging.
 	tfid := savestate.Tfid.ValueString()
 	tflog.Info(ctx, "performing resource read", map[string]any{
@@ -499,7 +539,7 @@ func (r *probeConfigResource) doGet(ctx context.Context, state *rsModelProbeConf
 	read_request := &sdwan_client.SdwanClientRequestResponse{}
 	read_request.ResourceType = "prismasdwan_probe_config"
 	read_request.Method = "GET"
-	read_request.Path = "/sdwan/v2.0/api/probeconfigs/{config_id}"
+	read_request.Path = "/sdwan/v2.1/api/probeconfigs/{config_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, savestate.TfParameters)
@@ -541,21 +581,37 @@ func (r *probeConfigResource) doGet(ctx context.Context, state *rsModelProbeConf
 	tflog.Debug(ctx, "http json override: set response_body_string::_schema")
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
-	// Store the answer to state. schema=ProbeConfigScreen
+	// Store the answer to state. schema=ProbeConfigScreenV2N1
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
 	// start copying attributes
-	var ans sdwan_schema.ProbeConfigScreen
+	var ans sdwan_schema.ProbeConfigScreenV2N1
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to ProbeConfigScreen in read", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to ProbeConfigScreenV2N1 in read", json_err.Error())
 		return false
 	}
 	// lets copy all items into state
@@ -573,12 +629,12 @@ func (r *probeConfigResource) doGet(ctx context.Context, state *rsModelProbeConf
 	if ans.Endpoints == nil {
 		state.Endpoints = nil
 	} else if len(ans.Endpoints) == 0 {
-		state.Endpoints = []rsModelProbeEndpoint{}
+		state.Endpoints = []rsModelProbeEndpointV2N1{}
 	} else {
-		state.Endpoints = make([]rsModelProbeEndpoint, 0, len(ans.Endpoints))
+		state.Endpoints = make([]rsModelProbeEndpointV2N1, 0, len(ans.Endpoints))
 		for varLoopEndpointsIndex, varLoopEndpoints := range ans.Endpoints {
 			// add a new item
-			state.Endpoints = append(state.Endpoints, rsModelProbeEndpoint{})
+			state.Endpoints = append(state.Endpoints, rsModelProbeEndpointV2N1{})
 			// copy_to_state: state=state.Endpoints[varLoopEndpointsIndex] prefix=rsModel ans=varLoopEndpoints properties=10
 			tflog.Debug(ctx, "copy_to_state state=state.Endpoints[varLoopEndpointsIndex] prefix=rsModel ans=varLoopEndpoints")
 			// property: name=allow_insecure_https_connection, type=BOOLEAN macro=copy_to_state
@@ -594,6 +650,10 @@ func (r *probeConfigResource) doGet(ctx context.Context, state *rsModelProbeConf
 			// api does not accept empty list as missing value
 			if len(varLoopEndpoints.HttpResponseCodes) == 0 {
 				state.Endpoints[varLoopEndpointsIndex].HttpResponseCodes = types.ListNull(types.Int64Type)
+			}
+			// the configuration states an empty list: keep it
+			if len(savestate.Endpoints) > varLoopEndpointsIndex && len(varLoopEndpoints.HttpResponseCodes) == 0 && !savestate.Endpoints[varLoopEndpointsIndex].HttpResponseCodes.IsNull() && !savestate.Endpoints[varLoopEndpointsIndex].HttpResponseCodes.IsUnknown() && len(savestate.Endpoints[varLoopEndpointsIndex].HttpResponseCodes.Elements()) == 0 {
+				state.Endpoints[varLoopEndpointsIndex].HttpResponseCodes = savestate.Endpoints[varLoopEndpointsIndex].HttpResponseCodes
 			}
 			// property: name=http_response_string, type=STRING macro=copy_to_state
 			state.Endpoints[varLoopEndpointsIndex].HttpResponseString = types.StringPointerValue(varLoopEndpoints.HttpResponseString)
@@ -619,10 +679,18 @@ func (r *probeConfigResource) doGet(ctx context.Context, state *rsModelProbeConf
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	return true
 }
 
-func (r *probeConfigResource) doPut(ctx context.Context, plan *rsModelProbeConfigScreen, state *rsModelProbeConfigScreen, State *tfsdk.State, resp *resource.UpdateResponse) bool {
+func (r *probeConfigResource) doPut(ctx context.Context, plan *rsModelProbeConfigScreenV2N1, state *rsModelProbeConfigScreenV2N1, State *tfsdk.State, resp *resource.UpdateResponse) bool {
 	state_tfid := state.Tfid.ValueString()
 	plan_tfid := plan.Tfid.ValueString()
 	// Basic logging.
@@ -650,7 +718,7 @@ func (r *probeConfigResource) doPut(ctx context.Context, plan *rsModelProbeConfi
 	put_request := &sdwan_client.SdwanClientRequestResponse{}
 	put_request.ResourceType = "prismasdwan_probe_config"
 	put_request.Method = "PUT"
-	put_request.Path = "/sdwan/v2.0/api/probeconfigs/{config_id}"
+	put_request.Path = "/sdwan/v2.1/api/probeconfigs/{config_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -669,7 +737,7 @@ func (r *probeConfigResource) doPut(ctx context.Context, plan *rsModelProbeConfi
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.ProbeConfigScreen{}
+	var body = &sdwan_schema.ProbeConfigScreenV2N1{}
 
 	// now we create the JSON request from the state/plan created by TF
 	// below copy code generated from macro copy_from_plan_or_state
@@ -700,19 +768,19 @@ func (r *probeConfigResource) doPut(ctx context.Context, plan *rsModelProbeConfi
 		body.Enabled = BoolValueOrNil(plan.Enabled)
 	}
 	// property: name=endpoints, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.Endpoints == nil && (state == nil || state.Endpoints == nil) {
+	if plan.Endpoints == nil && (!(state != nil) || state.Endpoints == nil) {
 		body.Endpoints = nil
-	} else if len(plan.Endpoints) == 0 && (state == nil || len(state.Endpoints) == 0) {
-		body.Endpoints = []sdwan_schema.ProbeEndpoint{}
+	} else if len(plan.Endpoints) == 0 && (!(state != nil) || len(state.Endpoints) == 0) {
+		body.Endpoints = []sdwan_schema.ProbeEndpointV2N1{}
 	} else if len(plan.Endpoints) != 0 || (state != nil && len(state.Endpoints) != 0) {
 		EndpointsToUse := plan.Endpoints
 		if len(plan.Endpoints) == 0 {
 			EndpointsToUse = state.Endpoints
 		}
-		body.Endpoints = make([]sdwan_schema.ProbeEndpoint, 0, len(EndpointsToUse))
+		body.Endpoints = make([]sdwan_schema.ProbeEndpointV2N1, 0, len(EndpointsToUse))
 		for varLoopEndpointsIndex, varLoopEndpoints := range EndpointsToUse {
 			// add a new item
-			body.Endpoints = append(body.Endpoints, sdwan_schema.ProbeEndpoint{})
+			body.Endpoints = append(body.Endpoints, sdwan_schema.ProbeEndpointV2N1{})
 			// since we have chosen to stick with either the plan or state, we need to simply copy child properties
 			// copy_from_plan: body=body.Endpoints[varLoopEndpointsIndex] prefix=rsModel plan=varLoopEndpoints properties=10
 			tflog.Debug(ctx, "copy_from_plan body=body.Endpoints[varLoopEndpointsIndex] prefix=rsModel plan=varLoopEndpoints")
@@ -755,12 +823,17 @@ func (r *probeConfigResource) doPut(ctx context.Context, plan *rsModelProbeConfi
 		body.Name = StringValueOrNil(plan.Name)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct ProbeConfigScreen to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct ProbeConfigScreenV2N1 to JSON:", err.Error())
 		return false
 	}
 
@@ -796,16 +869,22 @@ func (r *probeConfigResource) doPut(ctx context.Context, plan *rsModelProbeConfi
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.ProbeConfigScreen
+	var ans sdwan_schema.ProbeConfigScreenV2N1
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to ProbeConfigScreen in update", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to ProbeConfigScreenV2N1 in update", json_err.Error())
 		return false
 	}
 
-	// Store the answer to state. schema=ProbeConfigScreen
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
+	// Store the answer to state. schema=ProbeConfigScreenV2N1
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=8
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -820,12 +899,12 @@ func (r *probeConfigResource) doPut(ctx context.Context, plan *rsModelProbeConfi
 	if ans.Endpoints == nil {
 		state.Endpoints = nil
 	} else if len(ans.Endpoints) == 0 {
-		state.Endpoints = []rsModelProbeEndpoint{}
+		state.Endpoints = []rsModelProbeEndpointV2N1{}
 	} else {
-		state.Endpoints = make([]rsModelProbeEndpoint, 0, len(ans.Endpoints))
+		state.Endpoints = make([]rsModelProbeEndpointV2N1, 0, len(ans.Endpoints))
 		for varLoopEndpointsIndex, varLoopEndpoints := range ans.Endpoints {
 			// add a new item
-			state.Endpoints = append(state.Endpoints, rsModelProbeEndpoint{})
+			state.Endpoints = append(state.Endpoints, rsModelProbeEndpointV2N1{})
 			// copy_to_state: state=state.Endpoints[varLoopEndpointsIndex] prefix=rsModel ans=varLoopEndpoints properties=10
 			tflog.Debug(ctx, "copy_to_state state=state.Endpoints[varLoopEndpointsIndex] prefix=rsModel ans=varLoopEndpoints")
 			// property: name=allow_insecure_https_connection, type=BOOLEAN macro=copy_to_state
@@ -841,6 +920,10 @@ func (r *probeConfigResource) doPut(ctx context.Context, plan *rsModelProbeConfi
 			// api does not accept empty list as missing value
 			if len(varLoopEndpoints.HttpResponseCodes) == 0 {
 				state.Endpoints[varLoopEndpointsIndex].HttpResponseCodes = types.ListNull(types.Int64Type)
+			}
+			// the configuration states an empty list: keep it
+			if len(plan.Endpoints) > varLoopEndpointsIndex && len(varLoopEndpoints.HttpResponseCodes) == 0 && !plan.Endpoints[varLoopEndpointsIndex].HttpResponseCodes.IsNull() && !plan.Endpoints[varLoopEndpointsIndex].HttpResponseCodes.IsUnknown() && len(plan.Endpoints[varLoopEndpointsIndex].HttpResponseCodes.Elements()) == 0 {
+				state.Endpoints[varLoopEndpointsIndex].HttpResponseCodes = plan.Endpoints[varLoopEndpointsIndex].HttpResponseCodes
 			}
 			// property: name=http_response_string, type=STRING macro=copy_to_state
 			state.Endpoints[varLoopEndpointsIndex].HttpResponseString = types.StringPointerValue(varLoopEndpoints.HttpResponseString)
@@ -866,10 +949,18 @@ func (r *probeConfigResource) doPut(ctx context.Context, plan *rsModelProbeConfi
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
-func (r *probeConfigResource) doDelete(ctx context.Context, state *rsModelProbeConfigScreen, resp *resource.DeleteResponse) bool {
+func (r *probeConfigResource) doDelete(ctx context.Context, state *rsModelProbeConfigScreenV2N1, resp *resource.DeleteResponse) bool {
 	// read object id
 	tfid := state.Tfid.ValueString()
 	// Basic logging.
@@ -890,7 +981,7 @@ func (r *probeConfigResource) doDelete(ctx context.Context, state *rsModelProbeC
 	delete_request := &sdwan_client.SdwanClientRequestResponse{}
 	delete_request.ResourceType = "prismasdwan_probe_config"
 	delete_request.Method = "DELETE"
-	delete_request.Path = "/sdwan/v2.0/api/probeconfigs/{config_id}"
+	delete_request.Path = "/sdwan/v2.1/api/probeconfigs/{config_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -924,14 +1015,14 @@ func (r *probeConfigResource) doDelete(ctx context.Context, state *rsModelProbeC
 // Path Parameters are encoded into TfID itself
 func (r *probeConfigResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "executing resource create for prismasdwan_probe_config")
-	var plan rsModelProbeConfigScreen
+	var plan rsModelProbeConfigScreenV2N1
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// make post call
-	var state rsModelProbeConfigScreen
+	var state rsModelProbeConfigScreenV2N1
 	if r.doPost(ctx, &plan, &state, resp) {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	}
@@ -943,7 +1034,7 @@ func (r *probeConfigResource) Create(ctx context.Context, req resource.CreateReq
 func (r *probeConfigResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 	tflog.Info(ctx, "executing resource read for prismasdwan_probe_config")
-	var savestate, state rsModelProbeConfigScreen
+	var savestate, state rsModelProbeConfigScreenV2N1
 	resp.Diagnostics.Append(req.State.Get(ctx, &savestate)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -962,7 +1053,7 @@ func (r *probeConfigResource) Read(ctx context.Context, req resource.ReadRequest
 func (r *probeConfigResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
 	tflog.Info(ctx, "executing resource update for prismasdwan_probe_config")
-	var plan, state rsModelProbeConfigScreen
+	var plan, state rsModelProbeConfigScreenV2N1
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -986,7 +1077,7 @@ func (r *probeConfigResource) Update(ctx context.Context, req resource.UpdateReq
 func (r *probeConfigResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 
 	tflog.Info(ctx, "executing resource delete for prismasdwan_probe_config")
-	var state rsModelProbeConfigScreen
+	var state rsModelProbeConfigScreenV2N1
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {

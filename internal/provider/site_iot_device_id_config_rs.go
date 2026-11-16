@@ -27,14 +27,15 @@ import (
 // | Schema Map Summary (size=goLangStructMap=1)
 // | Computed Resource Name=sites_deviceidconfigs
 // +-----------------------------------------------------------------
-// | DeviceIdConfigScreen HasID=true
+// | DeviceIdConfigV2N1 HasID=true
 // +-----------------------------------------------------------------
 
 // Resource.
 var (
-	_ resource.Resource                = &siteIotDeviceIdConfigResource{}
-	_ resource.ResourceWithConfigure   = &siteIotDeviceIdConfigResource{}
-	_ resource.ResourceWithImportState = &siteIotDeviceIdConfigResource{}
+	_ resource.Resource                   = &siteIotDeviceIdConfigResource{}
+	_ resource.ResourceWithConfigure      = &siteIotDeviceIdConfigResource{}
+	_ resource.ResourceWithImportState    = &siteIotDeviceIdConfigResource{}
+	_ resource.ResourceWithValidateConfig = &siteIotDeviceIdConfigResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -55,6 +56,12 @@ type siteIotDeviceIdConfigResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *siteIotDeviceIdConfigResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *siteIotDeviceIdConfigResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_site_iot_device_id_config"
@@ -63,54 +70,78 @@ func (r *siteIotDeviceIdConfigResource) Metadata(_ context.Context, req resource
 // Schema defines the schema for this data source.
 func (r *siteIotDeviceIdConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Site Iot Device Id Config.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
-			// rest all properties to be read from GET API Schema schema=DeviceIdConfigScreen
+			// rest all properties to be read from GET API Schema schema=DeviceIdConfigV2N1
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=cfg_device_id_enabled, type=BOOLEAN macro=rss_schema
 			"cfg_device_id_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Cfg device id enabled.",
 			},
 			// key name holder for attribute: name=cfg_device_id_enabled, type=BOOLEAN macro=rss_schema
+			// property: name=deviceid_profile_id, type=STRING macro=rss_schema
+			"deviceid_profile_id": rsschema.StringAttribute{
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Deviceid profile id.",
+			},
+			// key name holder for attribute: name=deviceid_profile_id, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
+			// property: name=site_id, type=STRING macro=rss_schema
+			"site_id": rsschema.StringAttribute{
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Site id. Value: at most 50 characters, matching `^-?[0-9]{1,50}$`. Filled in by the server when it is not set.",
+			},
+			// key name holder for attribute: name=site_id, type=STRING macro=rss_schema
 		},
 	}
 }
@@ -137,7 +168,7 @@ func (r *siteIotDeviceIdConfigResource) GetHttpStatusCode(request *sdwan_client.
 	}
 }
 
-func (r *siteIotDeviceIdConfigResource) doPost(ctx context.Context, plan *rsModelDeviceIdConfigScreen, state *rsModelDeviceIdConfigScreen, resp *resource.CreateResponse) bool {
+func (r *siteIotDeviceIdConfigResource) doPost(ctx context.Context, plan *rsModelDeviceIdConfigV2N1, state *rsModelDeviceIdConfigV2N1, resp *resource.CreateResponse) bool {
 	tflog.Info(ctx, "executing http post for prismasdwan_site_iot_device_id_config")
 	// Basic logging.
 	tflog.Info(ctx, "performing resource create", map[string]any{
@@ -159,10 +190,10 @@ func (r *siteIotDeviceIdConfigResource) doPost(ctx context.Context, plan *rsMode
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.DeviceIdConfigScreen{}
+	var body = &sdwan_schema.DeviceIdConfigV2N1{}
 
 	// copy from plan to body
-	// copy_from_plan: body=body prefix=rsModel plan=plan properties=4
+	// copy_from_plan: body=body prefix=rsModel plan=plan properties=6
 	tflog.Debug(ctx, "copy_from_plan body=body prefix=rsModel plan=plan")
 	// property: name=_etag, type=INTEGER macro=copy_from_plan
 	body.Etag = Int64ValueOrNil(plan.Etag)
@@ -170,13 +201,17 @@ func (r *siteIotDeviceIdConfigResource) doPost(ctx context.Context, plan *rsMode
 	body.Schema = Int64ValueOrNil(plan.Schema)
 	// property: name=cfg_device_id_enabled, type=BOOLEAN macro=copy_from_plan
 	body.CfgDeviceIdEnabled = BoolValueOrNil(plan.CfgDeviceIdEnabled)
+	// property: name=deviceid_profile_id, type=STRING macro=copy_from_plan
+	body.DeviceidProfileId = StringValueOrNil(plan.DeviceidProfileId)
 	// property: name=id, type=STRING macro=copy_from_plan
 	body.Id = StringValueOrNil(plan.Id)
+	// property: name=site_id, type=STRING macro=copy_from_plan
+	body.SiteId = StringValueOrNil(plan.SiteId)
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct DeviceIdConfigScreen to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct DeviceIdConfigV2N1 to JSON:", err.Error())
 		return false
 	}
 
@@ -219,12 +254,12 @@ func (r *siteIotDeviceIdConfigResource) doPost(ctx context.Context, plan *rsMode
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.DeviceIdConfigScreen
+	var ans sdwan_schema.DeviceIdConfigV2N1
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to DeviceIdConfigScreen in create", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to DeviceIdConfigV2N1 in create", json_err.Error())
 		return false
 	}
 
@@ -249,8 +284,8 @@ func (r *siteIotDeviceIdConfigResource) doPost(ctx context.Context, plan *rsMode
 	state.TfParameters = plan.TfParameters
 	tflog.Info(ctx, "created prismasdwan_site_iot_device_id_config with ID", map[string]any{"tfid": state.Tfid.ValueString()})
 
-	// Store the answer to state. schema=DeviceIdConfigScreen
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=4
+	// Store the answer to state. schema=DeviceIdConfigV2N1
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=6
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
@@ -258,12 +293,25 @@ func (r *siteIotDeviceIdConfigResource) doPost(ctx context.Context, plan *rsMode
 	state.Schema = types.Int64PointerValue(ans.Schema)
 	// property: name=cfg_device_id_enabled, type=BOOLEAN macro=copy_to_state
 	state.CfgDeviceIdEnabled = types.BoolPointerValue(ans.CfgDeviceIdEnabled)
+	// property: name=deviceid_profile_id, type=STRING macro=copy_to_state
+	state.DeviceidProfileId = types.StringPointerValue(ans.DeviceidProfileId)
 	// property: name=id, type=STRING macro=copy_to_state
 	state.Id = types.StringPointerValue(ans.Id)
+	// property: name=site_id, type=STRING macro=copy_to_state
+	priorSiteId := state.SiteId
+	state.SiteId = types.StringPointerValue(ans.SiteId)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.SiteId == nil {
+		if !plan.SiteId.IsUnknown() {
+			state.SiteId = plan.SiteId
+		} else {
+			state.SiteId = priorSiteId
+		}
+	}
 	return true
 }
 
-func (r *siteIotDeviceIdConfigResource) doGet(ctx context.Context, state *rsModelDeviceIdConfigScreen, savestate *rsModelDeviceIdConfigScreen, State *tfsdk.State, resp *resource.ReadResponse) bool {
+func (r *siteIotDeviceIdConfigResource) doGet(ctx context.Context, state *rsModelDeviceIdConfigV2N1, savestate *rsModelDeviceIdConfigV2N1, State *tfsdk.State, resp *resource.ReadResponse) bool {
 	// Basic logging.
 	tfid := savestate.Tfid.ValueString()
 	tflog.Info(ctx, "performing resource read", map[string]any{
@@ -327,25 +375,41 @@ func (r *siteIotDeviceIdConfigResource) doGet(ctx context.Context, state *rsMode
 	tflog.Debug(ctx, "http json override: set response_body_string::_schema")
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
-	// Store the answer to state. schema=DeviceIdConfigScreen
+	// Store the answer to state. schema=DeviceIdConfigV2N1
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
 	// start copying attributes
-	var ans sdwan_schema.DeviceIdConfigScreen
+	var ans sdwan_schema.DeviceIdConfigV2N1
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to DeviceIdConfigScreen in read", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to DeviceIdConfigV2N1 in read", json_err.Error())
 		return false
 	}
 	// lets copy all items into state
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=4
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=6
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
@@ -353,12 +417,25 @@ func (r *siteIotDeviceIdConfigResource) doGet(ctx context.Context, state *rsMode
 	state.Schema = types.Int64PointerValue(ans.Schema)
 	// property: name=cfg_device_id_enabled, type=BOOLEAN macro=copy_to_state
 	state.CfgDeviceIdEnabled = types.BoolPointerValue(ans.CfgDeviceIdEnabled)
+	// property: name=deviceid_profile_id, type=STRING macro=copy_to_state
+	state.DeviceidProfileId = types.StringPointerValue(ans.DeviceidProfileId)
 	// property: name=id, type=STRING macro=copy_to_state
 	state.Id = types.StringPointerValue(ans.Id)
+	// property: name=site_id, type=STRING macro=copy_to_state
+	priorSiteId := state.SiteId
+	state.SiteId = types.StringPointerValue(ans.SiteId)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.SiteId == nil {
+		if !savestate.SiteId.IsUnknown() {
+			state.SiteId = savestate.SiteId
+		} else {
+			state.SiteId = priorSiteId
+		}
+	}
 	return true
 }
 
-func (r *siteIotDeviceIdConfigResource) doPut(ctx context.Context, plan *rsModelDeviceIdConfigScreen, state *rsModelDeviceIdConfigScreen, State *tfsdk.State, resp *resource.UpdateResponse) bool {
+func (r *siteIotDeviceIdConfigResource) doPut(ctx context.Context, plan *rsModelDeviceIdConfigV2N1, state *rsModelDeviceIdConfigV2N1, State *tfsdk.State, resp *resource.UpdateResponse) bool {
 	state_tfid := state.Tfid.ValueString()
 	plan_tfid := plan.Tfid.ValueString()
 	// Basic logging.
@@ -405,11 +482,11 @@ func (r *siteIotDeviceIdConfigResource) doPut(ctx context.Context, plan *rsModel
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.DeviceIdConfigScreen{}
+	var body = &sdwan_schema.DeviceIdConfigV2N1{}
 
 	// now we create the JSON request from the state/plan created by TF
 	// below copy code generated from macro copy_from_plan_or_state
-	// copy_from_plan_or_state: body=body prefix=rsModel state=state plan=plan properties=4
+	// copy_from_plan_or_state: body=body prefix=rsModel state=state plan=plan properties=6
 	tflog.Debug(ctx, "copy_from_plan_or_state body=body prefix=rsModel state=state plan=plan")
 	// property: name=_etag, type=INTEGER macro=copy_from_plan_or_state
 	if state != nil {
@@ -429,17 +506,29 @@ func (r *siteIotDeviceIdConfigResource) doPut(ctx context.Context, plan *rsModel
 	} else {
 		body.CfgDeviceIdEnabled = BoolValueOrNil(plan.CfgDeviceIdEnabled)
 	}
+	// property: name=deviceid_profile_id, type=STRING macro=copy_from_plan_or_state
+	if state != nil {
+		body.DeviceidProfileId = ValueStringPointerFromPlanOrState(plan.DeviceidProfileId, state.DeviceidProfileId)
+	} else {
+		body.DeviceidProfileId = StringValueOrNil(plan.DeviceidProfileId)
+	}
 	// property: name=id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.Id = ValueStringPointerFromPlanOrState(plan.Id, state.Id)
 	} else {
 		body.Id = StringValueOrNil(plan.Id)
 	}
+	// property: name=site_id, type=STRING macro=copy_from_plan_or_state
+	if state != nil {
+		body.SiteId = ValueStringPointerFromPlanOrState(plan.SiteId, state.SiteId)
+	} else {
+		body.SiteId = StringValueOrNil(plan.SiteId)
+	}
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct DeviceIdConfigScreen to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct DeviceIdConfigV2N1 to JSON:", err.Error())
 		return false
 	}
 
@@ -475,17 +564,23 @@ func (r *siteIotDeviceIdConfigResource) doPut(ctx context.Context, plan *rsModel
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.DeviceIdConfigScreen
+	var ans sdwan_schema.DeviceIdConfigV2N1
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to DeviceIdConfigScreen in update", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to DeviceIdConfigV2N1 in update", json_err.Error())
 		return false
 	}
 
-	// Store the answer to state. schema=DeviceIdConfigScreen
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=4
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
+	// Store the answer to state. schema=DeviceIdConfigV2N1
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=6
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
@@ -493,8 +588,21 @@ func (r *siteIotDeviceIdConfigResource) doPut(ctx context.Context, plan *rsModel
 	state.Schema = types.Int64PointerValue(ans.Schema)
 	// property: name=cfg_device_id_enabled, type=BOOLEAN macro=copy_to_state
 	state.CfgDeviceIdEnabled = types.BoolPointerValue(ans.CfgDeviceIdEnabled)
+	// property: name=deviceid_profile_id, type=STRING macro=copy_to_state
+	state.DeviceidProfileId = types.StringPointerValue(ans.DeviceidProfileId)
 	// property: name=id, type=STRING macro=copy_to_state
 	state.Id = types.StringPointerValue(ans.Id)
+	// property: name=site_id, type=STRING macro=copy_to_state
+	priorSiteId := state.SiteId
+	state.SiteId = types.StringPointerValue(ans.SiteId)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.SiteId == nil {
+		if !plan.SiteId.IsUnknown() {
+			state.SiteId = plan.SiteId
+		} else {
+			state.SiteId = priorSiteId
+		}
+	}
 	return true
 }
 
@@ -503,16 +611,78 @@ func (r *siteIotDeviceIdConfigResource) doPut(ctx context.Context, plan *rsModel
 // Path Parameters are encoded into TfID itself
 func (r *siteIotDeviceIdConfigResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "executing resource create for prismasdwan_site_iot_device_id_config")
-	var plan rsModelDeviceIdConfigScreen
+	var plan rsModelDeviceIdConfigV2N1
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// make post call
-	var state rsModelDeviceIdConfigScreen
-	if r.doPost(ctx, &plan, &state, resp) {
-		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	// Every site already has exactly one device-id configuration, created with the site, so "create" adopts it: look
+	// up its id, then read and update it (a POST would create a second one and is rejected).
+	params := MapStringValueOrNil(ctx, plan.TfParameters)
+	site_id, ok := params["site_id"]
+	if !ok || site_id == nil {
+		resp.Diagnostics.AddError("could not find site_id in x_parameters", "missing parameter")
+		return
+	}
+
+	// the API also needs site_id in the body; take it from x_parameters unless it is configured
+	if plan.SiteId.IsNull() || plan.SiteId.IsUnknown() {
+		plan.SiteId = types.StringValue(*site_id)
+	}
+
+	svc := sdwan_client.NewClient(r.client)
+	list_request := &sdwan_client.SdwanClientRequestResponse{}
+	list_request.ResourceType = "prismasdwan_site_iot_device_id_config"
+	list_request.Method = "GET"
+	list_request.Path = "/sdwan/v2.1/api/sites/{site_id}/deviceidconfigs"
+	list_request.PathParameters = &map[string]*string{"site_id": site_id}
+	svc.ExecuteSdwanRequest(ctx, list_request)
+	if list_request.ResponseErr != nil {
+		resp.Diagnostics.AddError("error reading the site's device-id configuration", (*list_request.ResponseErr).Error())
+		return
+	}
+	var configs struct {
+		Items []struct {
+			Id *string `json:"id"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(*list_request.ResponseBytes, &configs); err != nil || len(configs.Items) == 0 || configs.Items[0].Id == nil {
+		resp.Diagnostics.AddError("site has no device-id configuration to manage", "GET "+*list_request.FinalPath+" returned no item")
+		return
+	}
+
+	// same tfid format as a created object: <config_id>, then the path parameters
+	var idBuilder strings.Builder
+	idBuilder.WriteString(*configs.Items[0].Id)
+	for p, v := range params {
+		if v != nil && p != "config_id" {
+			idBuilder.WriteString(IdSeparator)
+			idBuilder.WriteString(p)
+			idBuilder.WriteString("=")
+			idBuilder.WriteString(*v)
+		}
+	}
+	plan.Tfid = types.StringValue(idBuilder.String())
+
+	var save rsModelDeviceIdConfigV2N1
+	save.Tfid = plan.Tfid
+	gResp := resource.ReadResponse{
+		Private:     resp.Private,
+		Diagnostics: resp.Diagnostics,
+	}
+	if r.doGet(ctx, &save, &plan, &resp.State, &gResp) {
+		uResp := resource.UpdateResponse{
+			Private:     resp.Private,
+			Diagnostics: resp.Diagnostics,
+		}
+		if r.doPut(ctx, &plan, &save, &resp.State, &uResp) {
+			resp.Diagnostics.Append(resp.State.Set(ctx, &save)...)
+		} else {
+			resp.Diagnostics = uResp.Diagnostics
+		}
+	} else {
+		resp.Diagnostics = gResp.Diagnostics
 	}
 }
 
@@ -522,7 +692,7 @@ func (r *siteIotDeviceIdConfigResource) Create(ctx context.Context, req resource
 func (r *siteIotDeviceIdConfigResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 	tflog.Info(ctx, "executing resource read for prismasdwan_site_iot_device_id_config")
-	var savestate, state rsModelDeviceIdConfigScreen
+	var savestate, state rsModelDeviceIdConfigV2N1
 	resp.Diagnostics.Append(req.State.Get(ctx, &savestate)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -541,7 +711,7 @@ func (r *siteIotDeviceIdConfigResource) Read(ctx context.Context, req resource.R
 func (r *siteIotDeviceIdConfigResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
 	tflog.Info(ctx, "executing resource update for prismasdwan_site_iot_device_id_config")
-	var plan, state rsModelDeviceIdConfigScreen
+	var plan, state rsModelDeviceIdConfigV2N1
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {

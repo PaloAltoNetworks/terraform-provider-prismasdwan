@@ -30,14 +30,15 @@ import (
 // | OspfGlobalConfig HasID=false
 // | InterfaceOspfConfig HasID=false
 // | Area HasID=false
-// | OspfConfigScreen HasID=true
+// | OspfConfigScreenV2N1 HasID=true
 // +-----------------------------------------------------------------
 
 // Resource.
 var (
-	_ resource.Resource                = &elementOspfConfigResource{}
-	_ resource.ResourceWithConfigure   = &elementOspfConfigResource{}
-	_ resource.ResourceWithImportState = &elementOspfConfigResource{}
+	_ resource.Resource                   = &elementOspfConfigResource{}
+	_ resource.ResourceWithConfigure      = &elementOspfConfigResource{}
+	_ resource.ResourceWithImportState    = &elementOspfConfigResource{}
+	_ resource.ResourceWithValidateConfig = &elementOspfConfigResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -58,6 +59,12 @@ type elementOspfConfigResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *elementOspfConfigResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id", "element_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *elementOspfConfigResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_element_ospf_config"
@@ -66,244 +73,291 @@ func (r *elementOspfConfigResource) Metadata(_ context.Context, req resource.Met
 // Schema defines the schema for this data source.
 func (r *elementOspfConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Element Ospf Config.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
-			// rest all properties to be read from GET API Schema schema=OspfConfigScreen
+			// rest all properties to be read from GET API Schema schema=OspfConfigScreenV2N1
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
+			// property: name=advertise_fabric_default_route, type=BOOLEAN macro=rss_schema
+			"advertise_fabric_default_route": rsschema.BoolAttribute{
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Advertise fabric default route. Filled in by the server when it is not set.",
+			},
+			// key name holder for attribute: name=advertise_fabric_default_route, type=BOOLEAN macro=rss_schema
 			// property: name=areas, type=ARRAY_REFERENCE macro=rss_schema
 			"areas": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Areas.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=area_id, type=INTEGER macro=rss_schema
 						"area_id": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Area id.",
 						},
 						// key name holder for attribute: name=area_id, type=INTEGER macro=rss_schema
 						// property: name=area_type, type=STRING macro=rss_schema
 						"area_type": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Area type. Value: one of normal, stub, nssa.",
 						},
 						// key name holder for attribute: name=area_type, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=area_type, type=STRING macro=rss_schema
+			// key name holder for attribute: name=areas, type=ARRAY_REFERENCE macro=rss_schema
+			// property: name=cost_for_default_route, type=INTEGER macro=rss_schema
+			"cost_for_default_route": rsschema.Int64Attribute{
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Cost for default route. Value: between 0 and 16777214.",
+			},
+			// key name holder for attribute: name=cost_for_default_route, type=INTEGER macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 1024 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=interfaces, type=ARRAY_REFERENCE macro=rss_schema
 			"interfaces": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Interfaces.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=area_id, type=INTEGER macro=rss_schema
 						"area_id": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Area id.",
 						},
 						// key name holder for attribute: name=area_id, type=INTEGER macro=rss_schema
 						// property: name=interface_id, type=STRING macro=rss_schema
 						"interface_id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Interface id.",
 						},
 						// key name holder for attribute: name=interface_id, type=STRING macro=rss_schema
 						// property: name=ospf_config_override, type=REFERENCE macro=rss_schema
 						"ospf_config_override": rsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Ospf config override.",
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=cost, type=INTEGER macro=rss_schema
 								"cost": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Cost.",
 								},
 								// key name holder for attribute: name=cost, type=INTEGER macro=rss_schema
 								// property: name=dead_interval, type=INTEGER macro=rss_schema
 								"dead_interval": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Dead interval.",
 								},
 								// key name holder for attribute: name=dead_interval, type=INTEGER macro=rss_schema
 								// property: name=hello_interval, type=INTEGER macro=rss_schema
 								"hello_interval": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Hello interval.",
 								},
 								// key name holder for attribute: name=hello_interval, type=INTEGER macro=rss_schema
 								// property: name=md5_key_id, type=INTEGER macro=rss_schema
 								"md5_key_id": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Md5 key id.",
 								},
 								// key name holder for attribute: name=md5_key_id, type=INTEGER macro=rss_schema
 								// property: name=md5_secret, type=STRING macro=rss_schema
 								"md5_secret": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: true,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   true,
+									Description: "Md5 secret.",
 								},
 								// key name holder for attribute: name=md5_secret, type=STRING macro=rss_schema
 								"md5_secret_internal_key_name": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  true,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Internal key name for the sensitive attribute md5_secret, managed automatically by the provider.",
 								},
 								// property: name=retransmit_interval, type=INTEGER macro=rss_schema
 								"retransmit_interval": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Retransmit interval.",
 								},
 								// key name holder for attribute: name=retransmit_interval, type=INTEGER macro=rss_schema
 								// property: name=transmit_delay, type=INTEGER macro=rss_schema
 								"transmit_delay": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Transmit delay.",
 								},
 								// key name holder for attribute: name=transmit_delay, type=INTEGER macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=transmit_delay, type=INTEGER macro=rss_schema
+						// key name holder for attribute: name=ospf_config_override, type=REFERENCE macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=transmit_delay, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=interfaces, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=prefix_adv_route_map_id, type=STRING macro=rss_schema
 			"prefix_adv_route_map_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Prefix adv route map id.",
 			},
 			// key name holder for attribute: name=prefix_adv_route_map_id, type=STRING macro=rss_schema
 			// property: name=prefix_adv_type_to_lan, type=STRING macro=rss_schema
 			"prefix_adv_type_to_lan": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Prefix adv type to lan.",
 			},
 			// key name holder for attribute: name=prefix_adv_type_to_lan, type=STRING macro=rss_schema
 			// property: name=redistribute_bgp, type=BOOLEAN macro=rss_schema
 			"redistribute_bgp": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Redistribute bgp. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=redistribute_bgp, type=BOOLEAN macro=rss_schema
 			// property: name=redistribute_route_map_id, type=STRING macro=rss_schema
 			"redistribute_route_map_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Redistribute route map id.",
 			},
 			// key name holder for attribute: name=redistribute_route_map_id, type=STRING macro=rss_schema
 			// property: name=router_id, type=STRING macro=rss_schema
 			"router_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Router id.",
 			},
 			// key name holder for attribute: name=router_id, type=STRING macro=rss_schema
 			// property: name=scope, type=STRING macro=rss_schema
 			"scope": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Scope.",
 			},
 			// key name holder for attribute: name=scope, type=STRING macro=rss_schema
 			// property: name=shutdown, type=BOOLEAN macro=rss_schema
 			"shutdown": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Shutdown.",
 			},
 			// key name holder for attribute: name=shutdown, type=BOOLEAN macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -312,15 +366,18 @@ func (r *elementOspfConfigResource) Schema(_ context.Context, _ resource.SchemaR
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 1024 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=vrf_context_id, type=STRING macro=rss_schema
 			"vrf_context_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Vrf context id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`.",
 			},
 			// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
 		},
@@ -349,7 +406,7 @@ func (r *elementOspfConfigResource) GetHttpStatusCode(request *sdwan_client.Sdwa
 	}
 }
 
-func (r *elementOspfConfigResource) doPost(ctx context.Context, plan *rsModelOspfConfigScreen, state *rsModelOspfConfigScreen, resp *resource.CreateResponse) bool {
+func (r *elementOspfConfigResource) doPost(ctx context.Context, plan *rsModelOspfConfigScreenV2N1, state *rsModelOspfConfigScreenV2N1, resp *resource.CreateResponse) bool {
 	tflog.Info(ctx, "executing http post for prismasdwan_element_ospf_config")
 	// Basic logging.
 	tflog.Info(ctx, "performing resource create", map[string]any{
@@ -361,7 +418,7 @@ func (r *elementOspfConfigResource) doPost(ctx context.Context, plan *rsModelOsp
 	create_request := &sdwan_client.SdwanClientRequestResponse{}
 	create_request.ResourceType = "prismasdwan_element_ospf_config"
 	create_request.Method = "POST"
-	create_request.Path = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/ospfconfigs"
+	create_request.Path = "/sdwan/v2.1/api/sites/{site_id}/elements/{element_id}/ospfconfigs"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, plan.TfParameters)
@@ -371,15 +428,17 @@ func (r *elementOspfConfigResource) doPost(ctx context.Context, plan *rsModelOsp
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.OspfConfigScreen{}
+	var body = &sdwan_schema.OspfConfigScreenV2N1{}
 
 	// copy from plan to body
-	// copy_from_plan: body=body prefix=rsModel plan=plan properties=16
+	// copy_from_plan: body=body prefix=rsModel plan=plan properties=18
 	tflog.Debug(ctx, "copy_from_plan body=body prefix=rsModel plan=plan")
 	// property: name=_etag, type=INTEGER macro=copy_from_plan
 	body.Etag = Int64ValueOrNil(plan.Etag)
 	// property: name=_schema, type=INTEGER macro=copy_from_plan
 	body.Schema = Int64ValueOrNil(plan.Schema)
+	// property: name=advertise_fabric_default_route, type=BOOLEAN macro=copy_from_plan
+	body.AdvertiseFabricDefaultRoute = BoolValueOrNil(plan.AdvertiseFabricDefaultRoute)
 	// property: name=areas, type=ARRAY_REFERENCE macro=copy_from_plan
 	if plan.Areas == nil {
 		body.Areas = nil
@@ -398,6 +457,8 @@ func (r *elementOspfConfigResource) doPost(ctx context.Context, plan *rsModelOsp
 			body.Areas[varLoopAreasIndex].AreaType = StringValueOrNil(varLoopAreas.AreaType)
 		}
 	}
+	// property: name=cost_for_default_route, type=INTEGER macro=copy_from_plan
+	body.CostForDefaultRoute = Int64ValueOrNil(plan.CostForDefaultRoute)
 	// property: name=description, type=STRING macro=copy_from_plan
 	body.Description = StringValueOrNil(plan.Description)
 	// property: name=id, type=STRING macro=copy_from_plan
@@ -464,7 +525,7 @@ func (r *elementOspfConfigResource) doPost(ctx context.Context, plan *rsModelOsp
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct OspfConfigScreen to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct OspfConfigScreenV2N1 to JSON:", err.Error())
 		return false
 	}
 
@@ -507,12 +568,12 @@ func (r *elementOspfConfigResource) doPost(ctx context.Context, plan *rsModelOsp
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.OspfConfigScreen
+	var ans sdwan_schema.OspfConfigScreenV2N1
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to OspfConfigScreen in create", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to OspfConfigScreenV2N1 in create", json_err.Error())
 		return false
 	}
 
@@ -537,13 +598,15 @@ func (r *elementOspfConfigResource) doPost(ctx context.Context, plan *rsModelOsp
 	state.TfParameters = plan.TfParameters
 	tflog.Info(ctx, "created prismasdwan_element_ospf_config with ID", map[string]any{"tfid": state.Tfid.ValueString()})
 
-	// Store the answer to state. schema=OspfConfigScreen
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=16
+	// Store the answer to state. schema=OspfConfigScreenV2N1
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=18
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
 	// property: name=_schema, type=INTEGER macro=copy_to_state
 	state.Schema = types.Int64PointerValue(ans.Schema)
+	// property: name=advertise_fabric_default_route, type=BOOLEAN macro=copy_to_state
+	state.AdvertiseFabricDefaultRoute = types.BoolPointerValue(ans.AdvertiseFabricDefaultRoute)
 	// property: name=areas, type=ARRAY_REFERENCE macro=copy_to_state
 	if ans.Areas == nil {
 		state.Areas = nil
@@ -562,6 +625,8 @@ func (r *elementOspfConfigResource) doPost(ctx context.Context, plan *rsModelOsp
 			state.Areas[varLoopAreasIndex].AreaType = types.StringPointerValue(varLoopAreas.AreaType)
 		}
 	}
+	// property: name=cost_for_default_route, type=INTEGER macro=copy_to_state
+	state.CostForDefaultRoute = types.Int64PointerValue(ans.CostForDefaultRoute)
 	// property: name=description, type=STRING macro=copy_to_state
 	state.Description = types.StringPointerValue(ans.Description)
 	// property: name=id, type=STRING macro=copy_to_state
@@ -598,13 +663,19 @@ func (r *elementOspfConfigResource) doPost(ctx context.Context, plan *rsModelOsp
 				// property: name=md5_key_id, type=INTEGER macro=copy_to_state
 				state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5KeyId = types.Int64PointerValue(varLoopInterfaces.OspfConfigOverride.Md5KeyId)
 				// property: name=md5_secret, type=STRING macro=copy_to_state
-				state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret = types.StringPointerValue(plan.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret.ValueStringPointer())
 				// this property is sensitive and will be stored in the state's internal key name
 				state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5SecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret = types.StringNull()
+				if len(plan.Interfaces) > varLoopInterfacesIndex && plan.Interfaces[varLoopInterfacesIndex].OspfConfigOverride != nil {
+					state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret = types.StringPointerValue(plan.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret.ValueStringPointer())
+				}
 				// store value if needed
 				if !state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret.IsNull() {
-					encryptedMd5Secret, _ := Encrypt([]byte(state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret.String()))
-					resp.Private.SetKey(ctx, state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5SecretInternalKeyName.String(), []byte(encryptedMd5Secret))
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedMd5Secret, _ := Encrypt([]byte(state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedMd5SecretJson, _ := json.Marshal(encryptedMd5Secret)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5SecretInternalKeyName.String(), encryptedMd5SecretJson)...)
 				}
 				// property: name=retransmit_interval, type=INTEGER macro=copy_to_state
 				state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.RetransmitInterval = types.Int64PointerValue(varLoopInterfaces.OspfConfigOverride.RetransmitInterval)
@@ -633,12 +704,20 @@ func (r *elementOspfConfigResource) doPost(ctx context.Context, plan *rsModelOsp
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=vrf_context_id, type=STRING macro=copy_to_state
 	state.VrfContextId = types.StringPointerValue(ans.VrfContextId)
 	return true
 }
 
-func (r *elementOspfConfigResource) doGet(ctx context.Context, state *rsModelOspfConfigScreen, savestate *rsModelOspfConfigScreen, State *tfsdk.State, resp *resource.ReadResponse) bool {
+func (r *elementOspfConfigResource) doGet(ctx context.Context, state *rsModelOspfConfigScreenV2N1, savestate *rsModelOspfConfigScreenV2N1, State *tfsdk.State, resp *resource.ReadResponse) bool {
 	// Basic logging.
 	tfid := savestate.Tfid.ValueString()
 	tflog.Info(ctx, "performing resource read", map[string]any{
@@ -660,7 +739,7 @@ func (r *elementOspfConfigResource) doGet(ctx context.Context, state *rsModelOsp
 	read_request := &sdwan_client.SdwanClientRequestResponse{}
 	read_request.ResourceType = "prismasdwan_element_ospf_config"
 	read_request.Method = "GET"
-	read_request.Path = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/ospfconfigs/{ospf_config_id}"
+	read_request.Path = "/sdwan/v2.1/api/sites/{site_id}/elements/{element_id}/ospfconfigs/{ospf_config_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, savestate.TfParameters)
@@ -702,30 +781,48 @@ func (r *elementOspfConfigResource) doGet(ctx context.Context, state *rsModelOsp
 	tflog.Debug(ctx, "http json override: set response_body_string::_schema")
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
-	// Store the answer to state. schema=OspfConfigScreen
+	// Store the answer to state. schema=OspfConfigScreenV2N1
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
 	// start copying attributes
-	var ans sdwan_schema.OspfConfigScreen
+	var ans sdwan_schema.OspfConfigScreenV2N1
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to OspfConfigScreen in read", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to OspfConfigScreenV2N1 in read", json_err.Error())
 		return false
 	}
 	// lets copy all items into state
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=16
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=18
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
 	// property: name=_schema, type=INTEGER macro=copy_to_state
 	state.Schema = types.Int64PointerValue(ans.Schema)
+	// property: name=advertise_fabric_default_route, type=BOOLEAN macro=copy_to_state
+	state.AdvertiseFabricDefaultRoute = types.BoolPointerValue(ans.AdvertiseFabricDefaultRoute)
 	// property: name=areas, type=ARRAY_REFERENCE macro=copy_to_state
 	if ans.Areas == nil {
 		state.Areas = nil
@@ -744,6 +841,8 @@ func (r *elementOspfConfigResource) doGet(ctx context.Context, state *rsModelOsp
 			state.Areas[varLoopAreasIndex].AreaType = types.StringPointerValue(varLoopAreas.AreaType)
 		}
 	}
+	// property: name=cost_for_default_route, type=INTEGER macro=copy_to_state
+	state.CostForDefaultRoute = types.Int64PointerValue(ans.CostForDefaultRoute)
 	// property: name=description, type=STRING macro=copy_to_state
 	state.Description = types.StringPointerValue(ans.Description)
 	// property: name=id, type=STRING macro=copy_to_state
@@ -780,10 +879,15 @@ func (r *elementOspfConfigResource) doGet(ctx context.Context, state *rsModelOsp
 				// property: name=md5_key_id, type=INTEGER macro=copy_to_state
 				state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5KeyId = types.Int64PointerValue(varLoopInterfaces.OspfConfigOverride.Md5KeyId)
 				// property: name=md5_secret, type=STRING macro=copy_to_state
+				// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+				if len(savestate.Interfaces) > varLoopInterfacesIndex && savestate.Interfaces[varLoopInterfacesIndex].OspfConfigOverride != nil {
+					state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5SecretInternalKeyName = savestate.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5SecretInternalKeyName
+				}
 				encryptedMd5SecretKeyName := state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5SecretInternalKeyName.String()
 				encryptedMd5SecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedMd5SecretKeyName)
-				if encryptedMd5SecretValueBytes != nil {
-					decryptedMd5Secret, _ := Decrypt(string(encryptedMd5SecretValueBytes))
+				var encryptedMd5SecretValue string
+				if encryptedMd5SecretValueBytes != nil && json.Unmarshal(encryptedMd5SecretValueBytes, &encryptedMd5SecretValue) == nil {
+					decryptedMd5Secret, _ := Decrypt(encryptedMd5SecretValue)
 					state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret = types.StringValue(decryptedMd5Secret)
 				}
 				// property: name=retransmit_interval, type=INTEGER macro=copy_to_state
@@ -813,12 +917,20 @@ func (r *elementOspfConfigResource) doGet(ctx context.Context, state *rsModelOsp
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=vrf_context_id, type=STRING macro=copy_to_state
 	state.VrfContextId = types.StringPointerValue(ans.VrfContextId)
 	return true
 }
 
-func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspfConfigScreen, state *rsModelOspfConfigScreen, State *tfsdk.State, resp *resource.UpdateResponse) bool {
+func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspfConfigScreenV2N1, state *rsModelOspfConfigScreenV2N1, State *tfsdk.State, resp *resource.UpdateResponse) bool {
 	state_tfid := state.Tfid.ValueString()
 	plan_tfid := plan.Tfid.ValueString()
 	// Basic logging.
@@ -846,7 +958,7 @@ func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspf
 	put_request := &sdwan_client.SdwanClientRequestResponse{}
 	put_request.ResourceType = "prismasdwan_element_ospf_config"
 	put_request.Method = "PUT"
-	put_request.Path = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/ospfconfigs/{ospf_config_id}"
+	put_request.Path = "/sdwan/v2.1/api/sites/{site_id}/elements/{element_id}/ospfconfigs/{ospf_config_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -865,11 +977,11 @@ func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspf
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.OspfConfigScreen{}
+	var body = &sdwan_schema.OspfConfigScreenV2N1{}
 
 	// now we create the JSON request from the state/plan created by TF
 	// below copy code generated from macro copy_from_plan_or_state
-	// copy_from_plan_or_state: body=body prefix=rsModel state=state plan=plan properties=16
+	// copy_from_plan_or_state: body=body prefix=rsModel state=state plan=plan properties=18
 	tflog.Debug(ctx, "copy_from_plan_or_state body=body prefix=rsModel state=state plan=plan")
 	// property: name=_etag, type=INTEGER macro=copy_from_plan_or_state
 	if state != nil {
@@ -883,10 +995,16 @@ func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspf
 	} else {
 		body.Schema = Int64ValueOrNil(plan.Schema)
 	}
+	// property: name=advertise_fabric_default_route, type=BOOLEAN macro=copy_from_plan_or_state
+	if state != nil {
+		body.AdvertiseFabricDefaultRoute = ValueBoolPointerFromPlanOrState(plan.AdvertiseFabricDefaultRoute, state.AdvertiseFabricDefaultRoute)
+	} else {
+		body.AdvertiseFabricDefaultRoute = BoolValueOrNil(plan.AdvertiseFabricDefaultRoute)
+	}
 	// property: name=areas, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.Areas == nil && (state == nil || state.Areas == nil) {
+	if plan.Areas == nil && (!(state != nil) || state.Areas == nil) {
 		body.Areas = nil
-	} else if len(plan.Areas) == 0 && (state == nil || len(state.Areas) == 0) {
+	} else if len(plan.Areas) == 0 && (!(state != nil) || len(state.Areas) == 0) {
 		body.Areas = []sdwan_schema.Area{}
 	} else if len(plan.Areas) != 0 || (state != nil && len(state.Areas) != 0) {
 		AreasToUse := plan.Areas
@@ -906,6 +1024,12 @@ func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspf
 			body.Areas[varLoopAreasIndex].AreaType = StringValueOrNil(varLoopAreas.AreaType)
 		}
 	}
+	// property: name=cost_for_default_route, type=INTEGER macro=copy_from_plan_or_state
+	if state != nil {
+		body.CostForDefaultRoute = ValueInt64PointerFromPlanOrState(plan.CostForDefaultRoute, state.CostForDefaultRoute)
+	} else {
+		body.CostForDefaultRoute = Int64ValueOrNil(plan.CostForDefaultRoute)
+	}
 	// property: name=description, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.Description = ValueStringPointerFromPlanOrState(plan.Description, state.Description)
@@ -919,9 +1043,9 @@ func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspf
 		body.Id = StringValueOrNil(plan.Id)
 	}
 	// property: name=interfaces, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.Interfaces == nil && (state == nil || state.Interfaces == nil) {
+	if plan.Interfaces == nil && (!(state != nil) || state.Interfaces == nil) {
 		body.Interfaces = nil
-	} else if len(plan.Interfaces) == 0 && (state == nil || len(state.Interfaces) == 0) {
+	} else if len(plan.Interfaces) == 0 && (!(state != nil) || len(state.Interfaces) == 0) {
 		body.Interfaces = []sdwan_schema.InterfaceOspfConfig{}
 	} else if len(plan.Interfaces) != 0 || (state != nil && len(state.Interfaces) != 0) {
 		InterfacesToUse := plan.Interfaces
@@ -1010,7 +1134,12 @@ func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspf
 		body.Shutdown = BoolValueOrNil(plan.Shutdown)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=vrf_context_id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.VrfContextId = ValueStringPointerFromPlanOrState(plan.VrfContextId, state.VrfContextId)
@@ -1021,7 +1150,7 @@ func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspf
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct OspfConfigScreen to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct OspfConfigScreenV2N1 to JSON:", err.Error())
 		return false
 	}
 
@@ -1057,22 +1186,30 @@ func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspf
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.OspfConfigScreen
+	var ans sdwan_schema.OspfConfigScreenV2N1
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to OspfConfigScreen in update", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to OspfConfigScreenV2N1 in update", json_err.Error())
 		return false
 	}
 
-	// Store the answer to state. schema=OspfConfigScreen
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=16
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
+	// Store the answer to state. schema=OspfConfigScreenV2N1
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=18
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
 	// property: name=_schema, type=INTEGER macro=copy_to_state
 	state.Schema = types.Int64PointerValue(ans.Schema)
+	// property: name=advertise_fabric_default_route, type=BOOLEAN macro=copy_to_state
+	state.AdvertiseFabricDefaultRoute = types.BoolPointerValue(ans.AdvertiseFabricDefaultRoute)
 	// property: name=areas, type=ARRAY_REFERENCE macro=copy_to_state
 	if ans.Areas == nil {
 		state.Areas = nil
@@ -1091,6 +1228,8 @@ func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspf
 			state.Areas[varLoopAreasIndex].AreaType = types.StringPointerValue(varLoopAreas.AreaType)
 		}
 	}
+	// property: name=cost_for_default_route, type=INTEGER macro=copy_to_state
+	state.CostForDefaultRoute = types.Int64PointerValue(ans.CostForDefaultRoute)
 	// property: name=description, type=STRING macro=copy_to_state
 	state.Description = types.StringPointerValue(ans.Description)
 	// property: name=id, type=STRING macro=copy_to_state
@@ -1127,13 +1266,19 @@ func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspf
 				// property: name=md5_key_id, type=INTEGER macro=copy_to_state
 				state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5KeyId = types.Int64PointerValue(varLoopInterfaces.OspfConfigOverride.Md5KeyId)
 				// property: name=md5_secret, type=STRING macro=copy_to_state
-				state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret = types.StringPointerValue(plan.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret.ValueStringPointer())
 				// this property is sensitive and will be stored in the state's internal key name
 				state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5SecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret = types.StringNull()
+				if len(plan.Interfaces) > varLoopInterfacesIndex && plan.Interfaces[varLoopInterfacesIndex].OspfConfigOverride != nil {
+					state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret = types.StringPointerValue(plan.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret.ValueStringPointer())
+				}
 				// store value if needed
 				if !state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret.IsNull() {
-					encryptedMd5Secret, _ := Encrypt([]byte(state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret.String()))
-					resp.Private.SetKey(ctx, state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5SecretInternalKeyName.String(), []byte(encryptedMd5Secret))
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedMd5Secret, _ := Encrypt([]byte(state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5Secret.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedMd5SecretJson, _ := json.Marshal(encryptedMd5Secret)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.Md5SecretInternalKeyName.String(), encryptedMd5SecretJson)...)
 				}
 				// property: name=retransmit_interval, type=INTEGER macro=copy_to_state
 				state.Interfaces[varLoopInterfacesIndex].OspfConfigOverride.RetransmitInterval = types.Int64PointerValue(varLoopInterfaces.OspfConfigOverride.RetransmitInterval)
@@ -1162,12 +1307,20 @@ func (r *elementOspfConfigResource) doPut(ctx context.Context, plan *rsModelOspf
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=vrf_context_id, type=STRING macro=copy_to_state
 	state.VrfContextId = types.StringPointerValue(ans.VrfContextId)
 	return true
 }
 
-func (r *elementOspfConfigResource) doDelete(ctx context.Context, state *rsModelOspfConfigScreen, resp *resource.DeleteResponse) bool {
+func (r *elementOspfConfigResource) doDelete(ctx context.Context, state *rsModelOspfConfigScreenV2N1, resp *resource.DeleteResponse) bool {
 	// read object id
 	tfid := state.Tfid.ValueString()
 	// Basic logging.
@@ -1188,7 +1341,7 @@ func (r *elementOspfConfigResource) doDelete(ctx context.Context, state *rsModel
 	delete_request := &sdwan_client.SdwanClientRequestResponse{}
 	delete_request.ResourceType = "prismasdwan_element_ospf_config"
 	delete_request.Method = "DELETE"
-	delete_request.Path = "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/ospfconfigs/{ospf_config_id}"
+	delete_request.Path = "/sdwan/v2.1/api/sites/{site_id}/elements/{element_id}/ospfconfigs/{ospf_config_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -1222,14 +1375,14 @@ func (r *elementOspfConfigResource) doDelete(ctx context.Context, state *rsModel
 // Path Parameters are encoded into TfID itself
 func (r *elementOspfConfigResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "executing resource create for prismasdwan_element_ospf_config")
-	var plan rsModelOspfConfigScreen
+	var plan rsModelOspfConfigScreenV2N1
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// make post call
-	var state rsModelOspfConfigScreen
+	var state rsModelOspfConfigScreenV2N1
 	if r.doPost(ctx, &plan, &state, resp) {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	}
@@ -1241,7 +1394,7 @@ func (r *elementOspfConfigResource) Create(ctx context.Context, req resource.Cre
 func (r *elementOspfConfigResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 	tflog.Info(ctx, "executing resource read for prismasdwan_element_ospf_config")
-	var savestate, state rsModelOspfConfigScreen
+	var savestate, state rsModelOspfConfigScreenV2N1
 	resp.Diagnostics.Append(req.State.Get(ctx, &savestate)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -1260,7 +1413,7 @@ func (r *elementOspfConfigResource) Read(ctx context.Context, req resource.ReadR
 func (r *elementOspfConfigResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
 	tflog.Info(ctx, "executing resource update for prismasdwan_element_ospf_config")
-	var plan, state rsModelOspfConfigScreen
+	var plan, state rsModelOspfConfigScreenV2N1
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -1284,7 +1437,7 @@ func (r *elementOspfConfigResource) Update(ctx context.Context, req resource.Upd
 func (r *elementOspfConfigResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 
 	tflog.Info(ctx, "executing resource delete for prismasdwan_element_ospf_config")
-	var state rsModelOspfConfigScreen
+	var state rsModelOspfConfigScreenV2N1
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {

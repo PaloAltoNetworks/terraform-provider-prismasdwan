@@ -43,9 +43,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &elementShellResource{}
-	_ resource.ResourceWithConfigure   = &elementShellResource{}
-	_ resource.ResourceWithImportState = &elementShellResource{}
+	_ resource.Resource                   = &elementShellResource{}
+	_ resource.ResourceWithConfigure      = &elementShellResource{}
+	_ resource.ResourceWithImportState    = &elementShellResource{}
+	_ resource.ResourceWithValidateConfig = &elementShellResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -76,6 +77,12 @@ type ElementShellPostBody struct {
 	ClusterId       *string `json:"cluster_id"`
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *elementShellResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *elementShellResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_element_shell"
@@ -84,13 +91,14 @@ func (r *elementShellResource) Metadata(_ context.Context, req resource.Metadata
 // Schema defines the schema for this data source.
 func (r *elementShellResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Element Shell.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=ElementScreenV3N2
 			// generic x_parameters is added to accomodate path parameters
@@ -99,21 +107,24 @@ func (r *elementShellResource) Schema(_ context.Context, _ resource.SchemaReques
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=allowed_roles, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -122,85 +133,96 @@ func (r *elementShellResource) Schema(_ context.Context, _ resource.SchemaReques
 				Computed:    true,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Allowed roles. Filled in by the server when it is not set.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=allowed_roles, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=cluster_id, type=STRING macro=rss_schema
 			"cluster_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Cluster id.",
 			},
 			// key name holder for attribute: name=cluster_id, type=STRING macro=rss_schema
 			// property: name=cluster_insertion_mode, type=STRING macro=rss_schema
 			"cluster_insertion_mode": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Cluster insertion mode.",
 			},
 			// key name holder for attribute: name=cluster_insertion_mode, type=STRING macro=rss_schema
 			// property: name=cluster_member_id, type=STRING macro=rss_schema
 			"cluster_member_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Cluster member id.",
 			},
 			// key name holder for attribute: name=cluster_member_id, type=STRING macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=device_mode, type=STRING macro=rss_schema
 			"device_mode": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Device mode. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=device_mode, type=STRING macro=rss_schema
 			// property: name=device_profile_id, type=STRING macro=rss_schema
 			"device_profile_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Device profile id.",
 			},
 			// key name holder for attribute: name=device_profile_id, type=STRING macro=rss_schema
 			// property: name=element_id, type=STRING macro=rss_schema
 			"element_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Element id. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=element_id, type=STRING macro=rss_schema
 			// property: name=hub_cluster_config, type=REFERENCE macro=rss_schema
 			"hub_cluster_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Hub cluster config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=intra_cluster_tunnel, type=REFERENCE macro=rss_schema
 					"intra_cluster_tunnel": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Intra cluster tunnel.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=disabled, type=BOOLEAN macro=rss_schema
 							"disabled": rsschema.BoolAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Disabled.",
 							},
 							// key name holder for attribute: name=disabled, type=BOOLEAN macro=rss_schema
 							// property: name=source_interfaces, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -209,422 +231,472 @@ func (r *elementShellResource) Schema(_ context.Context, _ resource.SchemaReques
 								Computed:    false,
 								Optional:    true,
 								Sensitive:   false,
+								Description: "Source interfaces.",
 								ElementType: types.StringType,
 							},
 							// key name holder for attribute: name=source_interfaces, type=ARRAY_PRIMITIVE macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=source_interfaces, type=ARRAY_PRIMITIVE macro=rss_schema
+					// key name holder for attribute: name=intra_cluster_tunnel, type=REFERENCE macro=rss_schema
 					// property: name=track, type=REFERENCE macro=rss_schema
 					"track": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Track.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=hosts, type=ARRAY_REFERENCE macro=rss_schema
 							"hosts": rsschema.ListNestedAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Hosts.",
 								NestedObject: rsschema.NestedAttributeObject{
 									Attributes: map[string]rsschema.Attribute{
 										// property: name=address_v4, type=STRING macro=rss_schema
 										"address_v4": rsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Address v4.",
 										},
 										// key name holder for attribute: name=address_v4, type=STRING macro=rss_schema
 										// property: name=address_v6, type=STRING macro=rss_schema
 										"address_v6": rsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Address v6.",
 										},
 										// key name holder for attribute: name=address_v6, type=STRING macro=rss_schema
 										// property: name=vrf_context_id, type=STRING macro=rss_schema
 										"vrf_context_id": rsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Vrf context id.",
 										},
 										// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
 									},
 								},
 							},
-							// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
+							// key name holder for attribute: name=hosts, type=ARRAY_REFERENCE macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
+					// key name holder for attribute: name=track, type=REFERENCE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
+			// key name holder for attribute: name=hub_cluster_config, type=REFERENCE macro=rss_schema
 			// property: name=hw_id, type=STRING macro=rss_schema
 			"hw_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Hw id. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=hw_id, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=l3_direct_private_wan_forwarding, type=BOOLEAN macro=rss_schema
 			"l3_direct_private_wan_forwarding": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "L3 direct private wan forwarding. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=l3_direct_private_wan_forwarding, type=BOOLEAN macro=rss_schema
 			// property: name=l3_lan_forwarding, type=BOOLEAN macro=rss_schema
 			"l3_lan_forwarding": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "L3 lan forwarding. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=l3_lan_forwarding, type=BOOLEAN macro=rss_schema
 			// property: name=led_config, type=REFERENCE macro=rss_schema
 			"led_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Led config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=service_led_on, type=BOOLEAN macro=rss_schema
 					"service_led_on": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Service led on.",
 					},
 					// key name holder for attribute: name=service_led_on, type=BOOLEAN macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=service_led_on, type=BOOLEAN macro=rss_schema
+			// key name holder for attribute: name=led_config, type=REFERENCE macro=rss_schema
 			// property: name=main_power_usage_threshold, type=INTEGER macro=rss_schema
 			"main_power_usage_threshold": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Main power usage threshold. Value: between 50 and 100. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=main_power_usage_threshold, type=INTEGER macro=rss_schema
 			// property: name=model_name, type=STRING macro=rss_schema
 			"model_name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Model name. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=model_name, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=nat_policysetstack_id, type=STRING macro=rss_schema
 			"nat_policysetstack_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Nat policysetstack id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`.",
 			},
 			// key name holder for attribute: name=nat_policysetstack_id, type=STRING macro=rss_schema
 			// property: name=network_policysetstack_id, type=STRING macro=rss_schema
 			"network_policysetstack_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Network policysetstack id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`.",
 			},
 			// key name holder for attribute: name=network_policysetstack_id, type=STRING macro=rss_schema
 			// property: name=priority_policysetstack_id, type=STRING macro=rss_schema
 			"priority_policysetstack_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Priority policysetstack id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`.",
 			},
 			// key name holder for attribute: name=priority_policysetstack_id, type=STRING macro=rss_schema
 			// property: name=role, type=STRING macro=rss_schema
 			"role": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Role. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=role, type=STRING macro=rss_schema
 			// property: name=site_id, type=STRING macro=rss_schema
 			"site_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Site id. Value: at most 50 characters, matching `^-?[0-9]{1,50}$`. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=site_id, type=STRING macro=rss_schema
 			// property: name=software_version, type=STRING macro=rss_schema
 			"software_version": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Software version. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=software_version, type=STRING macro=rss_schema
 			// property: name=spoke_ha_config, type=REFERENCE macro=rss_schema
 			"spoke_ha_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Spoke ha config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=cluster_id, type=STRING macro=rss_schema
 					"cluster_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Cluster id.",
 					},
 					// key name holder for attribute: name=cluster_id, type=STRING macro=rss_schema
 					// property: name=enable, type=BOOLEAN macro=rss_schema
 					"enable": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Enable.",
 					},
 					// key name holder for attribute: name=enable, type=BOOLEAN macro=rss_schema
 					// property: name=priority, type=INTEGER macro=rss_schema
 					"priority": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Priority. Value: between 1 and 254.",
 					},
 					// key name holder for attribute: name=priority, type=INTEGER macro=rss_schema
 					// property: name=source_interface, type=STRING macro=rss_schema
 					"source_interface": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Source interface.",
 					},
 					// key name holder for attribute: name=source_interface, type=STRING macro=rss_schema
 					// property: name=track, type=REFERENCE macro=rss_schema
 					"track": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Track.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=interfaces, type=ARRAY_REFERENCE macro=rss_schema
 							"interfaces": rsschema.ListNestedAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Interfaces.",
 								NestedObject: rsschema.NestedAttributeObject{
 									Attributes: map[string]rsschema.Attribute{
 										// property: name=interface_id, type=STRING macro=rss_schema
 										"interface_id": rsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Interface id.",
 										},
 										// key name holder for attribute: name=interface_id, type=STRING macro=rss_schema
 										// property: name=reduce_priority, type=INTEGER macro=rss_schema
 										"reduce_priority": rsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Reduce priority. Value: between 1 and 254.",
 										},
 										// key name holder for attribute: name=reduce_priority, type=INTEGER macro=rss_schema
 									},
 								},
 							},
-							// key name holder for attribute: name=reduce_priority, type=INTEGER macro=rss_schema
+							// key name holder for attribute: name=interfaces, type=ARRAY_REFERENCE macro=rss_schema
 							// property: name=waninterfaces, type=ARRAY_REFERENCE macro=rss_schema
 							"waninterfaces": rsschema.ListNestedAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Waninterfaces.",
 								NestedObject: rsschema.NestedAttributeObject{
 									Attributes: map[string]rsschema.Attribute{
 										// property: name=reduce_priority, type=INTEGER macro=rss_schema
 										"reduce_priority": rsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Reduce priority. Value: between 1 and 254.",
 										},
 										// key name holder for attribute: name=reduce_priority, type=INTEGER macro=rss_schema
 										// property: name=wan_interface_id, type=STRING macro=rss_schema
 										"wan_interface_id": rsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Wan interface id.",
 										},
 										// key name holder for attribute: name=wan_interface_id, type=STRING macro=rss_schema
 									},
 								},
 							},
-							// key name holder for attribute: name=wan_interface_id, type=STRING macro=rss_schema
+							// key name holder for attribute: name=waninterfaces, type=ARRAY_REFERENCE macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=wan_interface_id, type=STRING macro=rss_schema
+					// key name holder for attribute: name=track, type=REFERENCE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=wan_interface_id, type=STRING macro=rss_schema
+			// key name holder for attribute: name=spoke_ha_config, type=REFERENCE macro=rss_schema
 			// property: name=state, type=STRING macro=rss_schema
 			"state": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "State. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=state, type=STRING macro=rss_schema
 			// property: name=sw_obj, type=REFERENCE macro=rss_schema
 			"sw_obj": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Sw obj.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=location, type=STRING macro=rss_schema
 					"location": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Location.",
 					},
 					// key name holder for attribute: name=location, type=STRING macro=rss_schema
 					// property: name=version, type=STRING macro=rss_schema
 					"version": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Version.",
 					},
 					// key name holder for attribute: name=version, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=version, type=STRING macro=rss_schema
+			// key name holder for attribute: name=sw_obj, type=REFERENCE macro=rss_schema
 			// property: name=switch_config, type=REFERENCE macro=rss_schema
 			"switch_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Switch config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=default_vlan_id, type=INTEGER macro=rss_schema
 					"default_vlan_id": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Default vlan id. Value: between 1 and 4000.",
 					},
 					// key name holder for attribute: name=default_vlan_id, type=INTEGER macro=rss_schema
 					// property: name=mstp_enabled, type=BOOLEAN macro=rss_schema
 					"mstp_enabled": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Mstp enabled.",
 					},
 					// key name holder for attribute: name=mstp_enabled, type=BOOLEAN macro=rss_schema
 					// property: name=stp_aging_timer, type=INTEGER macro=rss_schema
 					"stp_aging_timer": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Stp aging timer. Value: between 10 and 1000000.",
 					},
 					// key name holder for attribute: name=stp_aging_timer, type=INTEGER macro=rss_schema
 					// property: name=stp_forward_delay, type=INTEGER macro=rss_schema
 					"stp_forward_delay": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Stp forward delay. Value: between 4 and 30.",
 					},
 					// key name holder for attribute: name=stp_forward_delay, type=INTEGER macro=rss_schema
 					// property: name=stp_hello_time, type=INTEGER macro=rss_schema
 					"stp_hello_time": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Stp hello time. Value: between 1 and 10.",
 					},
 					// key name holder for attribute: name=stp_hello_time, type=INTEGER macro=rss_schema
 					// property: name=stp_max_age, type=INTEGER macro=rss_schema
 					"stp_max_age": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Stp max age. Value: between 6 and 40.",
 					},
 					// key name holder for attribute: name=stp_max_age, type=INTEGER macro=rss_schema
 					// property: name=stp_mode, type=STRING macro=rss_schema
 					"stp_mode": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Stp mode. Value: one of rstp.",
 					},
 					// key name holder for attribute: name=stp_mode, type=STRING macro=rss_schema
 					// property: name=stp_priority, type=INTEGER macro=rss_schema
 					"stp_priority": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Stp priority. Value: between 0 and 61440.",
 					},
 					// key name holder for attribute: name=stp_priority, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=stp_priority, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=switch_config, type=REFERENCE macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			"tags": rsschema.SetAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=tenant_id, type=STRING macro=rss_schema
 			"tenant_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Tenant id. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=tenant_id, type=STRING macro=rss_schema
 			// property: name=vpn_to_vpn_forwarding, type=BOOLEAN macro=rss_schema
 			"vpn_to_vpn_forwarding": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Vpn to vpn forwarding. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=vpn_to_vpn_forwarding, type=BOOLEAN macro=rss_schema
 		},
@@ -683,6 +755,10 @@ func (r *elementShellResource) doPost(ctx context.Context, plan *rsModelElementS
 	body.Role = StringValueOrNil(plan.Role)
 	body.Name = StringValueOrNil(plan.Name)
 	body.TenantId = StringValueOrNil(plan.TenantId)
+	if body.TenantId == nil {
+		// the API requires tenant_id; the provider's scope ("tsg_id:<tenant>") already names the tenant
+		body.TenantId = TenantIdFromScope(r.client.Scope)
+	}
 	body.ClusterId = StringValueOrNil(plan.ClusterId)
 
 	// convert body to map
@@ -974,18 +1050,34 @@ func (r *elementShellResource) doPost(ctx context.Context, plan *rsModelElementS
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=tenant_id, type=STRING macro=copy_to_state
 	state.TenantId = types.StringPointerValue(ans.TenantId)
 	// property: name=vpn_to_vpn_forwarding, type=BOOLEAN macro=copy_to_state
 	state.VpnToVpnForwarding = types.BoolPointerValue(ans.VpnToVpnForwarding)
 	// copy tfid
 	plan.Tfid = state.Tfid
+	// the shell exists now: keep it in the state, so that a failing PUT leaves a tainted resource that destroy removes
+	// (and not an orphan that blocks the deletion of its site)
+	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 	// make a put call again
-	return r.doPut(ctx, plan, state, &resp.State, &resource.UpdateResponse{
+	// the errors of doPut are written to its own response: hand them back, otherwise Create ends with
+	// "Missing Resource State After Create" and no reason (GitHub issue 34)
+	put_resp := &resource.UpdateResponse{
 		State:       resp.State,
 		Diagnostics: resp.Diagnostics,
 		Private:     resp.Private,
-	})
+	}
+	put_ok := r.doPut(ctx, plan, state, &resp.State, put_resp)
+	resp.Diagnostics = put_resp.Diagnostics
+	return put_ok
 }
 
 func (r *elementShellResource) doGet(ctx context.Context, state *rsModelElementScreenV3N2, savestate *rsModelElementScreenV3N2, State *tfsdk.State, resp *resource.ReadResponse) bool {
@@ -1056,7 +1148,23 @@ func (r *elementShellResource) doGet(ctx context.Context, state *rsModelElementS
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -1282,6 +1390,14 @@ func (r *elementShellResource) doGet(ctx context.Context, state *rsModelElementS
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=tenant_id, type=STRING macro=copy_to_state
 	state.TenantId = types.StringPointerValue(ans.TenantId)
 	// property: name=vpn_to_vpn_forwarding, type=BOOLEAN macro=copy_to_state
@@ -1355,7 +1471,12 @@ func (r *elementShellResource) doPut(ctx context.Context, plan *rsModelElementSc
 		body.Schema = Int64ValueOrNil(plan.Schema)
 	}
 	// property: name=allowed_roles, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.AllowedRoles = ListStringValueOrNil(ctx, plan.AllowedRoles)
+	if state != nil && plan.AllowedRoles.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.AllowedRoles = ListStringValueOrNil(ctx, state.AllowedRoles)
+	} else {
+		body.AllowedRoles = ListStringValueOrNil(ctx, plan.AllowedRoles)
+	}
 	// property: name=cluster_id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.ClusterId = ValueStringPointerFromPlanOrState(plan.ClusterId, state.ClusterId)
@@ -1413,13 +1534,18 @@ func (r *elementShellResource) doPut(ctx context.Context, plan *rsModelElementSc
 			// copy_from_plan_or_state: body=body.HubClusterConfig.IntraClusterTunnel prefix=rsModel state=state.HubClusterConfig.IntraClusterTunnel plan=plan.HubClusterConfig.IntraClusterTunnel properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.HubClusterConfig.IntraClusterTunnel prefix=rsModel state=state.HubClusterConfig.IntraClusterTunnel plan=plan.HubClusterConfig.IntraClusterTunnel")
 			// property: name=disabled, type=BOOLEAN macro=copy_from_plan_or_state
-			if state.HubClusterConfig.IntraClusterTunnel != nil {
+			if state != nil && state.HubClusterConfig != nil && state.HubClusterConfig.IntraClusterTunnel != nil {
 				body.HubClusterConfig.IntraClusterTunnel.Disabled = ValueBoolPointerFromPlanOrState(plan.HubClusterConfig.IntraClusterTunnel.Disabled, state.HubClusterConfig.IntraClusterTunnel.Disabled)
 			} else {
 				body.HubClusterConfig.IntraClusterTunnel.Disabled = BoolValueOrNil(plan.HubClusterConfig.IntraClusterTunnel.Disabled)
 			}
 			// property: name=source_interfaces, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-			body.HubClusterConfig.IntraClusterTunnel.SourceInterfaces = ListStringValueOrNil(ctx, plan.HubClusterConfig.IntraClusterTunnel.SourceInterfaces)
+			if state != nil && state.HubClusterConfig != nil && state.HubClusterConfig.IntraClusterTunnel != nil && plan.HubClusterConfig.IntraClusterTunnel.SourceInterfaces.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.HubClusterConfig.IntraClusterTunnel.SourceInterfaces = ListStringValueOrNil(ctx, state.HubClusterConfig.IntraClusterTunnel.SourceInterfaces)
+			} else {
+				body.HubClusterConfig.IntraClusterTunnel.SourceInterfaces = ListStringValueOrNil(ctx, plan.HubClusterConfig.IntraClusterTunnel.SourceInterfaces)
+			}
 		}
 		// property: name=track, type=REFERENCE macro=copy_from_plan_or_state
 		if plan.HubClusterConfig.Track == nil {
@@ -1429,11 +1555,11 @@ func (r *elementShellResource) doPut(ctx context.Context, plan *rsModelElementSc
 			// copy_from_plan_or_state: body=body.HubClusterConfig.Track prefix=rsModel state=state.HubClusterConfig.Track plan=plan.HubClusterConfig.Track properties=1
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.HubClusterConfig.Track prefix=rsModel state=state.HubClusterConfig.Track plan=plan.HubClusterConfig.Track")
 			// property: name=hosts, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-			if plan.HubClusterConfig.Track.Hosts == nil && (state.HubClusterConfig.Track == nil || state.HubClusterConfig.Track.Hosts == nil) {
+			if plan.HubClusterConfig.Track.Hosts == nil && (!(state != nil && state.HubClusterConfig != nil && state.HubClusterConfig.Track != nil) || state.HubClusterConfig.Track.Hosts == nil) {
 				body.HubClusterConfig.Track.Hosts = nil
-			} else if len(plan.HubClusterConfig.Track.Hosts) == 0 && (state.HubClusterConfig.Track == nil || len(state.HubClusterConfig.Track.Hosts) == 0) {
+			} else if len(plan.HubClusterConfig.Track.Hosts) == 0 && (!(state != nil && state.HubClusterConfig != nil && state.HubClusterConfig.Track != nil) || len(state.HubClusterConfig.Track.Hosts) == 0) {
 				body.HubClusterConfig.Track.Hosts = []sdwan_schema.Host{}
-			} else if len(plan.HubClusterConfig.Track.Hosts) != 0 || (state.HubClusterConfig.Track != nil && len(state.HubClusterConfig.Track.Hosts) != 0) {
+			} else if len(plan.HubClusterConfig.Track.Hosts) != 0 || (state != nil && state.HubClusterConfig != nil && state.HubClusterConfig.Track != nil && len(state.HubClusterConfig.Track.Hosts) != 0) {
 				HostsToUse := plan.HubClusterConfig.Track.Hosts
 				if len(plan.HubClusterConfig.Track.Hosts) == 0 {
 					HostsToUse = state.HubClusterConfig.Track.Hosts
@@ -1487,7 +1613,7 @@ func (r *elementShellResource) doPut(ctx context.Context, plan *rsModelElementSc
 		// copy_from_plan_or_state: body=body.LedConfig prefix=rsModel state=state.LedConfig plan=plan.LedConfig properties=1
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.LedConfig prefix=rsModel state=state.LedConfig plan=plan.LedConfig")
 		// property: name=service_led_on, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.LedConfig != nil {
+		if state != nil && state.LedConfig != nil {
 			body.LedConfig.ServiceLedOn = ValueBoolPointerFromPlanOrState(plan.LedConfig.ServiceLedOn, state.LedConfig.ServiceLedOn)
 		} else {
 			body.LedConfig.ServiceLedOn = BoolValueOrNil(plan.LedConfig.ServiceLedOn)
@@ -1555,25 +1681,25 @@ func (r *elementShellResource) doPut(ctx context.Context, plan *rsModelElementSc
 		// copy_from_plan_or_state: body=body.SpokeHaConfig prefix=rsModel state=state.SpokeHaConfig plan=plan.SpokeHaConfig properties=5
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.SpokeHaConfig prefix=rsModel state=state.SpokeHaConfig plan=plan.SpokeHaConfig")
 		// property: name=cluster_id, type=STRING macro=copy_from_plan_or_state
-		if state.SpokeHaConfig != nil {
+		if state != nil && state.SpokeHaConfig != nil {
 			body.SpokeHaConfig.ClusterId = ValueStringPointerFromPlanOrState(plan.SpokeHaConfig.ClusterId, state.SpokeHaConfig.ClusterId)
 		} else {
 			body.SpokeHaConfig.ClusterId = StringValueOrNil(plan.SpokeHaConfig.ClusterId)
 		}
 		// property: name=enable, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.SpokeHaConfig != nil {
+		if state != nil && state.SpokeHaConfig != nil {
 			body.SpokeHaConfig.Enable = ValueBoolPointerFromPlanOrState(plan.SpokeHaConfig.Enable, state.SpokeHaConfig.Enable)
 		} else {
 			body.SpokeHaConfig.Enable = BoolValueOrNil(plan.SpokeHaConfig.Enable)
 		}
 		// property: name=priority, type=INTEGER macro=copy_from_plan_or_state
-		if state.SpokeHaConfig != nil {
+		if state != nil && state.SpokeHaConfig != nil {
 			body.SpokeHaConfig.Priority = ValueInt64PointerFromPlanOrState(plan.SpokeHaConfig.Priority, state.SpokeHaConfig.Priority)
 		} else {
 			body.SpokeHaConfig.Priority = Int64ValueOrNil(plan.SpokeHaConfig.Priority)
 		}
 		// property: name=source_interface, type=STRING macro=copy_from_plan_or_state
-		if state.SpokeHaConfig != nil {
+		if state != nil && state.SpokeHaConfig != nil {
 			body.SpokeHaConfig.SourceInterface = ValueStringPointerFromPlanOrState(plan.SpokeHaConfig.SourceInterface, state.SpokeHaConfig.SourceInterface)
 		} else {
 			body.SpokeHaConfig.SourceInterface = StringValueOrNil(plan.SpokeHaConfig.SourceInterface)
@@ -1586,11 +1712,11 @@ func (r *elementShellResource) doPut(ctx context.Context, plan *rsModelElementSc
 			// copy_from_plan_or_state: body=body.SpokeHaConfig.Track prefix=rsModel state=state.SpokeHaConfig.Track plan=plan.SpokeHaConfig.Track properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.SpokeHaConfig.Track prefix=rsModel state=state.SpokeHaConfig.Track plan=plan.SpokeHaConfig.Track")
 			// property: name=interfaces, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-			if plan.SpokeHaConfig.Track.Interfaces == nil && (state.SpokeHaConfig.Track == nil || state.SpokeHaConfig.Track.Interfaces == nil) {
+			if plan.SpokeHaConfig.Track.Interfaces == nil && (!(state != nil && state.SpokeHaConfig != nil && state.SpokeHaConfig.Track != nil) || state.SpokeHaConfig.Track.Interfaces == nil) {
 				body.SpokeHaConfig.Track.Interfaces = nil
-			} else if len(plan.SpokeHaConfig.Track.Interfaces) == 0 && (state.SpokeHaConfig.Track == nil || len(state.SpokeHaConfig.Track.Interfaces) == 0) {
+			} else if len(plan.SpokeHaConfig.Track.Interfaces) == 0 && (!(state != nil && state.SpokeHaConfig != nil && state.SpokeHaConfig.Track != nil) || len(state.SpokeHaConfig.Track.Interfaces) == 0) {
 				body.SpokeHaConfig.Track.Interfaces = []sdwan_schema.TrackInterface{}
-			} else if len(plan.SpokeHaConfig.Track.Interfaces) != 0 || (state.SpokeHaConfig.Track != nil && len(state.SpokeHaConfig.Track.Interfaces) != 0) {
+			} else if len(plan.SpokeHaConfig.Track.Interfaces) != 0 || (state != nil && state.SpokeHaConfig != nil && state.SpokeHaConfig.Track != nil && len(state.SpokeHaConfig.Track.Interfaces) != 0) {
 				InterfacesToUse := plan.SpokeHaConfig.Track.Interfaces
 				if len(plan.SpokeHaConfig.Track.Interfaces) == 0 {
 					InterfacesToUse = state.SpokeHaConfig.Track.Interfaces
@@ -1609,11 +1735,11 @@ func (r *elementShellResource) doPut(ctx context.Context, plan *rsModelElementSc
 				}
 			}
 			// property: name=waninterfaces, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-			if plan.SpokeHaConfig.Track.Waninterfaces == nil && (state.SpokeHaConfig.Track == nil || state.SpokeHaConfig.Track.Waninterfaces == nil) {
+			if plan.SpokeHaConfig.Track.Waninterfaces == nil && (!(state != nil && state.SpokeHaConfig != nil && state.SpokeHaConfig.Track != nil) || state.SpokeHaConfig.Track.Waninterfaces == nil) {
 				body.SpokeHaConfig.Track.Waninterfaces = nil
-			} else if len(plan.SpokeHaConfig.Track.Waninterfaces) == 0 && (state.SpokeHaConfig.Track == nil || len(state.SpokeHaConfig.Track.Waninterfaces) == 0) {
+			} else if len(plan.SpokeHaConfig.Track.Waninterfaces) == 0 && (!(state != nil && state.SpokeHaConfig != nil && state.SpokeHaConfig.Track != nil) || len(state.SpokeHaConfig.Track.Waninterfaces) == 0) {
 				body.SpokeHaConfig.Track.Waninterfaces = []sdwan_schema.TrackWANInterface{}
-			} else if len(plan.SpokeHaConfig.Track.Waninterfaces) != 0 || (state.SpokeHaConfig.Track != nil && len(state.SpokeHaConfig.Track.Waninterfaces) != 0) {
+			} else if len(plan.SpokeHaConfig.Track.Waninterfaces) != 0 || (state != nil && state.SpokeHaConfig != nil && state.SpokeHaConfig.Track != nil && len(state.SpokeHaConfig.Track.Waninterfaces) != 0) {
 				WaninterfacesToUse := plan.SpokeHaConfig.Track.Waninterfaces
 				if len(plan.SpokeHaConfig.Track.Waninterfaces) == 0 {
 					WaninterfacesToUse = state.SpokeHaConfig.Track.Waninterfaces
@@ -1647,13 +1773,13 @@ func (r *elementShellResource) doPut(ctx context.Context, plan *rsModelElementSc
 		// copy_from_plan_or_state: body=body.SwObj prefix=rsModel state=state.SwObj plan=plan.SwObj properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.SwObj prefix=rsModel state=state.SwObj plan=plan.SwObj")
 		// property: name=location, type=STRING macro=copy_from_plan_or_state
-		if state.SwObj != nil {
+		if state != nil && state.SwObj != nil {
 			body.SwObj.Location = ValueStringPointerFromPlanOrState(plan.SwObj.Location, state.SwObj.Location)
 		} else {
 			body.SwObj.Location = StringValueOrNil(plan.SwObj.Location)
 		}
 		// property: name=version, type=STRING macro=copy_from_plan_or_state
-		if state.SwObj != nil {
+		if state != nil && state.SwObj != nil {
 			body.SwObj.Version = ValueStringPointerFromPlanOrState(plan.SwObj.Version, state.SwObj.Version)
 		} else {
 			body.SwObj.Version = StringValueOrNil(plan.SwObj.Version)
@@ -1667,56 +1793,61 @@ func (r *elementShellResource) doPut(ctx context.Context, plan *rsModelElementSc
 		// copy_from_plan_or_state: body=body.SwitchConfig prefix=rsModel state=state.SwitchConfig plan=plan.SwitchConfig properties=8
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.SwitchConfig prefix=rsModel state=state.SwitchConfig plan=plan.SwitchConfig")
 		// property: name=default_vlan_id, type=INTEGER macro=copy_from_plan_or_state
-		if state.SwitchConfig != nil {
+		if state != nil && state.SwitchConfig != nil {
 			body.SwitchConfig.DefaultVlanId = ValueInt64PointerFromPlanOrState(plan.SwitchConfig.DefaultVlanId, state.SwitchConfig.DefaultVlanId)
 		} else {
 			body.SwitchConfig.DefaultVlanId = Int64ValueOrNil(plan.SwitchConfig.DefaultVlanId)
 		}
 		// property: name=mstp_enabled, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.SwitchConfig != nil {
+		if state != nil && state.SwitchConfig != nil {
 			body.SwitchConfig.MstpEnabled = ValueBoolPointerFromPlanOrState(plan.SwitchConfig.MstpEnabled, state.SwitchConfig.MstpEnabled)
 		} else {
 			body.SwitchConfig.MstpEnabled = BoolValueOrNil(plan.SwitchConfig.MstpEnabled)
 		}
 		// property: name=stp_aging_timer, type=INTEGER macro=copy_from_plan_or_state
-		if state.SwitchConfig != nil {
+		if state != nil && state.SwitchConfig != nil {
 			body.SwitchConfig.StpAgingTimer = ValueInt64PointerFromPlanOrState(plan.SwitchConfig.StpAgingTimer, state.SwitchConfig.StpAgingTimer)
 		} else {
 			body.SwitchConfig.StpAgingTimer = Int64ValueOrNil(plan.SwitchConfig.StpAgingTimer)
 		}
 		// property: name=stp_forward_delay, type=INTEGER macro=copy_from_plan_or_state
-		if state.SwitchConfig != nil {
+		if state != nil && state.SwitchConfig != nil {
 			body.SwitchConfig.StpForwardDelay = ValueInt64PointerFromPlanOrState(plan.SwitchConfig.StpForwardDelay, state.SwitchConfig.StpForwardDelay)
 		} else {
 			body.SwitchConfig.StpForwardDelay = Int64ValueOrNil(plan.SwitchConfig.StpForwardDelay)
 		}
 		// property: name=stp_hello_time, type=INTEGER macro=copy_from_plan_or_state
-		if state.SwitchConfig != nil {
+		if state != nil && state.SwitchConfig != nil {
 			body.SwitchConfig.StpHelloTime = ValueInt64PointerFromPlanOrState(plan.SwitchConfig.StpHelloTime, state.SwitchConfig.StpHelloTime)
 		} else {
 			body.SwitchConfig.StpHelloTime = Int64ValueOrNil(plan.SwitchConfig.StpHelloTime)
 		}
 		// property: name=stp_max_age, type=INTEGER macro=copy_from_plan_or_state
-		if state.SwitchConfig != nil {
+		if state != nil && state.SwitchConfig != nil {
 			body.SwitchConfig.StpMaxAge = ValueInt64PointerFromPlanOrState(plan.SwitchConfig.StpMaxAge, state.SwitchConfig.StpMaxAge)
 		} else {
 			body.SwitchConfig.StpMaxAge = Int64ValueOrNil(plan.SwitchConfig.StpMaxAge)
 		}
 		// property: name=stp_mode, type=STRING macro=copy_from_plan_or_state
-		if state.SwitchConfig != nil {
+		if state != nil && state.SwitchConfig != nil {
 			body.SwitchConfig.StpMode = ValueStringPointerFromPlanOrState(plan.SwitchConfig.StpMode, state.SwitchConfig.StpMode)
 		} else {
 			body.SwitchConfig.StpMode = StringValueOrNil(plan.SwitchConfig.StpMode)
 		}
 		// property: name=stp_priority, type=INTEGER macro=copy_from_plan_or_state
-		if state.SwitchConfig != nil {
+		if state != nil && state.SwitchConfig != nil {
 			body.SwitchConfig.StpPriority = ValueInt64PointerFromPlanOrState(plan.SwitchConfig.StpPriority, state.SwitchConfig.StpPriority)
 		} else {
 			body.SwitchConfig.StpPriority = Int64ValueOrNil(plan.SwitchConfig.StpPriority)
 		}
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=tenant_id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.TenantId = ValueStringPointerFromPlanOrState(plan.TenantId, state.TenantId)
@@ -1779,6 +1910,12 @@ func (r *elementShellResource) doPut(ctx context.Context, plan *rsModelElementSc
 	if json_err != nil {
 		resp.Diagnostics.AddError("error in json unmarshal to ElementScreenV3N2 in update", json_err.Error())
 		return false
+	}
+
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
 	}
 
 	// Store the answer to state. schema=ElementScreenV3N2
@@ -1994,6 +2131,14 @@ func (r *elementShellResource) doPut(ctx context.Context, plan *rsModelElementSc
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=tenant_id, type=STRING macro=copy_to_state
 	state.TenantId = types.StringPointerValue(ans.TenantId)
 	// property: name=vpn_to_vpn_forwarding, type=BOOLEAN macro=copy_to_state

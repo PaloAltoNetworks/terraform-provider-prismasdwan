@@ -24,7 +24,7 @@ import (
 )
 
 // +-----------------------------------------------------------------
-// | Schema Map Summary (size=goLangStructMap=7)
+// | Schema Map Summary (size=goLangStructMap=8)
 // | Computed Resource Name=sites_prismasase_connections
 // +-----------------------------------------------------------------
 // | RoutingConfigs HasID=false
@@ -32,15 +32,17 @@ import (
 // | IPSecTunnelAuthentication HasID=false
 // | IPSecTunnel HasID=false
 // | RemoteNetworkGroup HasID=false
+// | RoutingConfigsV3N1 HasID=false
 // | IPSecTunnelConfigs HasID=false
-// | SaseConnectionScreenV2N1 HasID=true
+// | SaseConnectionScreenV3N1 HasID=true
 // +-----------------------------------------------------------------
 
 // Resource.
 var (
-	_ resource.Resource                = &sitePrismaSaseConnectionResource{}
-	_ resource.ResourceWithConfigure   = &sitePrismaSaseConnectionResource{}
-	_ resource.ResourceWithImportState = &sitePrismaSaseConnectionResource{}
+	_ resource.Resource                   = &sitePrismaSaseConnectionResource{}
+	_ resource.ResourceWithConfigure      = &sitePrismaSaseConnectionResource{}
+	_ resource.ResourceWithImportState    = &sitePrismaSaseConnectionResource{}
+	_ resource.ResourceWithValidateConfig = &sitePrismaSaseConnectionResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -61,6 +63,12 @@ type sitePrismaSaseConnectionResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *sitePrismaSaseConnectionResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *sitePrismaSaseConnectionResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_site_prisma_sase_connection"
@@ -69,36 +77,40 @@ func (r *sitePrismaSaseConnectionResource) Metadata(_ context.Context, req resou
 // Schema defines the schema for this data source.
 func (r *sitePrismaSaseConnectionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Site Prisma Sase Connection.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
-			// rest all properties to be read from GET API Schema schema=SaseConnectionScreenV2N1
+			// rest all properties to be read from GET API Schema schema=SaseConnectionScreenV3N1
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=enabled_wan_interface_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -107,290 +119,341 @@ func (r *sitePrismaSaseConnectionResource) Schema(_ context.Context, _ resource.
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Enabled wan interface ids.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=enabled_wan_interface_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=ipsec_tunnel_configs, type=REFERENCE macro=rss_schema
 			"ipsec_tunnel_configs": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
-				Attributes: map[string]rsschema.Attribute{
-					// property: name=anti_replay, type=BOOLEAN macro=rss_schema
-					"anti_replay": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
-					},
-					// key name holder for attribute: name=anti_replay, type=BOOLEAN macro=rss_schema
-					// property: name=copy_tos, type=BOOLEAN macro=rss_schema
-					"copy_tos": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
-					},
-					// key name holder for attribute: name=copy_tos, type=BOOLEAN macro=rss_schema
-					// property: name=enable_gre_encapsulation, type=BOOLEAN macro=rss_schema
-					"enable_gre_encapsulation": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
-					},
-					// key name holder for attribute: name=enable_gre_encapsulation, type=BOOLEAN macro=rss_schema
-					// property: name=ike_key_exchange, type=STRING macro=rss_schema
-					"ike_key_exchange": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
-					},
-					// key name holder for attribute: name=ike_key_exchange, type=STRING macro=rss_schema
-					// property: name=prismaaccess_ike_crypto_profile_id, type=STRING macro=rss_schema
-					"prismaaccess_ike_crypto_profile_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
-					},
-					// key name holder for attribute: name=prismaaccess_ike_crypto_profile_id, type=STRING macro=rss_schema
-					// property: name=prismaaccess_ipsec_profile_id, type=STRING macro=rss_schema
-					"prismaaccess_ipsec_profile_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
-					},
-					// key name holder for attribute: name=prismaaccess_ipsec_profile_id, type=STRING macro=rss_schema
-					// property: name=tunnel_monitoring, type=BOOLEAN macro=rss_schema
-					"tunnel_monitoring": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
-					},
-					// key name holder for attribute: name=tunnel_monitoring, type=BOOLEAN macro=rss_schema
-				},
-			},
-			// key name holder for attribute: name=tunnel_monitoring, type=BOOLEAN macro=rss_schema
-			// property: name=is_active, type=BOOLEAN macro=rss_schema
-			"is_active": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
-			},
-			// key name holder for attribute: name=is_active, type=BOOLEAN macro=rss_schema
-			// property: name=is_enabled, type=BOOLEAN macro=rss_schema
-			"is_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
-			},
-			// key name holder for attribute: name=is_enabled, type=BOOLEAN macro=rss_schema
-			// property: name=license_type, type=STRING macro=rss_schema
-			"license_type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
-			},
-			// key name holder for attribute: name=license_type, type=STRING macro=rss_schema
-			// property: name=prismaaccess_edge_location, type=ARRAY_PRIMITIVE macro=rss_schema
-			"prismaaccess_edge_location": rsschema.ListAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Ipsec tunnel configs.",
+				Attributes: map[string]rsschema.Attribute{
+					// property: name=anti_replay, type=BOOLEAN macro=rss_schema
+					"anti_replay": rsschema.BoolAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Anti replay.",
+					},
+					// key name holder for attribute: name=anti_replay, type=BOOLEAN macro=rss_schema
+					// property: name=copy_tos, type=BOOLEAN macro=rss_schema
+					"copy_tos": rsschema.BoolAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Copy tos.",
+					},
+					// key name holder for attribute: name=copy_tos, type=BOOLEAN macro=rss_schema
+					// property: name=enable_gre_encapsulation, type=BOOLEAN macro=rss_schema
+					"enable_gre_encapsulation": rsschema.BoolAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Enable gre encapsulation.",
+					},
+					// key name holder for attribute: name=enable_gre_encapsulation, type=BOOLEAN macro=rss_schema
+					// property: name=ike_key_exchange, type=STRING macro=rss_schema
+					"ike_key_exchange": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Ike key exchange.",
+					},
+					// key name holder for attribute: name=ike_key_exchange, type=STRING macro=rss_schema
+					// property: name=prismaaccess_ike_crypto_profile_id, type=STRING macro=rss_schema
+					"prismaaccess_ike_crypto_profile_id": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Prismaaccess ike crypto profile id.",
+					},
+					// key name holder for attribute: name=prismaaccess_ike_crypto_profile_id, type=STRING macro=rss_schema
+					// property: name=prismaaccess_ipsec_profile_id, type=STRING macro=rss_schema
+					"prismaaccess_ipsec_profile_id": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Prismaaccess ipsec profile id.",
+					},
+					// key name holder for attribute: name=prismaaccess_ipsec_profile_id, type=STRING macro=rss_schema
+					// property: name=tunnel_monitoring, type=BOOLEAN macro=rss_schema
+					"tunnel_monitoring": rsschema.BoolAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Tunnel monitoring.",
+					},
+					// key name holder for attribute: name=tunnel_monitoring, type=BOOLEAN macro=rss_schema
+				},
+			},
+			// key name holder for attribute: name=ipsec_tunnel_configs, type=REFERENCE macro=rss_schema
+			// property: name=is_active, type=BOOLEAN macro=rss_schema
+			"is_active": rsschema.BoolAttribute{
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Is active.",
+			},
+			// key name holder for attribute: name=is_active, type=BOOLEAN macro=rss_schema
+			// property: name=is_enabled, type=BOOLEAN macro=rss_schema
+			"is_enabled": rsschema.BoolAttribute{
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Is enabled.",
+			},
+			// key name holder for attribute: name=is_enabled, type=BOOLEAN macro=rss_schema
+			// property: name=license_type, type=STRING macro=rss_schema
+			"license_type": rsschema.StringAttribute{
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "License type.",
+			},
+			// key name holder for attribute: name=license_type, type=STRING macro=rss_schema
+			// property: name=prismaaccess_edge_location_config, type=ARRAY_PRIMITIVE macro=rss_schema
+			"prismaaccess_edge_location_config": rsschema.ListAttribute{
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Prismaaccess edge location config.",
 				ElementType: types.StringType,
 			},
-			// key name holder for attribute: name=prismaaccess_edge_location, type=ARRAY_PRIMITIVE macro=rss_schema
+			// key name holder for attribute: name=prismaaccess_edge_location_config, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=prismaaccess_qos_cir_mbps, type=INTEGER macro=rss_schema
 			"prismaaccess_qos_cir_mbps": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Prismaaccess qos cir mbps.",
 			},
 			// key name holder for attribute: name=prismaaccess_qos_cir_mbps, type=INTEGER macro=rss_schema
 			// property: name=prismaaccess_qos_profile_id, type=STRING macro=rss_schema
 			"prismaaccess_qos_profile_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Prismaaccess qos profile id.",
 			},
 			// key name holder for attribute: name=prismaaccess_qos_profile_id, type=STRING macro=rss_schema
+			// property: name=prismasase_connection_id, type=STRING macro=rss_schema
+			"prismasase_connection_id": rsschema.StringAttribute{
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Prismasase connection id. Filled in by the server when it is not set.",
+			},
+			// key name holder for attribute: name=prismasase_connection_id, type=STRING macro=rss_schema
 			// property: name=remote_network_groups, type=ARRAY_REFERENCE macro=rss_schema
 			"remote_network_groups": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Remote network groups.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=ipsec_tunnels, type=ARRAY_REFERENCE macro=rss_schema
 						"ipsec_tunnels": rsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Ipsec tunnels.",
 							NestedObject: rsschema.NestedAttributeObject{
 								Attributes: map[string]rsschema.Attribute{
 									// property: name=authentication, type=REFERENCE macro=rss_schema
 									"authentication": rsschema.SingleNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Authentication.",
 										Attributes: map[string]rsschema.Attribute{
 											// property: name=branch_ike_identification, type=STRING macro=rss_schema
 											"branch_ike_identification": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Branch ike identification.",
 											},
 											// key name holder for attribute: name=branch_ike_identification, type=STRING macro=rss_schema
 											// property: name=prismaaccess_ike_identification, type=STRING macro=rss_schema
 											"prismaaccess_ike_identification": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Prismaaccess ike identification.",
 											},
 											// key name holder for attribute: name=prismaaccess_ike_identification, type=STRING macro=rss_schema
 											// property: name=psk, type=STRING macro=rss_schema
 											"psk": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   true,
+												Description: "Psk.",
 											},
 											// key name holder for attribute: name=psk, type=STRING macro=rss_schema
+											"psk_internal_key_name": rsschema.StringAttribute{
+												Required:    false,
+												Computed:    true,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Internal key name for the sensitive attribute psk, managed automatically by the provider.",
+											},
 										},
 									},
-									// key name holder for attribute: name=psk, type=STRING macro=rss_schema
+									// key name holder for attribute: name=authentication, type=REFERENCE macro=rss_schema
 									// property: name=name, type=STRING macro=rss_schema
 									"name": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Name.",
 									},
 									// key name holder for attribute: name=name, type=STRING macro=rss_schema
 									// property: name=routing, type=REFERENCE macro=rss_schema
 									"routing": rsschema.SingleNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Routing.",
 										Attributes: map[string]rsschema.Attribute{
 											// property: name=branch_as_number, type=STRING macro=rss_schema
 											"branch_as_number": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Branch as number.",
 											},
 											// key name holder for attribute: name=branch_as_number, type=STRING macro=rss_schema
 											// property: name=branch_ip_address, type=STRING macro=rss_schema
 											"branch_ip_address": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Branch ip address.",
 											},
 											// key name holder for attribute: name=branch_ip_address, type=STRING macro=rss_schema
 											// property: name=prismaaccess_ip_address, type=STRING macro=rss_schema
 											"prismaaccess_ip_address": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Prismaaccess ip address.",
 											},
 											// key name holder for attribute: name=prismaaccess_ip_address, type=STRING macro=rss_schema
 										},
 									},
-									// key name holder for attribute: name=prismaaccess_ip_address, type=STRING macro=rss_schema
+									// key name holder for attribute: name=routing, type=REFERENCE macro=rss_schema
 									// property: name=routing_configs, type=REFERENCE macro=rss_schema
 									"routing_configs": rsschema.SingleNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Routing configs.",
 										Attributes: map[string]rsschema.Attribute{
 											// property: name=advertise_default_route, type=BOOLEAN macro=rss_schema
 											"advertise_default_route": rsschema.BoolAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Advertise default route.",
 											},
 											// key name holder for attribute: name=advertise_default_route, type=BOOLEAN macro=rss_schema
 											// property: name=bgp_secret, type=STRING macro=rss_schema
 											"bgp_secret": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: true,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   true,
+												Description: "Bgp secret.",
 											},
 											// key name holder for attribute: name=bgp_secret, type=STRING macro=rss_schema
 											"bgp_secret_internal_key_name": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  true,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Internal key name for the sensitive attribute bgp_secret, managed automatically by the provider.",
 											},
 											// property: name=export_routes, type=BOOLEAN macro=rss_schema
 											"export_routes": rsschema.BoolAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Export routes.",
 											},
 											// key name holder for attribute: name=export_routes, type=BOOLEAN macro=rss_schema
 											// property: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=rss_schema
 											"summarize_mobile_routes_before_advertise": rsschema.BoolAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Summarize mobile routes before advertise.",
 											},
 											// key name holder for attribute: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=rss_schema
 										},
 									},
-									// key name holder for attribute: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=rss_schema
+									// key name holder for attribute: name=routing_configs, type=REFERENCE macro=rss_schema
 									// property: name=wan_interface_id, type=STRING macro=rss_schema
 									"wan_interface_id": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Wan interface id.",
 									},
 									// key name holder for attribute: name=wan_interface_id, type=STRING macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=wan_interface_id, type=STRING macro=rss_schema
+						// key name holder for attribute: name=ipsec_tunnels, type=ARRAY_REFERENCE macro=rss_schema
 						// property: name=name, type=STRING macro=rss_schema
 						"name": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Name.",
 						},
 						// key name holder for attribute: name=name, type=STRING macro=rss_schema
 						// property: name=spn_name, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -399,67 +462,102 @@ func (r *sitePrismaSaseConnectionResource) Schema(_ context.Context, _ resource.
 							Computed:    false,
 							Optional:    true,
 							Sensitive:   false,
+							Description: "Spn name.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=spn_name, type=ARRAY_PRIMITIVE macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=spn_name, type=ARRAY_PRIMITIVE macro=rss_schema
+			// key name holder for attribute: name=remote_network_groups, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=routing_configs, type=REFERENCE macro=rss_schema
 			"routing_configs": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Routing configs.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=advertise_default_route, type=BOOLEAN macro=rss_schema
 					"advertise_default_route": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Advertise default route.",
 					},
 					// key name holder for attribute: name=advertise_default_route, type=BOOLEAN macro=rss_schema
 					// property: name=bgp_secret, type=STRING macro=rss_schema
 					"bgp_secret": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: true,
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Bgp secret. Filled in by the server when it is not set.",
 					},
 					// key name holder for attribute: name=bgp_secret, type=STRING macro=rss_schema
 					"bgp_secret_internal_key_name": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  true,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute bgp_secret, managed automatically by the provider.",
 					},
+					// property: name=branch_as_number, type=STRING macro=rss_schema
+					"branch_as_number": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Branch as number.",
+					},
+					// key name holder for attribute: name=branch_as_number, type=STRING macro=rss_schema
+					// property: name=deployment_mode, type=STRING macro=rss_schema
+					"deployment_mode": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Deployment mode.",
+					},
+					// key name holder for attribute: name=deployment_mode, type=STRING macro=rss_schema
 					// property: name=export_routes, type=BOOLEAN macro=rss_schema
 					"export_routes": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Export routes.",
 					},
 					// key name holder for attribute: name=export_routes, type=BOOLEAN macro=rss_schema
+					// property: name=peering_type, type=STRING macro=rss_schema
+					"peering_type": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Peering type.",
+					},
+					// key name holder for attribute: name=peering_type, type=STRING macro=rss_schema
 					// property: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=rss_schema
 					"summarize_mobile_routes_before_advertise": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Summarize mobile routes before advertise.",
 					},
 					// key name holder for attribute: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=rss_schema
+			// key name holder for attribute: name=routing_configs, type=REFERENCE macro=rss_schema
 			// property: name=site_id, type=STRING macro=rss_schema
 			"site_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Site id. Value: at most 50 characters, matching `^-?[0-9]{1,50}$`.",
 			},
 			// key name holder for attribute: name=site_id, type=STRING macro=rss_schema
 		},
@@ -488,7 +586,7 @@ func (r *sitePrismaSaseConnectionResource) GetHttpStatusCode(request *sdwan_clie
 	}
 }
 
-func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsModelSaseConnectionScreenV2N1, state *rsModelSaseConnectionScreenV2N1, resp *resource.CreateResponse) bool {
+func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsModelSaseConnectionScreenV3N1, state *rsModelSaseConnectionScreenV3N1, resp *resource.CreateResponse) bool {
 	tflog.Info(ctx, "executing http post for prismasdwan_site_prisma_sase_connection")
 	// Basic logging.
 	tflog.Info(ctx, "performing resource create", map[string]any{
@@ -500,7 +598,7 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 	create_request := &sdwan_client.SdwanClientRequestResponse{}
 	create_request.ResourceType = "prismasdwan_site_prisma_sase_connection"
 	create_request.Method = "POST"
-	create_request.Path = "/sdwan/v2.1/api/sites/{site_id}/prismasase_connections"
+	create_request.Path = "/sdwan/v3.1/api/sites/{site_id}/prismasase_connections"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, plan.TfParameters)
@@ -510,10 +608,10 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.SaseConnectionScreenV2N1{}
+	var body = &sdwan_schema.SaseConnectionScreenV3N1{}
 
 	// copy from plan to body
-	// copy_from_plan: body=body prefix=rsModel plan=plan properties=14
+	// copy_from_plan: body=body prefix=rsModel plan=plan properties=15
 	tflog.Debug(ctx, "copy_from_plan body=body prefix=rsModel plan=plan")
 	// property: name=_etag, type=INTEGER macro=copy_from_plan
 	body.Etag = Int64ValueOrNil(plan.Etag)
@@ -549,12 +647,14 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 	body.IsEnabled = BoolValueOrNil(plan.IsEnabled)
 	// property: name=license_type, type=STRING macro=copy_from_plan
 	body.LicenseType = StringValueOrNil(plan.LicenseType)
-	// property: name=prismaaccess_edge_location, type=ARRAY_PRIMITIVE macro=copy_from_plan
-	body.PrismaaccessEdgeLocation = ListStringValueOrNil(ctx, plan.PrismaaccessEdgeLocation)
+	// property: name=prismaaccess_edge_location_config, type=ARRAY_PRIMITIVE macro=copy_from_plan
+	body.PrismaaccessEdgeLocationConfig = ListStringValueOrNil(ctx, plan.PrismaaccessEdgeLocationConfig)
 	// property: name=prismaaccess_qos_cir_mbps, type=INTEGER macro=copy_from_plan
 	body.PrismaaccessQosCirMbps = Int64ValueOrNil(plan.PrismaaccessQosCirMbps)
 	// property: name=prismaaccess_qos_profile_id, type=STRING macro=copy_from_plan
 	body.PrismaaccessQosProfileId = StringValueOrNil(plan.PrismaaccessQosProfileId)
+	// property: name=prismasase_connection_id, type=STRING macro=copy_from_plan
+	body.PrismasaseConnectionId = StringValueOrNil(plan.PrismasaseConnectionId)
 	// property: name=remote_network_groups, type=ARRAY_REFERENCE macro=copy_from_plan
 	if plan.RemoteNetworkGroups == nil {
 		body.RemoteNetworkGroups = nil
@@ -571,7 +671,8 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 			if varLoopRemoteNetworkGroups.IpsecTunnels == nil {
 				body.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = nil
 			} else if len(varLoopRemoteNetworkGroups.IpsecTunnels) == 0 {
-				body.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = []sdwan_schema.IPSecTunnel{}
+				// api does not accept empty list as missing value
+				body.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = nil
 			} else {
 				body.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = make([]sdwan_schema.IPSecTunnel, 0, len(varLoopRemoteNetworkGroups.IpsecTunnels))
 				for varLoopIpsecTunnelsIndex, varLoopIpsecTunnels := range varLoopRemoteNetworkGroups.IpsecTunnels {
@@ -631,15 +732,21 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 	}
 	// property: name=routing_configs, type=REFERENCE macro=copy_from_plan
 	if plan.RoutingConfigs != nil {
-		body.RoutingConfigs = &sdwan_schema.RoutingConfigs{}
-		// copy_from_plan: body=body.RoutingConfigs prefix=rsModel plan=plan.RoutingConfigs properties=4
+		body.RoutingConfigs = &sdwan_schema.RoutingConfigsV3N1{}
+		// copy_from_plan: body=body.RoutingConfigs prefix=rsModel plan=plan.RoutingConfigs properties=7
 		tflog.Debug(ctx, "copy_from_plan body=body.RoutingConfigs prefix=rsModel plan=plan.RoutingConfigs")
 		// property: name=advertise_default_route, type=BOOLEAN macro=copy_from_plan
 		body.RoutingConfigs.AdvertiseDefaultRoute = BoolValueOrNil(plan.RoutingConfigs.AdvertiseDefaultRoute)
 		// property: name=bgp_secret, type=STRING macro=copy_from_plan
 		body.RoutingConfigs.BgpSecret = StringValueOrNil(plan.RoutingConfigs.BgpSecret)
+		// property: name=branch_as_number, type=STRING macro=copy_from_plan
+		body.RoutingConfigs.BranchAsNumber = StringValueOrNil(plan.RoutingConfigs.BranchAsNumber)
+		// property: name=deployment_mode, type=STRING macro=copy_from_plan
+		body.RoutingConfigs.DeploymentMode = StringValueOrNil(plan.RoutingConfigs.DeploymentMode)
 		// property: name=export_routes, type=BOOLEAN macro=copy_from_plan
 		body.RoutingConfigs.ExportRoutes = BoolValueOrNil(plan.RoutingConfigs.ExportRoutes)
+		// property: name=peering_type, type=STRING macro=copy_from_plan
+		body.RoutingConfigs.PeeringType = StringValueOrNil(plan.RoutingConfigs.PeeringType)
 		// property: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=copy_from_plan
 		body.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise = BoolValueOrNil(plan.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise)
 	}
@@ -649,7 +756,7 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct SaseConnectionScreenV2N1 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct SaseConnectionScreenV3N1 to JSON:", err.Error())
 		return false
 	}
 
@@ -662,6 +769,13 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 	request_body_string, _ = sjson.Delete(request_body_string, "_etag")
 	tflog.Debug(ctx, "http json override: set request_body_string::_schema")
 	request_body_string, _ = sjson.Set(request_body_string, "_schema", 0)
+	// inject overrides
+	tflog.Debug(ctx, "http json override: delete request_body_string::site_id")
+	request_body_string, _ = sjson.Delete(request_body_string, "site_id")
+	tflog.Debug(ctx, "http json override: delete request_body_string::prismasase_connection_id")
+	request_body_string, _ = sjson.Delete(request_body_string, "prismasase_connection_id")
+	// inject overrides
+	request_body_string = SetIfNull(request_body_string, "remote_network_groups.#.ipsec_tunnels", []interface{}{})
 	// copy pointer
 	create_request.RequestBody = &request_body_string
 
@@ -692,12 +806,12 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.SaseConnectionScreenV2N1
+	var ans sdwan_schema.SaseConnectionScreenV3N1
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to SaseConnectionScreenV2N1 in create", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to SaseConnectionScreenV3N1 in create", json_err.Error())
 		return false
 	}
 
@@ -722,8 +836,8 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 	state.TfParameters = plan.TfParameters
 	tflog.Info(ctx, "created prismasdwan_site_prisma_sase_connection with ID", map[string]any{"tfid": state.Tfid.ValueString()})
 
-	// Store the answer to state. schema=SaseConnectionScreenV2N1
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=14
+	// Store the answer to state. schema=SaseConnectionScreenV3N1
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=15
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
@@ -763,14 +877,16 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 	state.IsEnabled = types.BoolPointerValue(ans.IsEnabled)
 	// property: name=license_type, type=STRING macro=copy_to_state
 	state.LicenseType = types.StringPointerValue(ans.LicenseType)
-	// property: name=prismaaccess_edge_location, type=ARRAY_PRIMITIVE macro=copy_to_state
-	varPrismaaccessEdgeLocation, errPrismaaccessEdgeLocation := types.ListValueFrom(ctx, types.StringType, ans.PrismaaccessEdgeLocation)
-	state.PrismaaccessEdgeLocation = varPrismaaccessEdgeLocation
-	resp.Diagnostics.Append(errPrismaaccessEdgeLocation.Errors()...)
+	// property: name=prismaaccess_edge_location_config, type=ARRAY_PRIMITIVE macro=copy_to_state
+	varPrismaaccessEdgeLocationConfig, errPrismaaccessEdgeLocationConfig := types.ListValueFrom(ctx, types.StringType, ans.PrismaaccessEdgeLocationConfig)
+	state.PrismaaccessEdgeLocationConfig = varPrismaaccessEdgeLocationConfig
+	resp.Diagnostics.Append(errPrismaaccessEdgeLocationConfig.Errors()...)
 	// property: name=prismaaccess_qos_cir_mbps, type=INTEGER macro=copy_to_state
 	state.PrismaaccessQosCirMbps = types.Int64PointerValue(ans.PrismaaccessQosCirMbps)
 	// property: name=prismaaccess_qos_profile_id, type=STRING macro=copy_to_state
 	state.PrismaaccessQosProfileId = types.StringPointerValue(ans.PrismaaccessQosProfileId)
+	// property: name=prismasase_connection_id, type=STRING macro=copy_to_state
+	state.PrismasaseConnectionId = types.StringPointerValue(ans.PrismasaseConnectionId)
 	// property: name=remote_network_groups, type=ARRAY_REFERENCE macro=copy_to_state
 	if ans.RemoteNetworkGroups == nil {
 		state.RemoteNetworkGroups = nil
@@ -787,7 +903,8 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 			if varLoopRemoteNetworkGroups.IpsecTunnels == nil {
 				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = nil
 			} else if len(varLoopRemoteNetworkGroups.IpsecTunnels) == 0 {
-				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = []rsModelIPSecTunnel{}
+				// api does not accept empty list as missing value
+				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = nil
 			} else {
 				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = make([]rsModelIPSecTunnel, 0, len(varLoopRemoteNetworkGroups.IpsecTunnels))
 				for varLoopIpsecTunnelsIndex, varLoopIpsecTunnels := range varLoopRemoteNetworkGroups.IpsecTunnels {
@@ -807,7 +924,20 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 						// property: name=prismaaccess_ike_identification, type=STRING macro=copy_to_state
 						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.PrismaaccessIkeIdentification = types.StringPointerValue(varLoopIpsecTunnels.Authentication.PrismaaccessIkeIdentification)
 						// property: name=psk, type=STRING macro=copy_to_state
-						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk = types.StringPointerValue(varLoopIpsecTunnels.Authentication.Psk)
+						// this property is sensitive and will be stored in the state's internal key name
+						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.PskInternalKeyName = types.StringValue(GenerateRandomString(16))
+						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk = types.StringNull()
+						if len(plan.RemoteNetworkGroups) > varLoopRemoteNetworkGroupsIndex && len(plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels) > varLoopIpsecTunnelsIndex && plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication != nil {
+							state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk = types.StringPointerValue(plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk.ValueStringPointer())
+						}
+						// store value if needed
+						if !state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk.IsNull() {
+							// ValueString, not String: String() returns the value quoted, which drifts on read
+							encryptedPsk, _ := Encrypt([]byte(state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk.ValueString()))
+							// private state only accepts valid JSON, so store the ciphertext as a JSON string
+							encryptedPskJson, _ := json.Marshal(encryptedPsk)
+							resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.PskInternalKeyName.String(), encryptedPskJson)...)
+						}
 					}
 					// property: name=name, type=STRING macro=copy_to_state
 					state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Name = types.StringPointerValue(varLoopIpsecTunnels.Name)
@@ -835,13 +965,19 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 						// property: name=advertise_default_route, type=BOOLEAN macro=copy_to_state
 						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.AdvertiseDefaultRoute = types.BoolPointerValue(varLoopIpsecTunnels.RoutingConfigs.AdvertiseDefaultRoute)
 						// property: name=bgp_secret, type=STRING macro=copy_to_state
-						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret = types.StringPointerValue(plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret.ValueStringPointer())
 						// this property is sensitive and will be stored in the state's internal key name
 						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret = types.StringNull()
+						if len(plan.RemoteNetworkGroups) > varLoopRemoteNetworkGroupsIndex && len(plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels) > varLoopIpsecTunnelsIndex && plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs != nil {
+							state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret = types.StringPointerValue(plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret.ValueStringPointer())
+						}
 						// store value if needed
 						if !state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret.IsNull() {
-							encryptedBgpSecret, _ := Encrypt([]byte(state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret.String()))
-							resp.Private.SetKey(ctx, state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecretInternalKeyName.String(), []byte(encryptedBgpSecret))
+							// ValueString, not String: String() returns the value quoted, which drifts on read
+							encryptedBgpSecret, _ := Encrypt([]byte(state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret.ValueString()))
+							// private state only accepts valid JSON, so store the ciphertext as a JSON string
+							encryptedBgpSecretJson, _ := json.Marshal(encryptedBgpSecret)
+							resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecretInternalKeyName.String(), encryptedBgpSecretJson)...)
 						}
 						// property: name=export_routes, type=BOOLEAN macro=copy_to_state
 						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.ExportRoutes = types.BoolPointerValue(varLoopIpsecTunnels.RoutingConfigs.ExportRoutes)
@@ -851,6 +987,10 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 					// property: name=wan_interface_id, type=STRING macro=copy_to_state
 					state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].WanInterfaceId = types.StringPointerValue(varLoopIpsecTunnels.WanInterfaceId)
 				}
+			}
+			// the configuration states an empty list: keep it
+			if len(plan.RemoteNetworkGroups) > varLoopRemoteNetworkGroupsIndex && len(varLoopRemoteNetworkGroups.IpsecTunnels) == 0 && plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels != nil && len(plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels) == 0 {
+				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels
 			}
 			// property: name=name, type=STRING macro=copy_to_state
 			state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].Name = types.StringPointerValue(varLoopRemoteNetworkGroups.Name)
@@ -864,22 +1004,34 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 	if ans.RoutingConfigs == nil {
 		state.RoutingConfigs = nil
 	} else {
-		state.RoutingConfigs = &rsModelRoutingConfigs{}
-		// copy_to_state: state=state.RoutingConfigs prefix=rsModel ans=ans.RoutingConfigs properties=4
+		state.RoutingConfigs = &rsModelRoutingConfigsV3N1{}
+		// copy_to_state: state=state.RoutingConfigs prefix=rsModel ans=ans.RoutingConfigs properties=7
 		tflog.Debug(ctx, "copy_to_state state=state.RoutingConfigs prefix=rsModel ans=ans.RoutingConfigs")
 		// property: name=advertise_default_route, type=BOOLEAN macro=copy_to_state
 		state.RoutingConfigs.AdvertiseDefaultRoute = types.BoolPointerValue(ans.RoutingConfigs.AdvertiseDefaultRoute)
 		// property: name=bgp_secret, type=STRING macro=copy_to_state
-		state.RoutingConfigs.BgpSecret = types.StringPointerValue(plan.RoutingConfigs.BgpSecret.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.RoutingConfigs.BgpSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.RoutingConfigs.BgpSecret = types.StringNull()
+		if plan.RoutingConfigs != nil {
+			state.RoutingConfigs.BgpSecret = types.StringPointerValue(plan.RoutingConfigs.BgpSecret.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.RoutingConfigs.BgpSecret.IsNull() {
-			encryptedBgpSecret, _ := Encrypt([]byte(state.RoutingConfigs.BgpSecret.String()))
-			resp.Private.SetKey(ctx, state.RoutingConfigs.BgpSecretInternalKeyName.String(), []byte(encryptedBgpSecret))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedBgpSecret, _ := Encrypt([]byte(state.RoutingConfigs.BgpSecret.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedBgpSecretJson, _ := json.Marshal(encryptedBgpSecret)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.RoutingConfigs.BgpSecretInternalKeyName.String(), encryptedBgpSecretJson)...)
 		}
+		// property: name=branch_as_number, type=STRING macro=copy_to_state
+		state.RoutingConfigs.BranchAsNumber = types.StringPointerValue(ans.RoutingConfigs.BranchAsNumber)
+		// property: name=deployment_mode, type=STRING macro=copy_to_state
+		state.RoutingConfigs.DeploymentMode = types.StringPointerValue(ans.RoutingConfigs.DeploymentMode)
 		// property: name=export_routes, type=BOOLEAN macro=copy_to_state
 		state.RoutingConfigs.ExportRoutes = types.BoolPointerValue(ans.RoutingConfigs.ExportRoutes)
+		// property: name=peering_type, type=STRING macro=copy_to_state
+		state.RoutingConfigs.PeeringType = types.StringPointerValue(ans.RoutingConfigs.PeeringType)
 		// property: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=copy_to_state
 		state.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise = types.BoolPointerValue(ans.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise)
 	}
@@ -888,7 +1040,7 @@ func (r *sitePrismaSaseConnectionResource) doPost(ctx context.Context, plan *rsM
 	return true
 }
 
-func (r *sitePrismaSaseConnectionResource) doGet(ctx context.Context, state *rsModelSaseConnectionScreenV2N1, savestate *rsModelSaseConnectionScreenV2N1, State *tfsdk.State, resp *resource.ReadResponse) bool {
+func (r *sitePrismaSaseConnectionResource) doGet(ctx context.Context, state *rsModelSaseConnectionScreenV3N1, savestate *rsModelSaseConnectionScreenV3N1, State *tfsdk.State, resp *resource.ReadResponse) bool {
 	// Basic logging.
 	tfid := savestate.Tfid.ValueString()
 	tflog.Info(ctx, "performing resource read", map[string]any{
@@ -910,7 +1062,7 @@ func (r *sitePrismaSaseConnectionResource) doGet(ctx context.Context, state *rsM
 	read_request := &sdwan_client.SdwanClientRequestResponse{}
 	read_request.ResourceType = "prismasdwan_site_prisma_sase_connection"
 	read_request.Method = "GET"
-	read_request.Path = "/sdwan/v2.1/api/sites/{site_id}/prismasase_connections/{prismasase_connection_id}"
+	read_request.Path = "/sdwan/v3.1/api/sites/{site_id}/prismasase_connections/{prismasase_connection_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, savestate.TfParameters)
@@ -952,25 +1104,41 @@ func (r *sitePrismaSaseConnectionResource) doGet(ctx context.Context, state *rsM
 	tflog.Debug(ctx, "http json override: set response_body_string::_schema")
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
-	// Store the answer to state. schema=SaseConnectionScreenV2N1
+	// Store the answer to state. schema=SaseConnectionScreenV3N1
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
 	// start copying attributes
-	var ans sdwan_schema.SaseConnectionScreenV2N1
+	var ans sdwan_schema.SaseConnectionScreenV3N1
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to SaseConnectionScreenV2N1 in read", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to SaseConnectionScreenV3N1 in read", json_err.Error())
 		return false
 	}
 	// lets copy all items into state
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=14
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=15
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
@@ -1010,14 +1178,16 @@ func (r *sitePrismaSaseConnectionResource) doGet(ctx context.Context, state *rsM
 	state.IsEnabled = types.BoolPointerValue(ans.IsEnabled)
 	// property: name=license_type, type=STRING macro=copy_to_state
 	state.LicenseType = types.StringPointerValue(ans.LicenseType)
-	// property: name=prismaaccess_edge_location, type=ARRAY_PRIMITIVE macro=copy_to_state
-	varPrismaaccessEdgeLocation, errPrismaaccessEdgeLocation := types.ListValueFrom(ctx, types.StringType, ans.PrismaaccessEdgeLocation)
-	state.PrismaaccessEdgeLocation = varPrismaaccessEdgeLocation
-	resp.Diagnostics.Append(errPrismaaccessEdgeLocation.Errors()...)
+	// property: name=prismaaccess_edge_location_config, type=ARRAY_PRIMITIVE macro=copy_to_state
+	varPrismaaccessEdgeLocationConfig, errPrismaaccessEdgeLocationConfig := types.ListValueFrom(ctx, types.StringType, ans.PrismaaccessEdgeLocationConfig)
+	state.PrismaaccessEdgeLocationConfig = varPrismaaccessEdgeLocationConfig
+	resp.Diagnostics.Append(errPrismaaccessEdgeLocationConfig.Errors()...)
 	// property: name=prismaaccess_qos_cir_mbps, type=INTEGER macro=copy_to_state
 	state.PrismaaccessQosCirMbps = types.Int64PointerValue(ans.PrismaaccessQosCirMbps)
 	// property: name=prismaaccess_qos_profile_id, type=STRING macro=copy_to_state
 	state.PrismaaccessQosProfileId = types.StringPointerValue(ans.PrismaaccessQosProfileId)
+	// property: name=prismasase_connection_id, type=STRING macro=copy_to_state
+	state.PrismasaseConnectionId = types.StringPointerValue(ans.PrismasaseConnectionId)
 	// property: name=remote_network_groups, type=ARRAY_REFERENCE macro=copy_to_state
 	if ans.RemoteNetworkGroups == nil {
 		state.RemoteNetworkGroups = nil
@@ -1034,7 +1204,8 @@ func (r *sitePrismaSaseConnectionResource) doGet(ctx context.Context, state *rsM
 			if varLoopRemoteNetworkGroups.IpsecTunnels == nil {
 				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = nil
 			} else if len(varLoopRemoteNetworkGroups.IpsecTunnels) == 0 {
-				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = []rsModelIPSecTunnel{}
+				// api does not accept empty list as missing value
+				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = nil
 			} else {
 				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = make([]rsModelIPSecTunnel, 0, len(varLoopRemoteNetworkGroups.IpsecTunnels))
 				for varLoopIpsecTunnelsIndex, varLoopIpsecTunnels := range varLoopRemoteNetworkGroups.IpsecTunnels {
@@ -1054,7 +1225,17 @@ func (r *sitePrismaSaseConnectionResource) doGet(ctx context.Context, state *rsM
 						// property: name=prismaaccess_ike_identification, type=STRING macro=copy_to_state
 						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.PrismaaccessIkeIdentification = types.StringPointerValue(varLoopIpsecTunnels.Authentication.PrismaaccessIkeIdentification)
 						// property: name=psk, type=STRING macro=copy_to_state
-						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk = types.StringPointerValue(varLoopIpsecTunnels.Authentication.Psk)
+						// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+						if len(savestate.RemoteNetworkGroups) > varLoopRemoteNetworkGroupsIndex && len(savestate.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels) > varLoopIpsecTunnelsIndex && savestate.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication != nil {
+							state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.PskInternalKeyName = savestate.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.PskInternalKeyName
+						}
+						encryptedPskKeyName := state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.PskInternalKeyName.String()
+						encryptedPskValueBytes, _ := resp.Private.GetKey(ctx, encryptedPskKeyName)
+						var encryptedPskValue string
+						if encryptedPskValueBytes != nil && json.Unmarshal(encryptedPskValueBytes, &encryptedPskValue) == nil {
+							decryptedPsk, _ := Decrypt(encryptedPskValue)
+							state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk = types.StringValue(decryptedPsk)
+						}
 					}
 					// property: name=name, type=STRING macro=copy_to_state
 					state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Name = types.StringPointerValue(varLoopIpsecTunnels.Name)
@@ -1082,10 +1263,15 @@ func (r *sitePrismaSaseConnectionResource) doGet(ctx context.Context, state *rsM
 						// property: name=advertise_default_route, type=BOOLEAN macro=copy_to_state
 						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.AdvertiseDefaultRoute = types.BoolPointerValue(varLoopIpsecTunnels.RoutingConfigs.AdvertiseDefaultRoute)
 						// property: name=bgp_secret, type=STRING macro=copy_to_state
+						// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+						if len(savestate.RemoteNetworkGroups) > varLoopRemoteNetworkGroupsIndex && len(savestate.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels) > varLoopIpsecTunnelsIndex && savestate.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs != nil {
+							state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecretInternalKeyName = savestate.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecretInternalKeyName
+						}
 						encryptedBgpSecretKeyName := state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecretInternalKeyName.String()
 						encryptedBgpSecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedBgpSecretKeyName)
-						if encryptedBgpSecretValueBytes != nil {
-							decryptedBgpSecret, _ := Decrypt(string(encryptedBgpSecretValueBytes))
+						var encryptedBgpSecretValue string
+						if encryptedBgpSecretValueBytes != nil && json.Unmarshal(encryptedBgpSecretValueBytes, &encryptedBgpSecretValue) == nil {
+							decryptedBgpSecret, _ := Decrypt(encryptedBgpSecretValue)
 							state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret = types.StringValue(decryptedBgpSecret)
 						}
 						// property: name=export_routes, type=BOOLEAN macro=copy_to_state
@@ -1096,6 +1282,10 @@ func (r *sitePrismaSaseConnectionResource) doGet(ctx context.Context, state *rsM
 					// property: name=wan_interface_id, type=STRING macro=copy_to_state
 					state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].WanInterfaceId = types.StringPointerValue(varLoopIpsecTunnels.WanInterfaceId)
 				}
+			}
+			// the configuration states an empty list: keep it
+			if len(savestate.RemoteNetworkGroups) > varLoopRemoteNetworkGroupsIndex && len(varLoopRemoteNetworkGroups.IpsecTunnels) == 0 && savestate.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels != nil && len(savestate.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels) == 0 {
+				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = savestate.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels
 			}
 			// property: name=name, type=STRING macro=copy_to_state
 			state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].Name = types.StringPointerValue(varLoopRemoteNetworkGroups.Name)
@@ -1109,20 +1299,31 @@ func (r *sitePrismaSaseConnectionResource) doGet(ctx context.Context, state *rsM
 	if ans.RoutingConfigs == nil {
 		state.RoutingConfigs = nil
 	} else {
-		state.RoutingConfigs = &rsModelRoutingConfigs{}
-		// copy_to_state: state=state.RoutingConfigs prefix=rsModel ans=ans.RoutingConfigs properties=4
+		state.RoutingConfigs = &rsModelRoutingConfigsV3N1{}
+		// copy_to_state: state=state.RoutingConfigs prefix=rsModel ans=ans.RoutingConfigs properties=7
 		tflog.Debug(ctx, "copy_to_state state=state.RoutingConfigs prefix=rsModel ans=ans.RoutingConfigs")
 		// property: name=advertise_default_route, type=BOOLEAN macro=copy_to_state
 		state.RoutingConfigs.AdvertiseDefaultRoute = types.BoolPointerValue(ans.RoutingConfigs.AdvertiseDefaultRoute)
 		// property: name=bgp_secret, type=STRING macro=copy_to_state
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.RoutingConfigs != nil {
+			state.RoutingConfigs.BgpSecretInternalKeyName = savestate.RoutingConfigs.BgpSecretInternalKeyName
+		}
 		encryptedBgpSecretKeyName := state.RoutingConfigs.BgpSecretInternalKeyName.String()
 		encryptedBgpSecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedBgpSecretKeyName)
-		if encryptedBgpSecretValueBytes != nil {
-			decryptedBgpSecret, _ := Decrypt(string(encryptedBgpSecretValueBytes))
+		var encryptedBgpSecretValue string
+		if encryptedBgpSecretValueBytes != nil && json.Unmarshal(encryptedBgpSecretValueBytes, &encryptedBgpSecretValue) == nil {
+			decryptedBgpSecret, _ := Decrypt(encryptedBgpSecretValue)
 			state.RoutingConfigs.BgpSecret = types.StringValue(decryptedBgpSecret)
 		}
+		// property: name=branch_as_number, type=STRING macro=copy_to_state
+		state.RoutingConfigs.BranchAsNumber = types.StringPointerValue(ans.RoutingConfigs.BranchAsNumber)
+		// property: name=deployment_mode, type=STRING macro=copy_to_state
+		state.RoutingConfigs.DeploymentMode = types.StringPointerValue(ans.RoutingConfigs.DeploymentMode)
 		// property: name=export_routes, type=BOOLEAN macro=copy_to_state
 		state.RoutingConfigs.ExportRoutes = types.BoolPointerValue(ans.RoutingConfigs.ExportRoutes)
+		// property: name=peering_type, type=STRING macro=copy_to_state
+		state.RoutingConfigs.PeeringType = types.StringPointerValue(ans.RoutingConfigs.PeeringType)
 		// property: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=copy_to_state
 		state.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise = types.BoolPointerValue(ans.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise)
 	}
@@ -1131,7 +1332,7 @@ func (r *sitePrismaSaseConnectionResource) doGet(ctx context.Context, state *rsM
 	return true
 }
 
-func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsModelSaseConnectionScreenV2N1, state *rsModelSaseConnectionScreenV2N1, State *tfsdk.State, resp *resource.UpdateResponse) bool {
+func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsModelSaseConnectionScreenV3N1, state *rsModelSaseConnectionScreenV3N1, State *tfsdk.State, resp *resource.UpdateResponse) bool {
 	state_tfid := state.Tfid.ValueString()
 	plan_tfid := plan.Tfid.ValueString()
 	// Basic logging.
@@ -1159,7 +1360,7 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 	put_request := &sdwan_client.SdwanClientRequestResponse{}
 	put_request.ResourceType = "prismasdwan_site_prisma_sase_connection"
 	put_request.Method = "PUT"
-	put_request.Path = "/sdwan/v2.1/api/sites/{site_id}/prismasase_connections/{prismasase_connection_id}"
+	put_request.Path = "/sdwan/v3.1/api/sites/{site_id}/prismasase_connections/{prismasase_connection_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -1178,11 +1379,11 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.SaseConnectionScreenV2N1{}
+	var body = &sdwan_schema.SaseConnectionScreenV3N1{}
 
 	// now we create the JSON request from the state/plan created by TF
 	// below copy code generated from macro copy_from_plan_or_state
-	// copy_from_plan_or_state: body=body prefix=rsModel state=state plan=plan properties=14
+	// copy_from_plan_or_state: body=body prefix=rsModel state=state plan=plan properties=15
 	tflog.Debug(ctx, "copy_from_plan_or_state body=body prefix=rsModel state=state plan=plan")
 	// property: name=_etag, type=INTEGER macro=copy_from_plan_or_state
 	if state != nil {
@@ -1197,7 +1398,12 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 		body.Schema = Int64ValueOrNil(plan.Schema)
 	}
 	// property: name=enabled_wan_interface_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.EnabledWanInterfaceIds = ListStringValueOrNil(ctx, plan.EnabledWanInterfaceIds)
+	if state != nil && plan.EnabledWanInterfaceIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.EnabledWanInterfaceIds = ListStringValueOrNil(ctx, state.EnabledWanInterfaceIds)
+	} else {
+		body.EnabledWanInterfaceIds = ListStringValueOrNil(ctx, plan.EnabledWanInterfaceIds)
+	}
 	// property: name=id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.Id = ValueStringPointerFromPlanOrState(plan.Id, state.Id)
@@ -1212,43 +1418,43 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 		// copy_from_plan_or_state: body=body.IpsecTunnelConfigs prefix=rsModel state=state.IpsecTunnelConfigs plan=plan.IpsecTunnelConfigs properties=7
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.IpsecTunnelConfigs prefix=rsModel state=state.IpsecTunnelConfigs plan=plan.IpsecTunnelConfigs")
 		// property: name=anti_replay, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.IpsecTunnelConfigs != nil {
+		if state != nil && state.IpsecTunnelConfigs != nil {
 			body.IpsecTunnelConfigs.AntiReplay = ValueBoolPointerFromPlanOrState(plan.IpsecTunnelConfigs.AntiReplay, state.IpsecTunnelConfigs.AntiReplay)
 		} else {
 			body.IpsecTunnelConfigs.AntiReplay = BoolValueOrNil(plan.IpsecTunnelConfigs.AntiReplay)
 		}
 		// property: name=copy_tos, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.IpsecTunnelConfigs != nil {
+		if state != nil && state.IpsecTunnelConfigs != nil {
 			body.IpsecTunnelConfigs.CopyTos = ValueBoolPointerFromPlanOrState(plan.IpsecTunnelConfigs.CopyTos, state.IpsecTunnelConfigs.CopyTos)
 		} else {
 			body.IpsecTunnelConfigs.CopyTos = BoolValueOrNil(plan.IpsecTunnelConfigs.CopyTos)
 		}
 		// property: name=enable_gre_encapsulation, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.IpsecTunnelConfigs != nil {
+		if state != nil && state.IpsecTunnelConfigs != nil {
 			body.IpsecTunnelConfigs.EnableGreEncapsulation = ValueBoolPointerFromPlanOrState(plan.IpsecTunnelConfigs.EnableGreEncapsulation, state.IpsecTunnelConfigs.EnableGreEncapsulation)
 		} else {
 			body.IpsecTunnelConfigs.EnableGreEncapsulation = BoolValueOrNil(plan.IpsecTunnelConfigs.EnableGreEncapsulation)
 		}
 		// property: name=ike_key_exchange, type=STRING macro=copy_from_plan_or_state
-		if state.IpsecTunnelConfigs != nil {
+		if state != nil && state.IpsecTunnelConfigs != nil {
 			body.IpsecTunnelConfigs.IkeKeyExchange = ValueStringPointerFromPlanOrState(plan.IpsecTunnelConfigs.IkeKeyExchange, state.IpsecTunnelConfigs.IkeKeyExchange)
 		} else {
 			body.IpsecTunnelConfigs.IkeKeyExchange = StringValueOrNil(plan.IpsecTunnelConfigs.IkeKeyExchange)
 		}
 		// property: name=prismaaccess_ike_crypto_profile_id, type=STRING macro=copy_from_plan_or_state
-		if state.IpsecTunnelConfigs != nil {
+		if state != nil && state.IpsecTunnelConfigs != nil {
 			body.IpsecTunnelConfigs.PrismaaccessIkeCryptoProfileId = ValueStringPointerFromPlanOrState(plan.IpsecTunnelConfigs.PrismaaccessIkeCryptoProfileId, state.IpsecTunnelConfigs.PrismaaccessIkeCryptoProfileId)
 		} else {
 			body.IpsecTunnelConfigs.PrismaaccessIkeCryptoProfileId = StringValueOrNil(plan.IpsecTunnelConfigs.PrismaaccessIkeCryptoProfileId)
 		}
 		// property: name=prismaaccess_ipsec_profile_id, type=STRING macro=copy_from_plan_or_state
-		if state.IpsecTunnelConfigs != nil {
+		if state != nil && state.IpsecTunnelConfigs != nil {
 			body.IpsecTunnelConfigs.PrismaaccessIpsecProfileId = ValueStringPointerFromPlanOrState(plan.IpsecTunnelConfigs.PrismaaccessIpsecProfileId, state.IpsecTunnelConfigs.PrismaaccessIpsecProfileId)
 		} else {
 			body.IpsecTunnelConfigs.PrismaaccessIpsecProfileId = StringValueOrNil(plan.IpsecTunnelConfigs.PrismaaccessIpsecProfileId)
 		}
 		// property: name=tunnel_monitoring, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.IpsecTunnelConfigs != nil {
+		if state != nil && state.IpsecTunnelConfigs != nil {
 			body.IpsecTunnelConfigs.TunnelMonitoring = ValueBoolPointerFromPlanOrState(plan.IpsecTunnelConfigs.TunnelMonitoring, state.IpsecTunnelConfigs.TunnelMonitoring)
 		} else {
 			body.IpsecTunnelConfigs.TunnelMonitoring = BoolValueOrNil(plan.IpsecTunnelConfigs.TunnelMonitoring)
@@ -1272,8 +1478,13 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 	} else {
 		body.LicenseType = StringValueOrNil(plan.LicenseType)
 	}
-	// property: name=prismaaccess_edge_location, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.PrismaaccessEdgeLocation = ListStringValueOrNil(ctx, plan.PrismaaccessEdgeLocation)
+	// property: name=prismaaccess_edge_location_config, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+	if state != nil && plan.PrismaaccessEdgeLocationConfig.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.PrismaaccessEdgeLocationConfig = ListStringValueOrNil(ctx, state.PrismaaccessEdgeLocationConfig)
+	} else {
+		body.PrismaaccessEdgeLocationConfig = ListStringValueOrNil(ctx, plan.PrismaaccessEdgeLocationConfig)
+	}
 	// property: name=prismaaccess_qos_cir_mbps, type=INTEGER macro=copy_from_plan_or_state
 	if state != nil {
 		body.PrismaaccessQosCirMbps = ValueInt64PointerFromPlanOrState(plan.PrismaaccessQosCirMbps, state.PrismaaccessQosCirMbps)
@@ -1286,10 +1497,16 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 	} else {
 		body.PrismaaccessQosProfileId = StringValueOrNil(plan.PrismaaccessQosProfileId)
 	}
+	// property: name=prismasase_connection_id, type=STRING macro=copy_from_plan_or_state
+	if state != nil {
+		body.PrismasaseConnectionId = ValueStringPointerFromPlanOrState(plan.PrismasaseConnectionId, state.PrismasaseConnectionId)
+	} else {
+		body.PrismasaseConnectionId = StringValueOrNil(plan.PrismasaseConnectionId)
+	}
 	// property: name=remote_network_groups, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.RemoteNetworkGroups == nil && (state == nil || state.RemoteNetworkGroups == nil) {
+	if plan.RemoteNetworkGroups == nil && (!(state != nil) || state.RemoteNetworkGroups == nil) {
 		body.RemoteNetworkGroups = nil
-	} else if len(plan.RemoteNetworkGroups) == 0 && (state == nil || len(state.RemoteNetworkGroups) == 0) {
+	} else if len(plan.RemoteNetworkGroups) == 0 && (!(state != nil) || len(state.RemoteNetworkGroups) == 0) {
 		body.RemoteNetworkGroups = []sdwan_schema.RemoteNetworkGroup{}
 	} else if len(plan.RemoteNetworkGroups) != 0 || (state != nil && len(state.RemoteNetworkGroups) != 0) {
 		RemoteNetworkGroupsToUse := plan.RemoteNetworkGroups
@@ -1307,7 +1524,8 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 			if varLoopRemoteNetworkGroups.IpsecTunnels == nil {
 				body.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = nil
 			} else if len(varLoopRemoteNetworkGroups.IpsecTunnels) == 0 {
-				body.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = []sdwan_schema.IPSecTunnel{}
+				// api does not accept empty list as missing value
+				body.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = nil
 			} else {
 				body.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = make([]sdwan_schema.IPSecTunnel, 0, len(varLoopRemoteNetworkGroups.IpsecTunnels))
 				for varLoopIpsecTunnelsIndex, varLoopIpsecTunnels := range varLoopRemoteNetworkGroups.IpsecTunnels {
@@ -1369,29 +1587,47 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 	if plan.RoutingConfigs == nil {
 		body.RoutingConfigs = nil
 	} else {
-		body.RoutingConfigs = &sdwan_schema.RoutingConfigs{}
-		// copy_from_plan_or_state: body=body.RoutingConfigs prefix=rsModel state=state.RoutingConfigs plan=plan.RoutingConfigs properties=4
+		body.RoutingConfigs = &sdwan_schema.RoutingConfigsV3N1{}
+		// copy_from_plan_or_state: body=body.RoutingConfigs prefix=rsModel state=state.RoutingConfigs plan=plan.RoutingConfigs properties=7
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.RoutingConfigs prefix=rsModel state=state.RoutingConfigs plan=plan.RoutingConfigs")
 		// property: name=advertise_default_route, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.RoutingConfigs != nil {
+		if state != nil && state.RoutingConfigs != nil {
 			body.RoutingConfigs.AdvertiseDefaultRoute = ValueBoolPointerFromPlanOrState(plan.RoutingConfigs.AdvertiseDefaultRoute, state.RoutingConfigs.AdvertiseDefaultRoute)
 		} else {
 			body.RoutingConfigs.AdvertiseDefaultRoute = BoolValueOrNil(plan.RoutingConfigs.AdvertiseDefaultRoute)
 		}
 		// property: name=bgp_secret, type=STRING macro=copy_from_plan_or_state
-		if state.RoutingConfigs != nil {
+		if state != nil && state.RoutingConfigs != nil {
 			body.RoutingConfigs.BgpSecret = ValueStringPointerFromPlanOrState(plan.RoutingConfigs.BgpSecret, state.RoutingConfigs.BgpSecret)
 		} else {
 			body.RoutingConfigs.BgpSecret = StringValueOrNil(plan.RoutingConfigs.BgpSecret)
 		}
+		// property: name=branch_as_number, type=STRING macro=copy_from_plan_or_state
+		if state != nil && state.RoutingConfigs != nil {
+			body.RoutingConfigs.BranchAsNumber = ValueStringPointerFromPlanOrState(plan.RoutingConfigs.BranchAsNumber, state.RoutingConfigs.BranchAsNumber)
+		} else {
+			body.RoutingConfigs.BranchAsNumber = StringValueOrNil(plan.RoutingConfigs.BranchAsNumber)
+		}
+		// property: name=deployment_mode, type=STRING macro=copy_from_plan_or_state
+		if state != nil && state.RoutingConfigs != nil {
+			body.RoutingConfigs.DeploymentMode = ValueStringPointerFromPlanOrState(plan.RoutingConfigs.DeploymentMode, state.RoutingConfigs.DeploymentMode)
+		} else {
+			body.RoutingConfigs.DeploymentMode = StringValueOrNil(plan.RoutingConfigs.DeploymentMode)
+		}
 		// property: name=export_routes, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.RoutingConfigs != nil {
+		if state != nil && state.RoutingConfigs != nil {
 			body.RoutingConfigs.ExportRoutes = ValueBoolPointerFromPlanOrState(plan.RoutingConfigs.ExportRoutes, state.RoutingConfigs.ExportRoutes)
 		} else {
 			body.RoutingConfigs.ExportRoutes = BoolValueOrNil(plan.RoutingConfigs.ExportRoutes)
 		}
+		// property: name=peering_type, type=STRING macro=copy_from_plan_or_state
+		if state != nil && state.RoutingConfigs != nil {
+			body.RoutingConfigs.PeeringType = ValueStringPointerFromPlanOrState(plan.RoutingConfigs.PeeringType, state.RoutingConfigs.PeeringType)
+		} else {
+			body.RoutingConfigs.PeeringType = StringValueOrNil(plan.RoutingConfigs.PeeringType)
+		}
 		// property: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.RoutingConfigs != nil {
+		if state != nil && state.RoutingConfigs != nil {
 			body.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise = ValueBoolPointerFromPlanOrState(plan.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise, state.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise)
 		} else {
 			body.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise = BoolValueOrNil(plan.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise)
@@ -1407,12 +1643,17 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct SaseConnectionScreenV2N1 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct SaseConnectionScreenV3N1 to JSON:", err.Error())
 		return false
 	}
 
 	// process http json path
 	request_body_string := string(json_body)
+	// inject overrides
+	request_body_string = SetIfNull(request_body_string, "remote_network_groups.#.ipsec_tunnels", []interface{}{})
+	// inject overrides
+	tflog.Debug(ctx, "http json override: delete request_body_string::site_id")
+	request_body_string, _ = sjson.Delete(request_body_string, "site_id")
 	// copy pointer
 	put_request.RequestBody = &request_body_string
 
@@ -1443,17 +1684,23 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.SaseConnectionScreenV2N1
+	var ans sdwan_schema.SaseConnectionScreenV3N1
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to SaseConnectionScreenV2N1 in update", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to SaseConnectionScreenV3N1 in update", json_err.Error())
 		return false
 	}
 
-	// Store the answer to state. schema=SaseConnectionScreenV2N1
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=14
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
+	// Store the answer to state. schema=SaseConnectionScreenV3N1
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=15
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
@@ -1493,14 +1740,16 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 	state.IsEnabled = types.BoolPointerValue(ans.IsEnabled)
 	// property: name=license_type, type=STRING macro=copy_to_state
 	state.LicenseType = types.StringPointerValue(ans.LicenseType)
-	// property: name=prismaaccess_edge_location, type=ARRAY_PRIMITIVE macro=copy_to_state
-	varPrismaaccessEdgeLocation, errPrismaaccessEdgeLocation := types.ListValueFrom(ctx, types.StringType, ans.PrismaaccessEdgeLocation)
-	state.PrismaaccessEdgeLocation = varPrismaaccessEdgeLocation
-	resp.Diagnostics.Append(errPrismaaccessEdgeLocation.Errors()...)
+	// property: name=prismaaccess_edge_location_config, type=ARRAY_PRIMITIVE macro=copy_to_state
+	varPrismaaccessEdgeLocationConfig, errPrismaaccessEdgeLocationConfig := types.ListValueFrom(ctx, types.StringType, ans.PrismaaccessEdgeLocationConfig)
+	state.PrismaaccessEdgeLocationConfig = varPrismaaccessEdgeLocationConfig
+	resp.Diagnostics.Append(errPrismaaccessEdgeLocationConfig.Errors()...)
 	// property: name=prismaaccess_qos_cir_mbps, type=INTEGER macro=copy_to_state
 	state.PrismaaccessQosCirMbps = types.Int64PointerValue(ans.PrismaaccessQosCirMbps)
 	// property: name=prismaaccess_qos_profile_id, type=STRING macro=copy_to_state
 	state.PrismaaccessQosProfileId = types.StringPointerValue(ans.PrismaaccessQosProfileId)
+	// property: name=prismasase_connection_id, type=STRING macro=copy_to_state
+	state.PrismasaseConnectionId = types.StringPointerValue(ans.PrismasaseConnectionId)
 	// property: name=remote_network_groups, type=ARRAY_REFERENCE macro=copy_to_state
 	if ans.RemoteNetworkGroups == nil {
 		state.RemoteNetworkGroups = nil
@@ -1517,7 +1766,8 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 			if varLoopRemoteNetworkGroups.IpsecTunnels == nil {
 				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = nil
 			} else if len(varLoopRemoteNetworkGroups.IpsecTunnels) == 0 {
-				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = []rsModelIPSecTunnel{}
+				// api does not accept empty list as missing value
+				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = nil
 			} else {
 				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = make([]rsModelIPSecTunnel, 0, len(varLoopRemoteNetworkGroups.IpsecTunnels))
 				for varLoopIpsecTunnelsIndex, varLoopIpsecTunnels := range varLoopRemoteNetworkGroups.IpsecTunnels {
@@ -1537,7 +1787,20 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 						// property: name=prismaaccess_ike_identification, type=STRING macro=copy_to_state
 						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.PrismaaccessIkeIdentification = types.StringPointerValue(varLoopIpsecTunnels.Authentication.PrismaaccessIkeIdentification)
 						// property: name=psk, type=STRING macro=copy_to_state
-						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk = types.StringPointerValue(varLoopIpsecTunnels.Authentication.Psk)
+						// this property is sensitive and will be stored in the state's internal key name
+						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.PskInternalKeyName = types.StringValue(GenerateRandomString(16))
+						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk = types.StringNull()
+						if len(plan.RemoteNetworkGroups) > varLoopRemoteNetworkGroupsIndex && len(plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels) > varLoopIpsecTunnelsIndex && plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication != nil {
+							state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk = types.StringPointerValue(plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk.ValueStringPointer())
+						}
+						// store value if needed
+						if !state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk.IsNull() {
+							// ValueString, not String: String() returns the value quoted, which drifts on read
+							encryptedPsk, _ := Encrypt([]byte(state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.Psk.ValueString()))
+							// private state only accepts valid JSON, so store the ciphertext as a JSON string
+							encryptedPskJson, _ := json.Marshal(encryptedPsk)
+							resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Authentication.PskInternalKeyName.String(), encryptedPskJson)...)
+						}
 					}
 					// property: name=name, type=STRING macro=copy_to_state
 					state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].Name = types.StringPointerValue(varLoopIpsecTunnels.Name)
@@ -1565,13 +1828,19 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 						// property: name=advertise_default_route, type=BOOLEAN macro=copy_to_state
 						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.AdvertiseDefaultRoute = types.BoolPointerValue(varLoopIpsecTunnels.RoutingConfigs.AdvertiseDefaultRoute)
 						// property: name=bgp_secret, type=STRING macro=copy_to_state
-						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret = types.StringPointerValue(plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret.ValueStringPointer())
 						// this property is sensitive and will be stored in the state's internal key name
 						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret = types.StringNull()
+						if len(plan.RemoteNetworkGroups) > varLoopRemoteNetworkGroupsIndex && len(plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels) > varLoopIpsecTunnelsIndex && plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs != nil {
+							state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret = types.StringPointerValue(plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret.ValueStringPointer())
+						}
 						// store value if needed
 						if !state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret.IsNull() {
-							encryptedBgpSecret, _ := Encrypt([]byte(state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret.String()))
-							resp.Private.SetKey(ctx, state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecretInternalKeyName.String(), []byte(encryptedBgpSecret))
+							// ValueString, not String: String() returns the value quoted, which drifts on read
+							encryptedBgpSecret, _ := Encrypt([]byte(state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecret.ValueString()))
+							// private state only accepts valid JSON, so store the ciphertext as a JSON string
+							encryptedBgpSecretJson, _ := json.Marshal(encryptedBgpSecret)
+							resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.BgpSecretInternalKeyName.String(), encryptedBgpSecretJson)...)
 						}
 						// property: name=export_routes, type=BOOLEAN macro=copy_to_state
 						state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].RoutingConfigs.ExportRoutes = types.BoolPointerValue(varLoopIpsecTunnels.RoutingConfigs.ExportRoutes)
@@ -1581,6 +1850,10 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 					// property: name=wan_interface_id, type=STRING macro=copy_to_state
 					state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels[varLoopIpsecTunnelsIndex].WanInterfaceId = types.StringPointerValue(varLoopIpsecTunnels.WanInterfaceId)
 				}
+			}
+			// the configuration states an empty list: keep it
+			if len(plan.RemoteNetworkGroups) > varLoopRemoteNetworkGroupsIndex && len(varLoopRemoteNetworkGroups.IpsecTunnels) == 0 && plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels != nil && len(plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels) == 0 {
+				state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels = plan.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].IpsecTunnels
 			}
 			// property: name=name, type=STRING macro=copy_to_state
 			state.RemoteNetworkGroups[varLoopRemoteNetworkGroupsIndex].Name = types.StringPointerValue(varLoopRemoteNetworkGroups.Name)
@@ -1594,22 +1867,34 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 	if ans.RoutingConfigs == nil {
 		state.RoutingConfigs = nil
 	} else {
-		state.RoutingConfigs = &rsModelRoutingConfigs{}
-		// copy_to_state: state=state.RoutingConfigs prefix=rsModel ans=ans.RoutingConfigs properties=4
+		state.RoutingConfigs = &rsModelRoutingConfigsV3N1{}
+		// copy_to_state: state=state.RoutingConfigs prefix=rsModel ans=ans.RoutingConfigs properties=7
 		tflog.Debug(ctx, "copy_to_state state=state.RoutingConfigs prefix=rsModel ans=ans.RoutingConfigs")
 		// property: name=advertise_default_route, type=BOOLEAN macro=copy_to_state
 		state.RoutingConfigs.AdvertiseDefaultRoute = types.BoolPointerValue(ans.RoutingConfigs.AdvertiseDefaultRoute)
 		// property: name=bgp_secret, type=STRING macro=copy_to_state
-		state.RoutingConfigs.BgpSecret = types.StringPointerValue(plan.RoutingConfigs.BgpSecret.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.RoutingConfigs.BgpSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.RoutingConfigs.BgpSecret = types.StringNull()
+		if plan.RoutingConfigs != nil {
+			state.RoutingConfigs.BgpSecret = types.StringPointerValue(plan.RoutingConfigs.BgpSecret.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.RoutingConfigs.BgpSecret.IsNull() {
-			encryptedBgpSecret, _ := Encrypt([]byte(state.RoutingConfigs.BgpSecret.String()))
-			resp.Private.SetKey(ctx, state.RoutingConfigs.BgpSecretInternalKeyName.String(), []byte(encryptedBgpSecret))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedBgpSecret, _ := Encrypt([]byte(state.RoutingConfigs.BgpSecret.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedBgpSecretJson, _ := json.Marshal(encryptedBgpSecret)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.RoutingConfigs.BgpSecretInternalKeyName.String(), encryptedBgpSecretJson)...)
 		}
+		// property: name=branch_as_number, type=STRING macro=copy_to_state
+		state.RoutingConfigs.BranchAsNumber = types.StringPointerValue(ans.RoutingConfigs.BranchAsNumber)
+		// property: name=deployment_mode, type=STRING macro=copy_to_state
+		state.RoutingConfigs.DeploymentMode = types.StringPointerValue(ans.RoutingConfigs.DeploymentMode)
 		// property: name=export_routes, type=BOOLEAN macro=copy_to_state
 		state.RoutingConfigs.ExportRoutes = types.BoolPointerValue(ans.RoutingConfigs.ExportRoutes)
+		// property: name=peering_type, type=STRING macro=copy_to_state
+		state.RoutingConfigs.PeeringType = types.StringPointerValue(ans.RoutingConfigs.PeeringType)
 		// property: name=summarize_mobile_routes_before_advertise, type=BOOLEAN macro=copy_to_state
 		state.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise = types.BoolPointerValue(ans.RoutingConfigs.SummarizeMobileRoutesBeforeAdvertise)
 	}
@@ -1618,7 +1903,7 @@ func (r *sitePrismaSaseConnectionResource) doPut(ctx context.Context, plan *rsMo
 	return true
 }
 
-func (r *sitePrismaSaseConnectionResource) doDelete(ctx context.Context, state *rsModelSaseConnectionScreenV2N1, resp *resource.DeleteResponse) bool {
+func (r *sitePrismaSaseConnectionResource) doDelete(ctx context.Context, state *rsModelSaseConnectionScreenV3N1, resp *resource.DeleteResponse) bool {
 	// read object id
 	tfid := state.Tfid.ValueString()
 	// Basic logging.
@@ -1639,7 +1924,7 @@ func (r *sitePrismaSaseConnectionResource) doDelete(ctx context.Context, state *
 	delete_request := &sdwan_client.SdwanClientRequestResponse{}
 	delete_request.ResourceType = "prismasdwan_site_prisma_sase_connection"
 	delete_request.Method = "DELETE"
-	delete_request.Path = "/sdwan/v2.0/api/sites/{site_id}/prismasase_connections/{prismasase_connection_id}"
+	delete_request.Path = "/sdwan/v3.1/api/sites/{site_id}/prismasase_connections/{prismasase_connection_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -1673,14 +1958,14 @@ func (r *sitePrismaSaseConnectionResource) doDelete(ctx context.Context, state *
 // Path Parameters are encoded into TfID itself
 func (r *sitePrismaSaseConnectionResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "executing resource create for prismasdwan_site_prisma_sase_connection")
-	var plan rsModelSaseConnectionScreenV2N1
+	var plan rsModelSaseConnectionScreenV3N1
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// make post call
-	var state rsModelSaseConnectionScreenV2N1
+	var state rsModelSaseConnectionScreenV3N1
 	if r.doPost(ctx, &plan, &state, resp) {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	}
@@ -1692,7 +1977,7 @@ func (r *sitePrismaSaseConnectionResource) Create(ctx context.Context, req resou
 func (r *sitePrismaSaseConnectionResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 	tflog.Info(ctx, "executing resource read for prismasdwan_site_prisma_sase_connection")
-	var savestate, state rsModelSaseConnectionScreenV2N1
+	var savestate, state rsModelSaseConnectionScreenV3N1
 	resp.Diagnostics.Append(req.State.Get(ctx, &savestate)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -1711,7 +1996,7 @@ func (r *sitePrismaSaseConnectionResource) Read(ctx context.Context, req resourc
 func (r *sitePrismaSaseConnectionResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
 	tflog.Info(ctx, "executing resource update for prismasdwan_site_prisma_sase_connection")
-	var plan, state rsModelSaseConnectionScreenV2N1
+	var plan, state rsModelSaseConnectionScreenV3N1
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -1735,7 +2020,7 @@ func (r *sitePrismaSaseConnectionResource) Update(ctx context.Context, req resou
 func (r *sitePrismaSaseConnectionResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 
 	tflog.Info(ctx, "executing resource delete for prismasdwan_site_prisma_sase_connection")
-	var state rsModelSaseConnectionScreenV2N1
+	var state rsModelSaseConnectionScreenV3N1
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {

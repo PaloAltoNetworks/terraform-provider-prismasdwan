@@ -24,18 +24,20 @@ import (
 )
 
 // +-----------------------------------------------------------------
-// | Schema Map Summary (size=goLangStructMap=2)
+// | Schema Map Summary (size=goLangStructMap=3)
 // | Computed Resource Name=sites_elements_bgpconfigs
 // +-----------------------------------------------------------------
+// | VRFRouterIDMapping HasID=false
 // | OspfRedistribution HasID=false
-// | BGPGlobalConfigScreenV2N4 HasID=true
+// | BGPGlobalConfigScreenV2N5 HasID=true
 // +-----------------------------------------------------------------
 
 // Resource.
 var (
-	_ resource.Resource                = &elementBgpConfigResource{}
-	_ resource.ResourceWithConfigure   = &elementBgpConfigResource{}
-	_ resource.ResourceWithImportState = &elementBgpConfigResource{}
+	_ resource.Resource                   = &elementBgpConfigResource{}
+	_ resource.ResourceWithConfigure      = &elementBgpConfigResource{}
+	_ resource.ResourceWithImportState    = &elementBgpConfigResource{}
+	_ resource.ResourceWithValidateConfig = &elementBgpConfigResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -56,6 +58,12 @@ type elementBgpConfigResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *elementBgpConfigResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id", "element_id", "bgp_config_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *elementBgpConfigResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_element_bgp_config"
@@ -64,76 +72,85 @@ func (r *elementBgpConfigResource) Metadata(_ context.Context, req resource.Meta
 // Schema defines the schema for this data source.
 func (r *elementBgpConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Element Bgp Config.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
-			// rest all properties to be read from GET API Schema schema=BGPGlobalConfigScreenV2N4
+			// rest all properties to be read from GET API Schema schema=BGPGlobalConfigScreenV2N5
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=admin_distance, type=INTEGER macro=rss_schema
 			"admin_distance": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Admin distance. Value: between 1 and 255.",
 			},
 			// key name holder for attribute: name=admin_distance, type=INTEGER macro=rss_schema
 			// property: name=adv_interval, type=INTEGER macro=rss_schema
 			"adv_interval": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Adv interval. Value: between 0 and 600.",
 			},
 			// key name holder for attribute: name=adv_interval, type=INTEGER macro=rss_schema
 			// property: name=graceful_restart, type=BOOLEAN macro=rss_schema
 			"graceful_restart": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Graceful restart.",
 			},
 			// key name holder for attribute: name=graceful_restart, type=BOOLEAN macro=rss_schema
 			// property: name=hold_time, type=INTEGER macro=rss_schema
 			"hold_time": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Hold time. Value: between 3 and 600.",
 			},
 			// key name holder for attribute: name=hold_time, type=INTEGER macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=ipv6_prefixes_to_adv_to_wan, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -142,113 +159,127 @@ func (r *elementBgpConfigResource) Schema(_ context.Context, _ resource.SchemaRe
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Ipv6 prefixes to adv to wan.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=ipv6_prefixes_to_adv_to_wan, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=keepalive_time, type=INTEGER macro=rss_schema
 			"keepalive_time": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Keepalive time. Value: between 1 and 200.",
 			},
 			// key name holder for attribute: name=keepalive_time, type=INTEGER macro=rss_schema
 			// property: name=local_as_num, type=STRING macro=rss_schema
 			"local_as_num": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Local as num. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=local_as_num, type=STRING macro=rss_schema
 			// property: name=maximum_paths, type=INTEGER macro=rss_schema
 			"maximum_paths": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Maximum paths. Value: between 1 and 255.",
 			},
 			// key name holder for attribute: name=maximum_paths, type=INTEGER macro=rss_schema
 			// property: name=md5_secret, type=STRING macro=rss_schema
 			"md5_secret": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: true,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   true,
+				Description: "Md5 secret. Value: at most 32 characters.",
 			},
 			// key name holder for attribute: name=md5_secret, type=STRING macro=rss_schema
 			"md5_secret_internal_key_name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Internal key name for the sensitive attribute md5_secret, managed automatically by the provider.",
 			},
 			// property: name=multi_hop_limit, type=INTEGER macro=rss_schema
 			"multi_hop_limit": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Multi hop limit. Value: between 1 and 255.",
 			},
 			// key name holder for attribute: name=multi_hop_limit, type=INTEGER macro=rss_schema
 			// property: name=ospf_redistribution, type=ARRAY_REFERENCE macro=rss_schema
 			"ospf_redistribution": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ospf redistribution.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=route_map_id, type=STRING macro=rss_schema
 						"route_map_id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Route map id.",
 						},
 						// key name holder for attribute: name=route_map_id, type=STRING macro=rss_schema
 						// property: name=vrf_context_id, type=STRING macro=rss_schema
 						"vrf_context_id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Vrf context id.",
 						},
 						// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
+			// key name holder for attribute: name=ospf_redistribution, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=peer_auth_type, type=STRING macro=rss_schema
 			"peer_auth_type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Peer auth type. Value: one of md5, none.",
 			},
 			// key name holder for attribute: name=peer_auth_type, type=STRING macro=rss_schema
 			// property: name=peer_retry_time, type=INTEGER macro=rss_schema
 			"peer_retry_time": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Peer retry time. Value: between 1 and 65535.",
 			},
 			// key name holder for attribute: name=peer_retry_time, type=INTEGER macro=rss_schema
 			// property: name=prefix_adv_type, type=STRING macro=rss_schema
 			"prefix_adv_type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Prefix adv type.",
 			},
 			// key name holder for attribute: name=prefix_adv_type, type=STRING macro=rss_schema
 			// property: name=prefix_adv_type_to_lan, type=STRING macro=rss_schema
 			"prefix_adv_type_to_lan": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Prefix adv type to lan.",
 			},
 			// key name holder for attribute: name=prefix_adv_type_to_lan, type=STRING macro=rss_schema
 			// property: name=prefixes_to_adv_to_wan, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -257,25 +288,59 @@ func (r *elementBgpConfigResource) Schema(_ context.Context, _ resource.SchemaRe
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Prefixes to adv to wan.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=prefixes_to_adv_to_wan, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=router_id, type=STRING macro=rss_schema
 			"router_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Router id. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=router_id, type=STRING macro=rss_schema
 			// property: name=stalepath_time, type=INTEGER macro=rss_schema
 			"stalepath_time": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Stalepath time. Value: between 1 and 3600.",
 			},
 			// key name holder for attribute: name=stalepath_time, type=INTEGER macro=rss_schema
+			// property: name=vrf_router_id_map, type=ARRAY_REFERENCE macro=rss_schema
+			"vrf_router_id_map": rsschema.ListNestedAttribute{
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Vrf router id map.",
+				NestedObject: rsschema.NestedAttributeObject{
+					Attributes: map[string]rsschema.Attribute{
+						// property: name=router_id, type=STRING macro=rss_schema
+						"router_id": rsschema.StringAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Router id.",
+						},
+						// key name holder for attribute: name=router_id, type=STRING macro=rss_schema
+						// property: name=vrf_context_id, type=STRING macro=rss_schema
+						"vrf_context_id": rsschema.StringAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Vrf context id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`.",
+						},
+						// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
+					},
+				},
+			},
+			// key name holder for attribute: name=vrf_router_id_map, type=ARRAY_REFERENCE macro=rss_schema
 		},
 	}
 }
@@ -302,7 +367,7 @@ func (r *elementBgpConfigResource) GetHttpStatusCode(request *sdwan_client.Sdwan
 	}
 }
 
-func (r *elementBgpConfigResource) doGet(ctx context.Context, state *rsModelBGPGlobalConfigScreenV2N4, savestate *rsModelBGPGlobalConfigScreenV2N4, State *tfsdk.State, resp *resource.ReadResponse) bool {
+func (r *elementBgpConfigResource) doGet(ctx context.Context, state *rsModelBGPGlobalConfigScreenV2N5, savestate *rsModelBGPGlobalConfigScreenV2N5, State *tfsdk.State, resp *resource.ReadResponse) bool {
 	// Basic logging.
 	tfid := savestate.Tfid.ValueString()
 	tflog.Info(ctx, "performing resource read", map[string]any{
@@ -324,7 +389,7 @@ func (r *elementBgpConfigResource) doGet(ctx context.Context, state *rsModelBGPG
 	read_request := &sdwan_client.SdwanClientRequestResponse{}
 	read_request.ResourceType = "prismasdwan_element_bgp_config"
 	read_request.Method = "GET"
-	read_request.Path = "/sdwan/v2.4/api/sites/{site_id}/elements/{element_id}/bgpconfigs/{bgp_config_id}"
+	read_request.Path = "/sdwan/v2.5/api/sites/{site_id}/elements/{element_id}/bgpconfigs/{bgp_config_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, savestate.TfParameters)
@@ -366,25 +431,41 @@ func (r *elementBgpConfigResource) doGet(ctx context.Context, state *rsModelBGPG
 	tflog.Debug(ctx, "http json override: set response_body_string::_schema")
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
-	// Store the answer to state. schema=BGPGlobalConfigScreenV2N4
+	// Store the answer to state. schema=BGPGlobalConfigScreenV2N5
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
 	// start copying attributes
-	var ans sdwan_schema.BGPGlobalConfigScreenV2N4
+	var ans sdwan_schema.BGPGlobalConfigScreenV2N5
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to BGPGlobalConfigScreenV2N4 in read", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to BGPGlobalConfigScreenV2N5 in read", json_err.Error())
 		return false
 	}
 	// lets copy all items into state
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=21
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=22
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
@@ -411,10 +492,13 @@ func (r *elementBgpConfigResource) doGet(ctx context.Context, state *rsModelBGPG
 	// property: name=maximum_paths, type=INTEGER macro=copy_to_state
 	state.MaximumPaths = types.Int64PointerValue(ans.MaximumPaths)
 	// property: name=md5_secret, type=STRING macro=copy_to_state
+	// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+	state.Md5SecretInternalKeyName = savestate.Md5SecretInternalKeyName
 	encryptedMd5SecretKeyName := state.Md5SecretInternalKeyName.String()
 	encryptedMd5SecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedMd5SecretKeyName)
-	if encryptedMd5SecretValueBytes != nil {
-		decryptedMd5Secret, _ := Decrypt(string(encryptedMd5SecretValueBytes))
+	var encryptedMd5SecretValue string
+	if encryptedMd5SecretValueBytes != nil && json.Unmarshal(encryptedMd5SecretValueBytes, &encryptedMd5SecretValue) == nil {
+		decryptedMd5Secret, _ := Decrypt(encryptedMd5SecretValue)
 		state.Md5Secret = types.StringValue(decryptedMd5Secret)
 	}
 	// property: name=multi_hop_limit, type=INTEGER macro=copy_to_state
@@ -453,10 +537,28 @@ func (r *elementBgpConfigResource) doGet(ctx context.Context, state *rsModelBGPG
 	state.RouterId = types.StringPointerValue(ans.RouterId)
 	// property: name=stalepath_time, type=INTEGER macro=copy_to_state
 	state.StalepathTime = types.Int64PointerValue(ans.StalepathTime)
+	// property: name=vrf_router_id_map, type=ARRAY_REFERENCE macro=copy_to_state
+	if ans.VrfRouterIdMap == nil {
+		state.VrfRouterIdMap = nil
+	} else if len(ans.VrfRouterIdMap) == 0 {
+		state.VrfRouterIdMap = []rsModelVRFRouterIDMapping{}
+	} else {
+		state.VrfRouterIdMap = make([]rsModelVRFRouterIDMapping, 0, len(ans.VrfRouterIdMap))
+		for varLoopVrfRouterIdMapIndex, varLoopVrfRouterIdMap := range ans.VrfRouterIdMap {
+			// add a new item
+			state.VrfRouterIdMap = append(state.VrfRouterIdMap, rsModelVRFRouterIDMapping{})
+			// copy_to_state: state=state.VrfRouterIdMap[varLoopVrfRouterIdMapIndex] prefix=rsModel ans=varLoopVrfRouterIdMap properties=2
+			tflog.Debug(ctx, "copy_to_state state=state.VrfRouterIdMap[varLoopVrfRouterIdMapIndex] prefix=rsModel ans=varLoopVrfRouterIdMap")
+			// property: name=router_id, type=STRING macro=copy_to_state
+			state.VrfRouterIdMap[varLoopVrfRouterIdMapIndex].RouterId = types.StringPointerValue(varLoopVrfRouterIdMap.RouterId)
+			// property: name=vrf_context_id, type=STRING macro=copy_to_state
+			state.VrfRouterIdMap[varLoopVrfRouterIdMapIndex].VrfContextId = types.StringPointerValue(varLoopVrfRouterIdMap.VrfContextId)
+		}
+	}
 	return true
 }
 
-func (r *elementBgpConfigResource) doPut(ctx context.Context, plan *rsModelBGPGlobalConfigScreenV2N4, state *rsModelBGPGlobalConfigScreenV2N4, State *tfsdk.State, resp *resource.UpdateResponse) bool {
+func (r *elementBgpConfigResource) doPut(ctx context.Context, plan *rsModelBGPGlobalConfigScreenV2N5, state *rsModelBGPGlobalConfigScreenV2N5, State *tfsdk.State, resp *resource.UpdateResponse) bool {
 	state_tfid := state.Tfid.ValueString()
 	plan_tfid := plan.Tfid.ValueString()
 	// Basic logging.
@@ -484,7 +586,7 @@ func (r *elementBgpConfigResource) doPut(ctx context.Context, plan *rsModelBGPGl
 	put_request := &sdwan_client.SdwanClientRequestResponse{}
 	put_request.ResourceType = "prismasdwan_element_bgp_config"
 	put_request.Method = "PUT"
-	put_request.Path = "/sdwan/v2.4/api/sites/{site_id}/elements/{element_id}/bgpconfigs/{bgp_config_id}"
+	put_request.Path = "/sdwan/v2.5/api/sites/{site_id}/elements/{element_id}/bgpconfigs/{bgp_config_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -503,11 +605,11 @@ func (r *elementBgpConfigResource) doPut(ctx context.Context, plan *rsModelBGPGl
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.BGPGlobalConfigScreenV2N4{}
+	var body = &sdwan_schema.BGPGlobalConfigScreenV2N5{}
 
 	// now we create the JSON request from the state/plan created by TF
 	// below copy code generated from macro copy_from_plan_or_state
-	// copy_from_plan_or_state: body=body prefix=rsModel state=state plan=plan properties=21
+	// copy_from_plan_or_state: body=body prefix=rsModel state=state plan=plan properties=22
 	tflog.Debug(ctx, "copy_from_plan_or_state body=body prefix=rsModel state=state plan=plan")
 	// property: name=_etag, type=INTEGER macro=copy_from_plan_or_state
 	if state != nil {
@@ -552,7 +654,12 @@ func (r *elementBgpConfigResource) doPut(ctx context.Context, plan *rsModelBGPGl
 		body.Id = StringValueOrNil(plan.Id)
 	}
 	// property: name=ipv6_prefixes_to_adv_to_wan, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.Ipv6PrefixesToAdvToWan = ListStringValueOrNil(ctx, plan.Ipv6PrefixesToAdvToWan)
+	if state != nil && plan.Ipv6PrefixesToAdvToWan.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Ipv6PrefixesToAdvToWan = ListStringValueOrNil(ctx, state.Ipv6PrefixesToAdvToWan)
+	} else {
+		body.Ipv6PrefixesToAdvToWan = ListStringValueOrNil(ctx, plan.Ipv6PrefixesToAdvToWan)
+	}
 	// property: name=keepalive_time, type=INTEGER macro=copy_from_plan_or_state
 	if state != nil {
 		body.KeepaliveTime = ValueInt64PointerFromPlanOrState(plan.KeepaliveTime, state.KeepaliveTime)
@@ -584,9 +691,9 @@ func (r *elementBgpConfigResource) doPut(ctx context.Context, plan *rsModelBGPGl
 		body.MultiHopLimit = Int64ValueOrNil(plan.MultiHopLimit)
 	}
 	// property: name=ospf_redistribution, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.OspfRedistribution == nil && (state == nil || state.OspfRedistribution == nil) {
+	if plan.OspfRedistribution == nil && (!(state != nil) || state.OspfRedistribution == nil) {
 		body.OspfRedistribution = nil
-	} else if len(plan.OspfRedistribution) == 0 && (state == nil || len(state.OspfRedistribution) == 0) {
+	} else if len(plan.OspfRedistribution) == 0 && (!(state != nil) || len(state.OspfRedistribution) == 0) {
 		body.OspfRedistribution = []sdwan_schema.OspfRedistribution{}
 	} else if len(plan.OspfRedistribution) != 0 || (state != nil && len(state.OspfRedistribution) != 0) {
 		OspfRedistributionToUse := plan.OspfRedistribution
@@ -631,7 +738,12 @@ func (r *elementBgpConfigResource) doPut(ctx context.Context, plan *rsModelBGPGl
 		body.PrefixAdvTypeToLan = StringValueOrNil(plan.PrefixAdvTypeToLan)
 	}
 	// property: name=prefixes_to_adv_to_wan, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.PrefixesToAdvToWan = ListStringValueOrNil(ctx, plan.PrefixesToAdvToWan)
+	if state != nil && plan.PrefixesToAdvToWan.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.PrefixesToAdvToWan = ListStringValueOrNil(ctx, state.PrefixesToAdvToWan)
+	} else {
+		body.PrefixesToAdvToWan = ListStringValueOrNil(ctx, plan.PrefixesToAdvToWan)
+	}
 	// property: name=router_id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.RouterId = ValueStringPointerFromPlanOrState(plan.RouterId, state.RouterId)
@@ -644,11 +756,34 @@ func (r *elementBgpConfigResource) doPut(ctx context.Context, plan *rsModelBGPGl
 	} else {
 		body.StalepathTime = Int64ValueOrNil(plan.StalepathTime)
 	}
+	// property: name=vrf_router_id_map, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
+	if plan.VrfRouterIdMap == nil && (!(state != nil) || state.VrfRouterIdMap == nil) {
+		body.VrfRouterIdMap = nil
+	} else if len(plan.VrfRouterIdMap) == 0 && (!(state != nil) || len(state.VrfRouterIdMap) == 0) {
+		body.VrfRouterIdMap = []sdwan_schema.VRFRouterIDMapping{}
+	} else if len(plan.VrfRouterIdMap) != 0 || (state != nil && len(state.VrfRouterIdMap) != 0) {
+		VrfRouterIdMapToUse := plan.VrfRouterIdMap
+		if len(plan.VrfRouterIdMap) == 0 {
+			VrfRouterIdMapToUse = state.VrfRouterIdMap
+		}
+		body.VrfRouterIdMap = make([]sdwan_schema.VRFRouterIDMapping, 0, len(VrfRouterIdMapToUse))
+		for varLoopVrfRouterIdMapIndex, varLoopVrfRouterIdMap := range VrfRouterIdMapToUse {
+			// add a new item
+			body.VrfRouterIdMap = append(body.VrfRouterIdMap, sdwan_schema.VRFRouterIDMapping{})
+			// since we have chosen to stick with either the plan or state, we need to simply copy child properties
+			// copy_from_plan: body=body.VrfRouterIdMap[varLoopVrfRouterIdMapIndex] prefix=rsModel plan=varLoopVrfRouterIdMap properties=2
+			tflog.Debug(ctx, "copy_from_plan body=body.VrfRouterIdMap[varLoopVrfRouterIdMapIndex] prefix=rsModel plan=varLoopVrfRouterIdMap")
+			// property: name=router_id, type=STRING macro=copy_from_plan
+			body.VrfRouterIdMap[varLoopVrfRouterIdMapIndex].RouterId = StringValueOrNil(varLoopVrfRouterIdMap.RouterId)
+			// property: name=vrf_context_id, type=STRING macro=copy_from_plan
+			body.VrfRouterIdMap[varLoopVrfRouterIdMapIndex].VrfContextId = StringValueOrNil(varLoopVrfRouterIdMap.VrfContextId)
+		}
+	}
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct BGPGlobalConfigScreenV2N4 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct BGPGlobalConfigScreenV2N5 to JSON:", err.Error())
 		return false
 	}
 
@@ -687,17 +822,23 @@ func (r *elementBgpConfigResource) doPut(ctx context.Context, plan *rsModelBGPGl
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.BGPGlobalConfigScreenV2N4
+	var ans sdwan_schema.BGPGlobalConfigScreenV2N5
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to BGPGlobalConfigScreenV2N4 in update", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to BGPGlobalConfigScreenV2N5 in update", json_err.Error())
 		return false
 	}
 
-	// Store the answer to state. schema=BGPGlobalConfigScreenV2N4
-	// copy_to_state: state=state prefix=rsModel ans=ans properties=21
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
+	// Store the answer to state. schema=BGPGlobalConfigScreenV2N5
+	// copy_to_state: state=state prefix=rsModel ans=ans properties=22
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
 	state.Etag = types.Int64PointerValue(ans.Etag)
@@ -724,13 +865,16 @@ func (r *elementBgpConfigResource) doPut(ctx context.Context, plan *rsModelBGPGl
 	// property: name=maximum_paths, type=INTEGER macro=copy_to_state
 	state.MaximumPaths = types.Int64PointerValue(ans.MaximumPaths)
 	// property: name=md5_secret, type=STRING macro=copy_to_state
-	state.Md5Secret = types.StringPointerValue(plan.Md5Secret.ValueStringPointer())
 	// this property is sensitive and will be stored in the state's internal key name
 	state.Md5SecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+	state.Md5Secret = types.StringPointerValue(plan.Md5Secret.ValueStringPointer())
 	// store value if needed
 	if !state.Md5Secret.IsNull() {
-		encryptedMd5Secret, _ := Encrypt([]byte(state.Md5Secret.String()))
-		resp.Private.SetKey(ctx, state.Md5SecretInternalKeyName.String(), []byte(encryptedMd5Secret))
+		// ValueString, not String: String() returns the value quoted, which drifts on read
+		encryptedMd5Secret, _ := Encrypt([]byte(state.Md5Secret.ValueString()))
+		// private state only accepts valid JSON, so store the ciphertext as a JSON string
+		encryptedMd5SecretJson, _ := json.Marshal(encryptedMd5Secret)
+		resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Md5SecretInternalKeyName.String(), encryptedMd5SecretJson)...)
 	}
 	// property: name=multi_hop_limit, type=INTEGER macro=copy_to_state
 	state.MultiHopLimit = types.Int64PointerValue(ans.MultiHopLimit)
@@ -768,6 +912,24 @@ func (r *elementBgpConfigResource) doPut(ctx context.Context, plan *rsModelBGPGl
 	state.RouterId = types.StringPointerValue(ans.RouterId)
 	// property: name=stalepath_time, type=INTEGER macro=copy_to_state
 	state.StalepathTime = types.Int64PointerValue(ans.StalepathTime)
+	// property: name=vrf_router_id_map, type=ARRAY_REFERENCE macro=copy_to_state
+	if ans.VrfRouterIdMap == nil {
+		state.VrfRouterIdMap = nil
+	} else if len(ans.VrfRouterIdMap) == 0 {
+		state.VrfRouterIdMap = []rsModelVRFRouterIDMapping{}
+	} else {
+		state.VrfRouterIdMap = make([]rsModelVRFRouterIDMapping, 0, len(ans.VrfRouterIdMap))
+		for varLoopVrfRouterIdMapIndex, varLoopVrfRouterIdMap := range ans.VrfRouterIdMap {
+			// add a new item
+			state.VrfRouterIdMap = append(state.VrfRouterIdMap, rsModelVRFRouterIDMapping{})
+			// copy_to_state: state=state.VrfRouterIdMap[varLoopVrfRouterIdMapIndex] prefix=rsModel ans=varLoopVrfRouterIdMap properties=2
+			tflog.Debug(ctx, "copy_to_state state=state.VrfRouterIdMap[varLoopVrfRouterIdMapIndex] prefix=rsModel ans=varLoopVrfRouterIdMap")
+			// property: name=router_id, type=STRING macro=copy_to_state
+			state.VrfRouterIdMap[varLoopVrfRouterIdMapIndex].RouterId = types.StringPointerValue(varLoopVrfRouterIdMap.RouterId)
+			// property: name=vrf_context_id, type=STRING macro=copy_to_state
+			state.VrfRouterIdMap[varLoopVrfRouterIdMapIndex].VrfContextId = types.StringPointerValue(varLoopVrfRouterIdMap.VrfContextId)
+		}
+	}
 	return true
 }
 
@@ -776,17 +938,17 @@ func (r *elementBgpConfigResource) doPut(ctx context.Context, plan *rsModelBGPGl
 // Path Parameters are encoded into TfID itself
 func (r *elementBgpConfigResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "executing resource create for prismasdwan_element_bgp_config")
-	var plan rsModelBGPGlobalConfigScreenV2N4
+	var plan rsModelBGPGlobalConfigScreenV2N5
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// this resource does not have a POST call defined, assuming that the PUT call is present and GET call is present
-	// path=/sdwan/v2.4/api/sites/{site_id}/elements/{element_id}/bgpconfigs/{bgp_config_id}
+	// path=/sdwan/v2.5/api/sites/{site_id}/elements/{element_id}/bgpconfigs/{bgp_config_id}
 
 	// state in api servers
-	var save rsModelBGPGlobalConfigScreenV2N4
+	var save rsModelBGPGlobalConfigScreenV2N5
 
 	// create a new tfid
 	var idBuilder strings.Builder
@@ -835,6 +997,16 @@ func (r *elementBgpConfigResource) Create(ctx context.Context, req resource.Crea
 		if r.doPut(ctx, &plan, &save, &resp.State, &uResp) {
 			// push into state
 			resp.Diagnostics.Append(resp.State.Set(ctx, &save)...)
+		} else {
+			// surface the put error; otherwise terraform only reports "Missing Resource State After Create"
+			resp.Diagnostics = uResp.Diagnostics
+		}
+	} else {
+		resp.Diagnostics = gResp.Diagnostics
+		if !resp.Diagnostics.HasError() {
+			// doGet only removes the resource from the state when nothing is found: say why there is no state
+			resp.Diagnostics.AddError("existing object not found for prismasdwan_element_bgp_config",
+				"this resource only updates an object that already exists, and nothing was found at the path built from x_parameters")
 		}
 	}
 }
@@ -845,7 +1017,7 @@ func (r *elementBgpConfigResource) Create(ctx context.Context, req resource.Crea
 func (r *elementBgpConfigResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 	tflog.Info(ctx, "executing resource read for prismasdwan_element_bgp_config")
-	var savestate, state rsModelBGPGlobalConfigScreenV2N4
+	var savestate, state rsModelBGPGlobalConfigScreenV2N5
 	resp.Diagnostics.Append(req.State.Get(ctx, &savestate)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -864,7 +1036,7 @@ func (r *elementBgpConfigResource) Read(ctx context.Context, req resource.ReadRe
 func (r *elementBgpConfigResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
 	tflog.Info(ctx, "executing resource update for prismasdwan_element_bgp_config")
-	var plan, state rsModelBGPGlobalConfigScreenV2N4
+	var plan, state rsModelBGPGlobalConfigScreenV2N5
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {

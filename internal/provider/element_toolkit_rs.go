@@ -32,9 +32,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &elementToolkitResource{}
-	_ resource.ResourceWithConfigure   = &elementToolkitResource{}
-	_ resource.ResourceWithImportState = &elementToolkitResource{}
+	_ resource.Resource                   = &elementToolkitResource{}
+	_ resource.ResourceWithConfigure      = &elementToolkitResource{}
+	_ resource.ResourceWithImportState    = &elementToolkitResource{}
+	_ resource.ResourceWithValidateConfig = &elementToolkitResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -55,6 +56,12 @@ type elementToolkitResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *elementToolkitResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"element_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *elementToolkitResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_element_toolkit"
@@ -63,13 +70,14 @@ func (r *elementToolkitResource) Metadata(_ context.Context, req resource.Metada
 // Schema defines the schema for this data source.
 func (r *elementToolkitResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Element Toolkit.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=ElementAccessConfigScreenV2N2
 			// generic x_parameters is added to accomodate path parameters
@@ -78,77 +86,87 @@ func (r *elementToolkitResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=account_disable_interval, type=INTEGER macro=rss_schema
 			"account_disable_interval": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Account disable interval. Value: between 5 and 60.",
 			},
 			// key name holder for attribute: name=account_disable_interval, type=INTEGER macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=inactive_interval, type=INTEGER macro=rss_schema
 			"inactive_interval": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Inactive interval. Value: between 15 and 60.",
 			},
 			// key name holder for attribute: name=inactive_interval, type=INTEGER macro=rss_schema
 			// property: name=otpkey_version, type=INTEGER macro=rss_schema
 			"otpkey_version": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Otpkey version. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=otpkey_version, type=INTEGER macro=rss_schema
 			// property: name=retry_login_count, type=INTEGER macro=rss_schema
 			"retry_login_count": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Retry login count. Value: between 5 and 20.",
 			},
 			// key name holder for attribute: name=retry_login_count, type=INTEGER macro=rss_schema
 			// property: name=ssh_enabled, type=BOOLEAN macro=rss_schema
 			"ssh_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ssh enabled.",
 			},
 			// key name holder for attribute: name=ssh_enabled, type=BOOLEAN macro=rss_schema
 			// property: name=ssh_outbound_enabled, type=BOOLEAN macro=rss_schema
 			"ssh_outbound_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ssh outbound enabled.",
 			},
 			// key name holder for attribute: name=ssh_outbound_enabled, type=BOOLEAN macro=rss_schema
 		},
@@ -245,7 +263,23 @@ func (r *elementToolkitResource) doGet(ctx context.Context, state *rsModelElemen
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -438,6 +472,12 @@ func (r *elementToolkitResource) doPut(ctx context.Context, plan *rsModelElement
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=ElementAccessConfigScreenV2N2
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=9
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -517,6 +557,16 @@ func (r *elementToolkitResource) Create(ctx context.Context, req resource.Create
 		if r.doPut(ctx, &plan, &save, &resp.State, &uResp) {
 			// push into state
 			resp.Diagnostics.Append(resp.State.Set(ctx, &save)...)
+		} else {
+			// surface the put error; otherwise terraform only reports "Missing Resource State After Create"
+			resp.Diagnostics = uResp.Diagnostics
+		}
+	} else {
+		resp.Diagnostics = gResp.Diagnostics
+		if !resp.Diagnostics.HasError() {
+			// doGet only removes the resource from the state when nothing is found: say why there is no state
+			resp.Diagnostics.AddError("existing object not found for prismasdwan_element_toolkit",
+				"this resource only updates an object that already exists, and nothing was found at the path built from x_parameters")
 		}
 	}
 }

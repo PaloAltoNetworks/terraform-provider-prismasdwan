@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	sdwan "github.com/paloaltonetworks/terraform-provider-prismasdwan/sdk"
@@ -69,13 +70,14 @@ func (d *securityPolicyRuleDataSource) Metadata(_ context.Context, req datasourc
 // Schema defines the schema for this data source.
 func (d *securityPolicyRuleDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Retrieves a list of Prisma SD-WAN Security Policy Rule items.",
 		Attributes: map[string]dsschema.Attribute{
 			"filters": dsschema.MapAttribute{
 				Required:    true,
 				Computed:    false,
 				Optional:    false,
 				ElementType: types.StringType,
+				Description: "Path parameters used to locate the items to retrieve.",
 			},
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": dsschema.MapAttribute{
@@ -83,266 +85,297 @@ func (d *securityPolicyRuleDataSource) Schema(_ context.Context, _ datasource.Sc
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Additional path parameters for the data source, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": dsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Entity tag returned by the API, managed automatically by the provider.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": dsschema.Int64Attribute{
-				Required: false,
-				Computed: true,
-				Optional: true,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Description: "Schema version returned by the API, managed automatically by the provider.",
 			},
 			"items": dsschema.ListNestedAttribute{
-				Computed: true,
+				Computed:    true,
+				Description: "The list of items returned by the data source.",
 				NestedObject: dsschema.NestedAttributeObject{
 					Attributes: map[string]dsschema.Attribute{
 						// rest all properties to be read from GET API Schema schema=SecurityPolicyV2RuleScreenV2N3
 						// property: name=_etag, type=INTEGER macro=rss_schema
 						"x_etag": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 						// property: name=_schema, type=INTEGER macro=rss_schema
 						"x_schema": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 						// property: name=action, type=STRING macro=rss_schema
 						"action": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Action. Value: one of allow, reject, deny.",
 						},
 						// key name holder for attribute: name=action, type=STRING macro=rss_schema
 						// property: name=app_def_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"app_def_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "App def ids. At most 256 items.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=app_def_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=description, type=STRING macro=rss_schema
 						"description": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Description. Value: at most 256 characters.",
 						},
 						// key name holder for attribute: name=description, type=STRING macro=rss_schema
 						// property: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"dest_device_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Dest device ids. At most 10 items.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=destination_prefix_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"destination_prefix_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Destination prefix ids. At most 16 items.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=destination_prefix_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=destination_zone_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"destination_zone_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Destination zone ids. At most 16 items.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=destination_zone_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=enabled, type=BOOLEAN macro=rss_schema
 						"enabled": dsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Enabled.",
 						},
 						// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 						// property: name=id, type=STRING macro=rss_schema
 						"id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=id, type=STRING macro=rss_schema
 						// property: name=name, type=STRING macro=rss_schema
 						"name": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Name. Value: at most 128 characters.",
 						},
 						// key name holder for attribute: name=name, type=STRING macro=rss_schema
 						// property: name=security_profile_group_id, type=STRING macro=rss_schema
 						"security_profile_group_id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Security profile group id.",
 						},
 						// key name holder for attribute: name=security_profile_group_id, type=STRING macro=rss_schema
 						// property: name=services, type=ARRAY_REFERENCE macro=rss_schema
 						"services": dsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Services.",
 							NestedObject: dsschema.NestedAttributeObject{
 								Attributes: map[string]dsschema.Attribute{
 									// property: name=destination_ports, type=ARRAY_REFERENCE macro=rss_schema
 									"destination_ports": dsschema.ListNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    false,
+										Sensitive:   false,
+										Description: "Destination ports.",
 										NestedObject: dsschema.NestedAttributeObject{
 											Attributes: map[string]dsschema.Attribute{
 												// property: name=from, type=INTEGER macro=rss_schema
 												"from": dsschema.Int64Attribute{
-													Required:  false,
-													Computed:  false,
-													Optional:  true,
-													Sensitive: false,
+													Required:    false,
+													Computed:    true,
+													Optional:    false,
+													Sensitive:   false,
+													Description: "From. Value: between 1 and 65535.",
 												},
 												// key name holder for attribute: name=from, type=INTEGER macro=rss_schema
 												// property: name=to, type=INTEGER macro=rss_schema
 												"to": dsschema.Int64Attribute{
-													Required:  false,
-													Computed:  false,
-													Optional:  true,
-													Sensitive: false,
+													Required:    false,
+													Computed:    true,
+													Optional:    false,
+													Sensitive:   false,
+													Description: "To. Value: between 1 and 65535.",
 												},
 												// key name holder for attribute: name=to, type=INTEGER macro=rss_schema
 											},
 										},
 									},
-									// key name holder for attribute: name=to, type=INTEGER macro=rss_schema
+									// key name holder for attribute: name=destination_ports, type=ARRAY_REFERENCE macro=rss_schema
 									// property: name=protocol, type=INTEGER macro=rss_schema
 									"protocol": dsschema.Int64Attribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    false,
+										Sensitive:   false,
+										Description: "Protocol.",
 									},
 									// key name holder for attribute: name=protocol, type=INTEGER macro=rss_schema
 									// property: name=source_ports, type=ARRAY_REFERENCE macro=rss_schema
 									"source_ports": dsschema.ListNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    false,
+										Sensitive:   false,
+										Description: "Source ports.",
 										NestedObject: dsschema.NestedAttributeObject{
 											Attributes: map[string]dsschema.Attribute{
 												// property: name=from, type=INTEGER macro=rss_schema
 												"from": dsschema.Int64Attribute{
-													Required:  false,
-													Computed:  false,
-													Optional:  true,
-													Sensitive: false,
+													Required:    false,
+													Computed:    true,
+													Optional:    false,
+													Sensitive:   false,
+													Description: "From. Value: between 1 and 65535.",
 												},
 												// key name holder for attribute: name=from, type=INTEGER macro=rss_schema
 												// property: name=to, type=INTEGER macro=rss_schema
 												"to": dsschema.Int64Attribute{
-													Required:  false,
-													Computed:  false,
-													Optional:  true,
-													Sensitive: false,
+													Required:    false,
+													Computed:    true,
+													Optional:    false,
+													Sensitive:   false,
+													Description: "To. Value: between 1 and 65535.",
 												},
 												// key name holder for attribute: name=to, type=INTEGER macro=rss_schema
 											},
 										},
 									},
-									// key name holder for attribute: name=to, type=INTEGER macro=rss_schema
+									// key name holder for attribute: name=source_ports, type=ARRAY_REFERENCE macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=to, type=INTEGER macro=rss_schema
+						// key name holder for attribute: name=services, type=ARRAY_REFERENCE macro=rss_schema
 						// property: name=source_prefix_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"source_prefix_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Source prefix ids. At most 16 items.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=source_prefix_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=source_zone_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"source_zone_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Source zone ids. At most 16 items.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=source_zone_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=src_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"src_device_ids": dsschema.ListAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Src device ids. At most 256 items.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=src_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 						"tags": dsschema.SetAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 						// property: name=user_or_group, type=REFERENCE macro=rss_schema
 						"user_or_group": dsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "User or group.",
 							Attributes: map[string]dsschema.Attribute{
 								// property: name=user_group_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 								"user_group_ids": dsschema.ListAttribute{
 									Required:    false,
-									Computed:    false,
-									Optional:    true,
+									Computed:    true,
+									Optional:    false,
 									Sensitive:   false,
+									Description: "User group ids.",
 									ElementType: types.StringType,
 								},
 								// key name holder for attribute: name=user_group_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 								// property: name=user_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 								"user_ids": dsschema.ListAttribute{
 									Required:    false,
-									Computed:    false,
-									Optional:    true,
+									Computed:    true,
+									Optional:    false,
 									Sensitive:   false,
+									Description: "User ids.",
 									ElementType: types.StringType,
 								},
 								// key name holder for attribute: name=user_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=user_ids, type=ARRAY_PRIMITIVE macro=rss_schema
+						// key name holder for attribute: name=user_or_group, type=REFERENCE macro=rss_schema
 					},
 				},
 			},
@@ -390,17 +423,25 @@ func (d *securityPolicyRuleDataSource) Read(ctx context.Context, req datasource.
 
 	// Perform the operation.
 	svc.ExecuteSdwanRequest(ctx, list_request)
+	response_body_string := `{"items":[]}`
 	if list_request.ResponseErr != nil {
-		if IsObjectNotFound(*list_request.ResponseErr) {
-			resp.State.RemoveResource(ctx)
-		} else {
-			resp.Diagnostics.AddError("error reading prismasdwan_security_policy_rule", (*list_request.ResponseErr).Error())
+		// a 404 here means the list endpoint itself is missing, which must not look like "no matches"
+		{
+			resp.Diagnostics.AddError("error reading prismasdwan_security_policy_rule",
+				fmt.Sprintf("%s (GET %s)", (*list_request.ResponseErr).Error(), *list_request.FinalPath))
+			return
 		}
-		return
+	} else {
+		response_body_string = string(*list_request.ResponseBytes)
+		// some endpoints return the one object itself instead of {"items": [...]}: treat it as the only item
+		var body map[string]interface{}
+		if err := json.Unmarshal([]byte(response_body_string), &body); err == nil {
+			if _, isList := body["items"]; !isList && body["id"] != nil {
+				wrapped, _ := json.Marshal(map[string]interface{}{"items": []map[string]interface{}{body}})
+				response_body_string = string(wrapped)
+			}
+		}
 	}
-
-	// read json string from http response
-	response_body_string := string(*list_request.ResponseBytes)
 	tflog.Info(ctx, "lookup response from server", map[string]any{
 		"path": response_body_string,
 	})
@@ -413,7 +454,9 @@ func (d *securityPolicyRuleDataSource) Read(ctx context.Context, req datasource.
 		resp.Diagnostics.AddError("error in json unmarshal to generic map in lookup", json_err.Error())
 		return
 	}
-	// ensure its as array
+
+	// no match is an empty list, not null: items[0] and length(items) must work on a miss
+	state_with_filter.Items = []*dsModelSecurityPolicyV2RuleScreenV2N3{} // ensure its as array
 	for _, item := range response.Items {
 		// create json from item
 		item_json, item_err := json.Marshal(item)
@@ -475,6 +518,10 @@ func (d *securityPolicyRuleDataSource) Read(ctx context.Context, req datasource.
 		varAppDefIds, errAppDefIds := types.ListValueFrom(ctx, types.StringType, ans.AppDefIds)
 		state.AppDefIds = varAppDefIds
 		resp.Diagnostics.Append(errAppDefIds.Errors()...)
+		// api does not accept empty list as missing value
+		if len(ans.AppDefIds) == 0 {
+			state.AppDefIds = types.ListNull(types.StringType)
+		}
 		// property: name=description, type=STRING macro=copy_to_state
 		state.Description = types.StringPointerValue(ans.Description)
 		// property: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
@@ -485,10 +532,18 @@ func (d *securityPolicyRuleDataSource) Read(ctx context.Context, req datasource.
 		varDestinationPrefixIds, errDestinationPrefixIds := types.ListValueFrom(ctx, types.StringType, ans.DestinationPrefixIds)
 		state.DestinationPrefixIds = varDestinationPrefixIds
 		resp.Diagnostics.Append(errDestinationPrefixIds.Errors()...)
+		// api does not accept empty list as missing value
+		if len(ans.DestinationPrefixIds) == 0 {
+			state.DestinationPrefixIds = types.ListNull(types.StringType)
+		}
 		// property: name=destination_zone_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 		varDestinationZoneIds, errDestinationZoneIds := types.ListValueFrom(ctx, types.StringType, ans.DestinationZoneIds)
 		state.DestinationZoneIds = varDestinationZoneIds
 		resp.Diagnostics.Append(errDestinationZoneIds.Errors()...)
+		// api does not accept empty list as missing value
+		if len(ans.DestinationZoneIds) == 0 {
+			state.DestinationZoneIds = types.ListNull(types.StringType)
+		}
 		// property: name=enabled, type=BOOLEAN macro=copy_to_state
 		state.Enabled = types.BoolPointerValue(ans.Enabled)
 		// property: name=id, type=STRING macro=copy_to_state
@@ -501,7 +556,8 @@ func (d *securityPolicyRuleDataSource) Read(ctx context.Context, req datasource.
 		if ans.Services == nil {
 			state.Services = nil
 		} else if len(ans.Services) == 0 {
-			state.Services = []dsModelService{}
+			// api does not accept empty list as missing value
+			state.Services = nil
 		} else {
 			state.Services = make([]dsModelService, 0, len(ans.Services))
 			for varLoopServicesIndex, varLoopServices := range ans.Services {
@@ -553,10 +609,18 @@ func (d *securityPolicyRuleDataSource) Read(ctx context.Context, req datasource.
 		varSourcePrefixIds, errSourcePrefixIds := types.ListValueFrom(ctx, types.StringType, ans.SourcePrefixIds)
 		state.SourcePrefixIds = varSourcePrefixIds
 		resp.Diagnostics.Append(errSourcePrefixIds.Errors()...)
+		// api does not accept empty list as missing value
+		if len(ans.SourcePrefixIds) == 0 {
+			state.SourcePrefixIds = types.ListNull(types.StringType)
+		}
 		// property: name=source_zone_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 		varSourceZoneIds, errSourceZoneIds := types.ListValueFrom(ctx, types.StringType, ans.SourceZoneIds)
 		state.SourceZoneIds = varSourceZoneIds
 		resp.Diagnostics.Append(errSourceZoneIds.Errors()...)
+		// api does not accept empty list as missing value
+		if len(ans.SourceZoneIds) == 0 {
+			state.SourceZoneIds = types.ListNull(types.StringType)
+		}
 		// property: name=src_device_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 		varSrcDeviceIds, errSrcDeviceIds := types.ListValueFrom(ctx, types.StringType, ans.SrcDeviceIds)
 		state.SrcDeviceIds = varSrcDeviceIds
@@ -565,6 +629,10 @@ func (d *securityPolicyRuleDataSource) Read(ctx context.Context, req datasource.
 		varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 		state.Tags = varTags
 		resp.Diagnostics.Append(errTags.Errors()...)
+		// api does not accept empty list as missing value
+		if len(ans.Tags) == 0 {
+			state.Tags = types.SetNull(types.StringType)
+		}
 		// property: name=user_or_group, type=REFERENCE macro=copy_to_state
 		if ans.UserOrGroup == nil {
 			state.UserOrGroup = nil

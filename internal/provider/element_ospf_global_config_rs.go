@@ -32,9 +32,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &elementOspfGlobalConfigResource{}
-	_ resource.ResourceWithConfigure   = &elementOspfGlobalConfigResource{}
-	_ resource.ResourceWithImportState = &elementOspfGlobalConfigResource{}
+	_ resource.Resource                   = &elementOspfGlobalConfigResource{}
+	_ resource.ResourceWithConfigure      = &elementOspfGlobalConfigResource{}
+	_ resource.ResourceWithImportState    = &elementOspfGlobalConfigResource{}
+	_ resource.ResourceWithValidateConfig = &elementOspfGlobalConfigResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -55,6 +56,12 @@ type elementOspfGlobalConfigResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *elementOspfGlobalConfigResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id", "element_id", "ospf_config_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *elementOspfGlobalConfigResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_element_ospf_global_config"
@@ -63,13 +70,14 @@ func (r *elementOspfGlobalConfigResource) Metadata(_ context.Context, req resour
 // Schema defines the schema for this data source.
 func (r *elementOspfGlobalConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Element Ospf Global Config.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=OSPFGlobalConfigScreen
 			// generic x_parameters is added to accomodate path parameters
@@ -78,107 +86,121 @@ func (r *elementOspfGlobalConfigResource) Schema(_ context.Context, _ resource.S
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=cost, type=INTEGER macro=rss_schema
 			"cost": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Cost. Value: between 1 and 65535.",
 			},
 			// key name holder for attribute: name=cost, type=INTEGER macro=rss_schema
 			// property: name=dead_interval, type=INTEGER macro=rss_schema
 			"dead_interval": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Dead interval. Value: between 1 and 65535.",
 			},
 			// key name holder for attribute: name=dead_interval, type=INTEGER macro=rss_schema
 			// property: name=hello_interval, type=INTEGER macro=rss_schema
 			"hello_interval": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Hello interval. Value: between 1 and 65535.",
 			},
 			// key name holder for attribute: name=hello_interval, type=INTEGER macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=md5_key_id, type=INTEGER macro=rss_schema
 			"md5_key_id": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Md5 key id. Value: between 1 and 255.",
 			},
 			// key name holder for attribute: name=md5_key_id, type=INTEGER macro=rss_schema
 			// property: name=md5_secret, type=STRING macro=rss_schema
 			"md5_secret": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: true,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   true,
+				Description: "Md5 secret. Value: length 1 to 16 characters.",
 			},
 			// key name holder for attribute: name=md5_secret, type=STRING macro=rss_schema
 			"md5_secret_internal_key_name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Internal key name for the sensitive attribute md5_secret, managed automatically by the provider.",
 			},
 			// property: name=prefix_adv_type_to_lan, type=STRING macro=rss_schema
 			"prefix_adv_type_to_lan": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Prefix adv type to lan.",
 			},
 			// key name holder for attribute: name=prefix_adv_type_to_lan, type=STRING macro=rss_schema
 			// property: name=retransmit_interval, type=INTEGER macro=rss_schema
 			"retransmit_interval": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Retransmit interval. Value: between 1 and 65535.",
 			},
 			// key name holder for attribute: name=retransmit_interval, type=INTEGER macro=rss_schema
 			// property: name=router_id, type=STRING macro=rss_schema
 			"router_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Router id.",
 			},
 			// key name holder for attribute: name=router_id, type=STRING macro=rss_schema
 			// property: name=transmit_delay, type=INTEGER macro=rss_schema
 			"transmit_delay": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Transmit delay. Value: between 1 and 65535.",
 			},
 			// key name holder for attribute: name=transmit_delay, type=INTEGER macro=rss_schema
 		},
@@ -275,7 +297,23 @@ func (r *elementOspfGlobalConfigResource) doGet(ctx context.Context, state *rsMo
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -306,10 +344,13 @@ func (r *elementOspfGlobalConfigResource) doGet(ctx context.Context, state *rsMo
 	// property: name=md5_key_id, type=INTEGER macro=copy_to_state
 	state.Md5KeyId = types.Int64PointerValue(ans.Md5KeyId)
 	// property: name=md5_secret, type=STRING macro=copy_to_state
+	// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+	state.Md5SecretInternalKeyName = savestate.Md5SecretInternalKeyName
 	encryptedMd5SecretKeyName := state.Md5SecretInternalKeyName.String()
 	encryptedMd5SecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedMd5SecretKeyName)
-	if encryptedMd5SecretValueBytes != nil {
-		decryptedMd5Secret, _ := Decrypt(string(encryptedMd5SecretValueBytes))
+	var encryptedMd5SecretValue string
+	if encryptedMd5SecretValueBytes != nil && json.Unmarshal(encryptedMd5SecretValueBytes, &encryptedMd5SecretValue) == nil {
+		decryptedMd5Secret, _ := Decrypt(encryptedMd5SecretValue)
 		state.Md5Secret = types.StringValue(decryptedMd5Secret)
 	}
 	// property: name=prefix_adv_type_to_lan, type=STRING macro=copy_to_state
@@ -497,6 +538,12 @@ func (r *elementOspfGlobalConfigResource) doPut(ctx context.Context, plan *rsMod
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=OSPFGlobalConfigScreen
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=12
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -515,13 +562,16 @@ func (r *elementOspfGlobalConfigResource) doPut(ctx context.Context, plan *rsMod
 	// property: name=md5_key_id, type=INTEGER macro=copy_to_state
 	state.Md5KeyId = types.Int64PointerValue(ans.Md5KeyId)
 	// property: name=md5_secret, type=STRING macro=copy_to_state
-	state.Md5Secret = types.StringPointerValue(plan.Md5Secret.ValueStringPointer())
 	// this property is sensitive and will be stored in the state's internal key name
 	state.Md5SecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+	state.Md5Secret = types.StringPointerValue(plan.Md5Secret.ValueStringPointer())
 	// store value if needed
 	if !state.Md5Secret.IsNull() {
-		encryptedMd5Secret, _ := Encrypt([]byte(state.Md5Secret.String()))
-		resp.Private.SetKey(ctx, state.Md5SecretInternalKeyName.String(), []byte(encryptedMd5Secret))
+		// ValueString, not String: String() returns the value quoted, which drifts on read
+		encryptedMd5Secret, _ := Encrypt([]byte(state.Md5Secret.ValueString()))
+		// private state only accepts valid JSON, so store the ciphertext as a JSON string
+		encryptedMd5SecretJson, _ := json.Marshal(encryptedMd5Secret)
+		resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.Md5SecretInternalKeyName.String(), encryptedMd5SecretJson)...)
 	}
 	// property: name=prefix_adv_type_to_lan, type=STRING macro=copy_to_state
 	state.PrefixAdvTypeToLan = types.StringPointerValue(ans.PrefixAdvTypeToLan)
@@ -598,6 +648,16 @@ func (r *elementOspfGlobalConfigResource) Create(ctx context.Context, req resour
 		if r.doPut(ctx, &plan, &save, &resp.State, &uResp) {
 			// push into state
 			resp.Diagnostics.Append(resp.State.Set(ctx, &save)...)
+		} else {
+			// surface the put error; otherwise terraform only reports "Missing Resource State After Create"
+			resp.Diagnostics = uResp.Diagnostics
+		}
+	} else {
+		resp.Diagnostics = gResp.Diagnostics
+		if !resp.Diagnostics.HasError() {
+			// doGet only removes the resource from the state when nothing is found: say why there is no state
+			resp.Diagnostics.AddError("existing object not found for prismasdwan_element_ospf_global_config",
+				"this resource only updates an object that already exists, and nothing was found at the path built from x_parameters")
 		}
 	}
 }

@@ -34,9 +34,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &elementMulticastGlobalConfigResource{}
-	_ resource.ResourceWithConfigure   = &elementMulticastGlobalConfigResource{}
-	_ resource.ResourceWithImportState = &elementMulticastGlobalConfigResource{}
+	_ resource.Resource                   = &elementMulticastGlobalConfigResource{}
+	_ resource.ResourceWithConfigure      = &elementMulticastGlobalConfigResource{}
+	_ resource.ResourceWithImportState    = &elementMulticastGlobalConfigResource{}
+	_ resource.ResourceWithValidateConfig = &elementMulticastGlobalConfigResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -57,6 +58,12 @@ type elementMulticastGlobalConfigResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *elementMulticastGlobalConfigResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id", "element_id", "config_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *elementMulticastGlobalConfigResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_element_multicast_global_config"
@@ -65,13 +72,14 @@ func (r *elementMulticastGlobalConfigResource) Metadata(_ context.Context, req r
 // Schema defines the schema for this data source.
 func (r *elementMulticastGlobalConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Element Multicast Global Config.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=MulticastGlobalConfigScreenV2N1
 			// generic x_parameters is added to accomodate path parameters
@@ -80,129 +88,145 @@ func (r *elementMulticastGlobalConfigResource) Schema(_ context.Context, _ resou
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=bsm_enabled, type=BOOLEAN macro=rss_schema
 			"bsm_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Bsm enabled.",
 			},
 			// key name holder for attribute: name=bsm_enabled, type=BOOLEAN macro=rss_schema
 			// property: name=dr_priority, type=INTEGER macro=rss_schema
 			"dr_priority": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Dr priority. Value: between 1 and 4294967295.",
 			},
 			// key name holder for attribute: name=dr_priority, type=INTEGER macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=igmp_protocol_parameters, type=REFERENCE macro=rss_schema
 			"igmp_protocol_parameters": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Igmp protocol parameters.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=last_member_query_count, type=INTEGER macro=rss_schema
 					"last_member_query_count": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Last member query count.",
 					},
 					// key name holder for attribute: name=last_member_query_count, type=INTEGER macro=rss_schema
 					// property: name=last_member_query_interval, type=INTEGER macro=rss_schema
 					"last_member_query_interval": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Last member query interval.",
 					},
 					// key name holder for attribute: name=last_member_query_interval, type=INTEGER macro=rss_schema
 					// property: name=query_interval, type=INTEGER macro=rss_schema
 					"query_interval": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Query interval.",
 					},
 					// key name holder for attribute: name=query_interval, type=INTEGER macro=rss_schema
 					// property: name=query_max_response_time, type=INTEGER macro=rss_schema
 					"query_max_response_time": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Query max response time.",
 					},
 					// key name holder for attribute: name=query_max_response_time, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=query_max_response_time, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=igmp_protocol_parameters, type=REFERENCE macro=rss_schema
 			// property: name=pim_protocol_parameters, type=REFERENCE macro=rss_schema
 			"pim_protocol_parameters": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Pim protocol parameters.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=hello_hold_time, type=INTEGER macro=rss_schema
 					"hello_hold_time": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Hello hold time.",
 					},
 					// key name holder for attribute: name=hello_hold_time, type=INTEGER macro=rss_schema
 					// property: name=hello_interval, type=INTEGER macro=rss_schema
 					"hello_interval": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Hello interval.",
 					},
 					// key name holder for attribute: name=hello_interval, type=INTEGER macro=rss_schema
 					// property: name=join_prune_interval, type=INTEGER macro=rss_schema
 					"join_prune_interval": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Join prune interval.",
 					},
 					// key name holder for attribute: name=join_prune_interval, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=join_prune_interval, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=pim_protocol_parameters, type=REFERENCE macro=rss_schema
 			// property: name=spt_switchover_enabled, type=BOOLEAN macro=rss_schema
 			"spt_switchover_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Spt switchover enabled.",
 			},
 			// key name holder for attribute: name=spt_switchover_enabled, type=BOOLEAN macro=rss_schema
 		},
@@ -299,7 +323,23 @@ func (r *elementMulticastGlobalConfigResource) doGet(ctx context.Context, state 
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -451,25 +491,25 @@ func (r *elementMulticastGlobalConfigResource) doPut(ctx context.Context, plan *
 		// copy_from_plan_or_state: body=body.IgmpProtocolParameters prefix=rsModel state=state.IgmpProtocolParameters plan=plan.IgmpProtocolParameters properties=4
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.IgmpProtocolParameters prefix=rsModel state=state.IgmpProtocolParameters plan=plan.IgmpProtocolParameters")
 		// property: name=last_member_query_count, type=INTEGER macro=copy_from_plan_or_state
-		if state.IgmpProtocolParameters != nil {
+		if state != nil && state.IgmpProtocolParameters != nil {
 			body.IgmpProtocolParameters.LastMemberQueryCount = ValueInt64PointerFromPlanOrState(plan.IgmpProtocolParameters.LastMemberQueryCount, state.IgmpProtocolParameters.LastMemberQueryCount)
 		} else {
 			body.IgmpProtocolParameters.LastMemberQueryCount = Int64ValueOrNil(plan.IgmpProtocolParameters.LastMemberQueryCount)
 		}
 		// property: name=last_member_query_interval, type=INTEGER macro=copy_from_plan_or_state
-		if state.IgmpProtocolParameters != nil {
+		if state != nil && state.IgmpProtocolParameters != nil {
 			body.IgmpProtocolParameters.LastMemberQueryInterval = ValueInt64PointerFromPlanOrState(plan.IgmpProtocolParameters.LastMemberQueryInterval, state.IgmpProtocolParameters.LastMemberQueryInterval)
 		} else {
 			body.IgmpProtocolParameters.LastMemberQueryInterval = Int64ValueOrNil(plan.IgmpProtocolParameters.LastMemberQueryInterval)
 		}
 		// property: name=query_interval, type=INTEGER macro=copy_from_plan_or_state
-		if state.IgmpProtocolParameters != nil {
+		if state != nil && state.IgmpProtocolParameters != nil {
 			body.IgmpProtocolParameters.QueryInterval = ValueInt64PointerFromPlanOrState(plan.IgmpProtocolParameters.QueryInterval, state.IgmpProtocolParameters.QueryInterval)
 		} else {
 			body.IgmpProtocolParameters.QueryInterval = Int64ValueOrNil(plan.IgmpProtocolParameters.QueryInterval)
 		}
 		// property: name=query_max_response_time, type=INTEGER macro=copy_from_plan_or_state
-		if state.IgmpProtocolParameters != nil {
+		if state != nil && state.IgmpProtocolParameters != nil {
 			body.IgmpProtocolParameters.QueryMaxResponseTime = ValueInt64PointerFromPlanOrState(plan.IgmpProtocolParameters.QueryMaxResponseTime, state.IgmpProtocolParameters.QueryMaxResponseTime)
 		} else {
 			body.IgmpProtocolParameters.QueryMaxResponseTime = Int64ValueOrNil(plan.IgmpProtocolParameters.QueryMaxResponseTime)
@@ -483,19 +523,19 @@ func (r *elementMulticastGlobalConfigResource) doPut(ctx context.Context, plan *
 		// copy_from_plan_or_state: body=body.PimProtocolParameters prefix=rsModel state=state.PimProtocolParameters plan=plan.PimProtocolParameters properties=3
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.PimProtocolParameters prefix=rsModel state=state.PimProtocolParameters plan=plan.PimProtocolParameters")
 		// property: name=hello_hold_time, type=INTEGER macro=copy_from_plan_or_state
-		if state.PimProtocolParameters != nil {
+		if state != nil && state.PimProtocolParameters != nil {
 			body.PimProtocolParameters.HelloHoldTime = ValueInt64PointerFromPlanOrState(plan.PimProtocolParameters.HelloHoldTime, state.PimProtocolParameters.HelloHoldTime)
 		} else {
 			body.PimProtocolParameters.HelloHoldTime = Int64ValueOrNil(plan.PimProtocolParameters.HelloHoldTime)
 		}
 		// property: name=hello_interval, type=INTEGER macro=copy_from_plan_or_state
-		if state.PimProtocolParameters != nil {
+		if state != nil && state.PimProtocolParameters != nil {
 			body.PimProtocolParameters.HelloInterval = ValueInt64PointerFromPlanOrState(plan.PimProtocolParameters.HelloInterval, state.PimProtocolParameters.HelloInterval)
 		} else {
 			body.PimProtocolParameters.HelloInterval = Int64ValueOrNil(plan.PimProtocolParameters.HelloInterval)
 		}
 		// property: name=join_prune_interval, type=INTEGER macro=copy_from_plan_or_state
-		if state.PimProtocolParameters != nil {
+		if state != nil && state.PimProtocolParameters != nil {
 			body.PimProtocolParameters.JoinPruneInterval = ValueInt64PointerFromPlanOrState(plan.PimProtocolParameters.JoinPruneInterval, state.PimProtocolParameters.JoinPruneInterval)
 		} else {
 			body.PimProtocolParameters.JoinPruneInterval = Int64ValueOrNil(plan.PimProtocolParameters.JoinPruneInterval)
@@ -554,6 +594,12 @@ func (r *elementMulticastGlobalConfigResource) doPut(ctx context.Context, plan *
 	if json_err != nil {
 		resp.Diagnostics.AddError("error in json unmarshal to MulticastGlobalConfigScreenV2N1 in update", json_err.Error())
 		return false
+	}
+
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
 	}
 
 	// Store the answer to state. schema=MulticastGlobalConfigScreenV2N1
@@ -668,6 +714,16 @@ func (r *elementMulticastGlobalConfigResource) Create(ctx context.Context, req r
 		if r.doPut(ctx, &plan, &save, &resp.State, &uResp) {
 			// push into state
 			resp.Diagnostics.Append(resp.State.Set(ctx, &save)...)
+		} else {
+			// surface the put error; otherwise terraform only reports "Missing Resource State After Create"
+			resp.Diagnostics = uResp.Diagnostics
+		}
+	} else {
+		resp.Diagnostics = gResp.Diagnostics
+		if !resp.Diagnostics.HasError() {
+			// doGet only removes the resource from the state when nothing is found: say why there is no state
+			resp.Diagnostics.AddError("existing object not found for prismasdwan_element_multicast_global_config",
+				"this resource only updates an object that already exists, and nothing was found at the path built from x_parameters")
 		}
 	}
 }

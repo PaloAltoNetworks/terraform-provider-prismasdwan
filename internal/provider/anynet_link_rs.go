@@ -33,9 +33,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &anynetLinkResource{}
-	_ resource.ResourceWithConfigure   = &anynetLinkResource{}
-	_ resource.ResourceWithImportState = &anynetLinkResource{}
+	_ resource.Resource                   = &anynetLinkResource{}
+	_ resource.ResourceWithConfigure      = &anynetLinkResource{}
+	_ resource.ResourceWithImportState    = &anynetLinkResource{}
+	_ resource.ResourceWithValidateConfig = &anynetLinkResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -56,6 +57,12 @@ type anynetLinkResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *anynetLinkResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{})...)
+}
+
 // Metadata returns the data source type name.
 func (r *anynetLinkResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_anynet_link"
@@ -64,13 +71,14 @@ func (r *anynetLinkResource) Metadata(_ context.Context, req resource.MetadataRe
 // Schema defines the schema for this data source.
 func (r *anynetLinkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Anynet Link.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=AnynetLinkV4
 			// generic x_parameters is added to accomodate path parameters
@@ -79,109 +87,123 @@ func (r *anynetLinkResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=admin_up, type=BOOLEAN macro=rss_schema
 			"admin_up": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Admin up. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=admin_up, type=BOOLEAN macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=ep1_hub_cluster_id, type=STRING macro=rss_schema
 			"ep1_hub_cluster_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ep1 hub cluster id.",
 			},
 			// key name holder for attribute: name=ep1_hub_cluster_id, type=STRING macro=rss_schema
 			// property: name=ep1_site_id, type=STRING macro=rss_schema
 			"ep1_site_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ep1 site id. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=ep1_site_id, type=STRING macro=rss_schema
 			// property: name=ep1_wan_interface_id, type=STRING macro=rss_schema
 			"ep1_wan_interface_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ep1 wan interface id. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=ep1_wan_interface_id, type=STRING macro=rss_schema
 			// property: name=ep2_hub_cluster_id, type=STRING macro=rss_schema
 			"ep2_hub_cluster_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ep2 hub cluster id.",
 			},
 			// key name holder for attribute: name=ep2_hub_cluster_id, type=STRING macro=rss_schema
 			// property: name=ep2_site_id, type=STRING macro=rss_schema
 			"ep2_site_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ep2 site id. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=ep2_site_id, type=STRING macro=rss_schema
 			// property: name=ep2_wan_interface_id, type=STRING macro=rss_schema
 			"ep2_wan_interface_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ep2 wan interface id. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=ep2_wan_interface_id, type=STRING macro=rss_schema
 			// property: name=forced, type=BOOLEAN macro=rss_schema
 			"forced": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Forced. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=forced, type=BOOLEAN macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -190,51 +212,57 @@ func (r *anynetLinkResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=tenant_id, type=STRING macro=rss_schema
 			"tenant_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Tenant id. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=tenant_id, type=STRING macro=rss_schema
 			// property: name=type, type=STRING macro=rss_schema
 			"type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Type. Value: one of AUTO-PUBLIC, MANUAL-PUBLIC, AUTO-PRIVATE, MANUAL-PRIVATE, AUTO-SASE, DCI-MANUAL-PUBLIC, DCI-MANUAL-PRIVATE. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=type, type=STRING macro=rss_schema
 			// property: name=vpnlink_configuration, type=REFERENCE macro=rss_schema
 			"vpnlink_configuration": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Vpnlink configuration.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=keep_alive_failure_count, type=INTEGER macro=rss_schema
 					"keep_alive_failure_count": rsschema.Int64Attribute{
-						Required:  true,
-						Computed:  false,
-						Optional:  false,
-						Sensitive: false,
+						Required:    true,
+						Computed:    false,
+						Optional:    false,
+						Sensitive:   false,
+						Description: "Keep alive failure count. Value: between 3 and 30.",
 					},
 					// key name holder for attribute: name=keep_alive_failure_count, type=INTEGER macro=rss_schema
 					// property: name=keep_alive_interval, type=INTEGER macro=rss_schema
 					"keep_alive_interval": rsschema.Int64Attribute{
-						Required:  true,
-						Computed:  false,
-						Optional:  false,
-						Sensitive: false,
+						Required:    true,
+						Computed:    false,
+						Optional:    false,
+						Sensitive:   false,
+						Description: "Keep alive interval. Value: between 100 and 1740000.",
 					},
 					// key name holder for attribute: name=keep_alive_interval, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=keep_alive_interval, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=vpnlink_configuration, type=REFERENCE macro=rss_schema
 		},
 	}
 }
@@ -443,6 +471,14 @@ func (r *anynetLinkResource) doPost(ctx context.Context, plan *rsModelAnynetLink
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=tenant_id, type=STRING macro=copy_to_state
 	state.TenantId = types.StringPointerValue(ans.TenantId)
 	// property: name=type, type=STRING macro=copy_to_state
@@ -530,7 +566,23 @@ func (r *anynetLinkResource) doGet(ctx context.Context, state *rsModelAnynetLink
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -576,6 +628,14 @@ func (r *anynetLinkResource) doGet(ctx context.Context, state *rsModelAnynetLink
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=tenant_id, type=STRING macro=copy_to_state
 	state.TenantId = types.StringPointerValue(ans.TenantId)
 	// property: name=type, type=STRING macro=copy_to_state
@@ -727,7 +787,12 @@ func (r *anynetLinkResource) doPut(ctx context.Context, plan *rsModelAnynetLinkV
 		body.Name = StringValueOrNil(plan.Name)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=tenant_id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.TenantId = ValueStringPointerFromPlanOrState(plan.TenantId, state.TenantId)
@@ -748,13 +813,13 @@ func (r *anynetLinkResource) doPut(ctx context.Context, plan *rsModelAnynetLinkV
 		// copy_from_plan_or_state: body=body.VpnlinkConfiguration prefix=rsModel state=state.VpnlinkConfiguration plan=plan.VpnlinkConfiguration properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.VpnlinkConfiguration prefix=rsModel state=state.VpnlinkConfiguration plan=plan.VpnlinkConfiguration")
 		// property: name=keep_alive_failure_count, type=INTEGER macro=copy_from_plan_or_state
-		if state.VpnlinkConfiguration != nil {
+		if state != nil && state.VpnlinkConfiguration != nil {
 			body.VpnlinkConfiguration.KeepAliveFailureCount = ValueInt64PointerFromPlanOrState(plan.VpnlinkConfiguration.KeepAliveFailureCount, state.VpnlinkConfiguration.KeepAliveFailureCount)
 		} else {
 			body.VpnlinkConfiguration.KeepAliveFailureCount = Int64ValueOrNil(plan.VpnlinkConfiguration.KeepAliveFailureCount)
 		}
 		// property: name=keep_alive_interval, type=INTEGER macro=copy_from_plan_or_state
-		if state.VpnlinkConfiguration != nil {
+		if state != nil && state.VpnlinkConfiguration != nil {
 			body.VpnlinkConfiguration.KeepAliveInterval = ValueInt64PointerFromPlanOrState(plan.VpnlinkConfiguration.KeepAliveInterval, state.VpnlinkConfiguration.KeepAliveInterval)
 		} else {
 			body.VpnlinkConfiguration.KeepAliveInterval = Int64ValueOrNil(plan.VpnlinkConfiguration.KeepAliveInterval)
@@ -809,6 +874,12 @@ func (r *anynetLinkResource) doPut(ctx context.Context, plan *rsModelAnynetLinkV
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=AnynetLinkV4
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=17
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -842,6 +913,14 @@ func (r *anynetLinkResource) doPut(ctx context.Context, plan *rsModelAnynetLinkV
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=tenant_id, type=STRING macro=copy_to_state
 	state.TenantId = types.StringPointerValue(ans.TenantId)
 	// property: name=type, type=STRING macro=copy_to_state

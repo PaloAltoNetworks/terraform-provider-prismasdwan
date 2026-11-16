@@ -39,9 +39,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &serviceEndpointResource{}
-	_ resource.ResourceWithConfigure   = &serviceEndpointResource{}
-	_ resource.ResourceWithImportState = &serviceEndpointResource{}
+	_ resource.Resource                   = &serviceEndpointResource{}
+	_ resource.ResourceWithConfigure      = &serviceEndpointResource{}
+	_ resource.ResourceWithImportState    = &serviceEndpointResource{}
+	_ resource.ResourceWithValidateConfig = &serviceEndpointResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -62,6 +63,12 @@ type serviceEndpointResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *serviceEndpointResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{})...)
+}
+
 // Metadata returns the data source type name.
 func (r *serviceEndpointResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_service_endpoint"
@@ -70,13 +77,14 @@ func (r *serviceEndpointResource) Metadata(_ context.Context, req resource.Metad
 // Schema defines the schema for this data source.
 func (r *serviceEndpointResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Service Endpoint.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=ServiceEndpointV3N1
 			// generic x_parameters is added to accomodate path parameters
@@ -85,150 +93,169 @@ func (r *serviceEndpointResource) Schema(_ context.Context, _ resource.SchemaReq
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=address, type=REFERENCE macro=rss_schema
 			"address": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Address.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=city, type=STRING macro=rss_schema
 					"city": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "City. Value: at most 100 characters.",
 					},
 					// key name holder for attribute: name=city, type=STRING macro=rss_schema
 					// property: name=country, type=STRING macro=rss_schema
 					"country": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Country. Value: at most 100 characters.",
 					},
 					// key name holder for attribute: name=country, type=STRING macro=rss_schema
 					// property: name=post_code, type=STRING macro=rss_schema
 					"post_code": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Post code. Value: at most 100 characters.",
 					},
 					// key name holder for attribute: name=post_code, type=STRING macro=rss_schema
 					// property: name=state, type=STRING macro=rss_schema
 					"state": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "State. Value: at most 100 characters.",
 					},
 					// key name holder for attribute: name=state, type=STRING macro=rss_schema
 					// property: name=street, type=STRING macro=rss_schema
 					"street": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Street. Value: at most 100 characters.",
 					},
 					// key name holder for attribute: name=street, type=STRING macro=rss_schema
 					// property: name=street2, type=STRING macro=rss_schema
 					"street2": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Street2. Value: at most 100 characters.",
 					},
 					// key name holder for attribute: name=street2, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=street2, type=STRING macro=rss_schema
+			// key name holder for attribute: name=address, type=REFERENCE macro=rss_schema
 			// property: name=admin_up, type=BOOLEAN macro=rss_schema
 			"admin_up": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Admin up.",
 			},
 			// key name holder for attribute: name=admin_up, type=BOOLEAN macro=rss_schema
 			// property: name=allow_enterprise_traffic, type=BOOLEAN macro=rss_schema
 			"allow_enterprise_traffic": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Allow enterprise traffic.",
 			},
 			// key name holder for attribute: name=allow_enterprise_traffic, type=BOOLEAN macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=disable_tunnel_reoptimization, type=BOOLEAN macro=rss_schema
 			"disable_tunnel_reoptimization": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Disable tunnel reoptimization.",
 			},
 			// key name holder for attribute: name=disable_tunnel_reoptimization, type=BOOLEAN macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=is_sase, type=BOOLEAN macro=rss_schema
 			"is_sase": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Is sase.",
 			},
 			// key name holder for attribute: name=is_sase, type=BOOLEAN macro=rss_schema
 			// property: name=liveliness_probe, type=REFERENCE macro=rss_schema
 			"liveliness_probe": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Liveliness probe.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=http, type=ARRAY_REFERENCE macro=rss_schema
 					"http": rsschema.ListNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Http.",
 						NestedObject: rsschema.NestedAttributeObject{
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=failure_count, type=INTEGER macro=rss_schema
 								"failure_count": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Failure count. Value: between 3 and 300.",
 								},
 								// key name holder for attribute: name=failure_count, type=INTEGER macro=rss_schema
 								// property: name=http_status_codes, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -237,51 +264,58 @@ func (r *serviceEndpointResource) Schema(_ context.Context, _ resource.SchemaReq
 									Computed:    false,
 									Optional:    true,
 									Sensitive:   false,
+									Description: "Http status codes. At most 8 items. Each item: between 100 and 600.",
+									Validators:  ListMaxItems(8),
 									ElementType: types.Int64Type,
 								},
 								// key name holder for attribute: name=http_status_codes, type=ARRAY_PRIMITIVE macro=rss_schema
 								// property: name=interval, type=INTEGER macro=rss_schema
 								"interval": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Interval. Value: between 10 and 3600.",
 								},
 								// key name holder for attribute: name=interval, type=INTEGER macro=rss_schema
 								// property: name=url, type=STRING macro=rss_schema
 								"url": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Url. Value: at most 1024 characters.",
 								},
 								// key name holder for attribute: name=url, type=STRING macro=rss_schema
 							},
 						},
 					},
-					// key name holder for attribute: name=url, type=STRING macro=rss_schema
+					// key name holder for attribute: name=http, type=ARRAY_REFERENCE macro=rss_schema
 					// property: name=icmp_ping, type=ARRAY_REFERENCE macro=rss_schema
 					"icmp_ping": rsschema.ListNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Icmp ping.",
 						NestedObject: rsschema.NestedAttributeObject{
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=failure_count, type=INTEGER macro=rss_schema
 								"failure_count": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Failure count. Value: between 3 and 300.",
 								},
 								// key name holder for attribute: name=failure_count, type=INTEGER macro=rss_schema
 								// property: name=interval, type=INTEGER macro=rss_schema
 								"interval": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Interval. Value: between 1 and 30.",
 								},
 								// key name holder for attribute: name=interval, type=INTEGER macro=rss_schema
 								// property: name=ip_addresses, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -290,98 +324,110 @@ func (r *serviceEndpointResource) Schema(_ context.Context, _ resource.SchemaReq
 									Computed:    false,
 									Optional:    true,
 									Sensitive:   false,
+									Description: "Ip addresses. At most 8 items.",
+									Validators:  ListMaxItems(8),
 									ElementType: types.StringType,
 								},
 								// key name holder for attribute: name=ip_addresses, type=ARRAY_PRIMITIVE macro=rss_schema
 							},
 						},
 					},
-					// key name holder for attribute: name=ip_addresses, type=ARRAY_PRIMITIVE macro=rss_schema
+					// key name holder for attribute: name=icmp_ping, type=ARRAY_REFERENCE macro=rss_schema
 					// property: name=use_tunnel_for_url_dns_resolution, type=BOOLEAN macro=rss_schema
 					"use_tunnel_for_url_dns_resolution": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Use tunnel for url dns resolution.",
 					},
 					// key name holder for attribute: name=use_tunnel_for_url_dns_resolution, type=BOOLEAN macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=use_tunnel_for_url_dns_resolution, type=BOOLEAN macro=rss_schema
+			// key name holder for attribute: name=liveliness_probe, type=REFERENCE macro=rss_schema
 			// property: name=location, type=REFERENCE macro=rss_schema
 			"location": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Location.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=description, type=STRING macro=rss_schema
 					"description": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Description.",
 					},
 					// key name holder for attribute: name=description, type=STRING macro=rss_schema
 					// property: name=latitude, type=NUMBER macro=rss_schema
 					"latitude": rsschema.Float64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Latitude. Value: between -90 and 90.",
 					},
 					// key name holder for attribute: name=latitude, type=NUMBER macro=rss_schema
 					// property: name=longitude, type=NUMBER macro=rss_schema
 					"longitude": rsschema.Float64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Longitude. Value: between -180 and 180.",
 					},
 					// key name holder for attribute: name=longitude, type=NUMBER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=longitude, type=NUMBER macro=rss_schema
+			// key name holder for attribute: name=location, type=REFERENCE macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=sase_properties, type=REFERENCE macro=rss_schema
 			"sase_properties": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Sase properties.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=active, type=BOOLEAN macro=rss_schema
 					"active": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Active.",
 					},
 					// key name holder for attribute: name=active, type=BOOLEAN macro=rss_schema
 					// property: name=lqm_enabled, type=BOOLEAN macro=rss_schema
 					"lqm_enabled": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Lqm enabled.",
 					},
 					// key name holder for attribute: name=lqm_enabled, type=BOOLEAN macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=lqm_enabled, type=BOOLEAN macro=rss_schema
+			// key name holder for attribute: name=sase_properties, type=REFERENCE macro=rss_schema
 			// property: name=service_link_peers, type=REFERENCE macro=rss_schema
 			"service_link_peers": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Service link peers.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=hostnames, type=ARRAY_PRIMITIVE macro=rss_schema
 					"hostnames": rsschema.ListAttribute{
@@ -389,6 +435,8 @@ func (r *serviceEndpointResource) Schema(_ context.Context, _ resource.SchemaReq
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "Hostnames. At most 128 items.",
+						Validators:  ListMaxItems(128),
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=hostnames, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -398,18 +446,21 @@ func (r *serviceEndpointResource) Schema(_ context.Context, _ resource.SchemaReq
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "Ip addresses. At most 128 items.",
+						Validators:  ListMaxItems(128),
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=ip_addresses, type=ARRAY_PRIMITIVE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=ip_addresses, type=ARRAY_PRIMITIVE macro=rss_schema
+			// key name holder for attribute: name=service_link_peers, type=REFERENCE macro=rss_schema
 			// property: name=site_id, type=STRING macro=rss_schema
 			"site_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Site id.",
 			},
 			// key name holder for attribute: name=site_id, type=STRING macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -418,15 +469,18 @@ func (r *serviceEndpointResource) Schema(_ context.Context, _ resource.SchemaReq
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=type, type=STRING macro=rss_schema
 			"type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Type. Value: one of cg-transit, non-cg-transit, sase.",
 			},
 			// key name holder for attribute: name=type, type=STRING macro=rss_schema
 		},
@@ -789,8 +843,18 @@ func (r *serviceEndpointResource) doPost(ctx context.Context, plan *rsModelServi
 		state.Location.Description = types.StringPointerValue(ans.Location.Description)
 		// property: name=latitude, type=NUMBER macro=copy_to_state
 		state.Location.Latitude = types.Float64PointerValue(ans.Location.Latitude)
+		// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+		// value when the answer is the same number to six decimals
+		if plan.Location != nil {
+			state.Location.Latitude = Float64KeepPlanWhenNear(ans.Location.Latitude, plan.Location.Latitude)
+		}
 		// property: name=longitude, type=NUMBER macro=copy_to_state
 		state.Location.Longitude = types.Float64PointerValue(ans.Location.Longitude)
+		// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+		// value when the answer is the same number to six decimals
+		if plan.Location != nil {
+			state.Location.Longitude = Float64KeepPlanWhenNear(ans.Location.Longitude, plan.Location.Longitude)
+		}
 	}
 	// property: name=name, type=STRING macro=copy_to_state
 	state.Name = types.StringPointerValue(ans.Name)
@@ -828,6 +892,14 @@ func (r *serviceEndpointResource) doPost(ctx context.Context, plan *rsModelServi
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=type, type=STRING macro=copy_to_state
 	state.Type = types.StringPointerValue(ans.Type)
 	return true
@@ -901,7 +973,23 @@ func (r *serviceEndpointResource) doGet(ctx context.Context, state *rsModelServi
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -1020,8 +1108,18 @@ func (r *serviceEndpointResource) doGet(ctx context.Context, state *rsModelServi
 		state.Location.Description = types.StringPointerValue(ans.Location.Description)
 		// property: name=latitude, type=NUMBER macro=copy_to_state
 		state.Location.Latitude = types.Float64PointerValue(ans.Location.Latitude)
+		// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+		// value when the answer is the same number to six decimals
+		if savestate.Location != nil {
+			state.Location.Latitude = Float64KeepPlanWhenNear(ans.Location.Latitude, savestate.Location.Latitude)
+		}
 		// property: name=longitude, type=NUMBER macro=copy_to_state
 		state.Location.Longitude = types.Float64PointerValue(ans.Location.Longitude)
+		// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+		// value when the answer is the same number to six decimals
+		if savestate.Location != nil {
+			state.Location.Longitude = Float64KeepPlanWhenNear(ans.Location.Longitude, savestate.Location.Longitude)
+		}
 	}
 	// property: name=name, type=STRING macro=copy_to_state
 	state.Name = types.StringPointerValue(ans.Name)
@@ -1059,6 +1157,14 @@ func (r *serviceEndpointResource) doGet(ctx context.Context, state *rsModelServi
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=type, type=STRING macro=copy_to_state
 	state.Type = types.StringPointerValue(ans.Type)
 	return true
@@ -1137,37 +1243,37 @@ func (r *serviceEndpointResource) doPut(ctx context.Context, plan *rsModelServic
 		// copy_from_plan_or_state: body=body.Address prefix=rsModel state=state.Address plan=plan.Address properties=6
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.Address prefix=rsModel state=state.Address plan=plan.Address")
 		// property: name=city, type=STRING macro=copy_from_plan_or_state
-		if state.Address != nil {
+		if state != nil && state.Address != nil {
 			body.Address.City = ValueStringPointerFromPlanOrState(plan.Address.City, state.Address.City)
 		} else {
 			body.Address.City = StringValueOrNil(plan.Address.City)
 		}
 		// property: name=country, type=STRING macro=copy_from_plan_or_state
-		if state.Address != nil {
+		if state != nil && state.Address != nil {
 			body.Address.Country = ValueStringPointerFromPlanOrState(plan.Address.Country, state.Address.Country)
 		} else {
 			body.Address.Country = StringValueOrNil(plan.Address.Country)
 		}
 		// property: name=post_code, type=STRING macro=copy_from_plan_or_state
-		if state.Address != nil {
+		if state != nil && state.Address != nil {
 			body.Address.PostCode = ValueStringPointerFromPlanOrState(plan.Address.PostCode, state.Address.PostCode)
 		} else {
 			body.Address.PostCode = StringValueOrNil(plan.Address.PostCode)
 		}
 		// property: name=state, type=STRING macro=copy_from_plan_or_state
-		if state.Address != nil {
+		if state != nil && state.Address != nil {
 			body.Address.State = ValueStringPointerFromPlanOrState(plan.Address.State, state.Address.State)
 		} else {
 			body.Address.State = StringValueOrNil(plan.Address.State)
 		}
 		// property: name=street, type=STRING macro=copy_from_plan_or_state
-		if state.Address != nil {
+		if state != nil && state.Address != nil {
 			body.Address.Street = ValueStringPointerFromPlanOrState(plan.Address.Street, state.Address.Street)
 		} else {
 			body.Address.Street = StringValueOrNil(plan.Address.Street)
 		}
 		// property: name=street2, type=STRING macro=copy_from_plan_or_state
-		if state.Address != nil {
+		if state != nil && state.Address != nil {
 			body.Address.Street2 = ValueStringPointerFromPlanOrState(plan.Address.Street2, state.Address.Street2)
 		} else {
 			body.Address.Street2 = StringValueOrNil(plan.Address.Street2)
@@ -1217,11 +1323,11 @@ func (r *serviceEndpointResource) doPut(ctx context.Context, plan *rsModelServic
 		// copy_from_plan_or_state: body=body.LivelinessProbe prefix=rsModel state=state.LivelinessProbe plan=plan.LivelinessProbe properties=3
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.LivelinessProbe prefix=rsModel state=state.LivelinessProbe plan=plan.LivelinessProbe")
 		// property: name=http, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-		if plan.LivelinessProbe.Http == nil && (state.LivelinessProbe == nil || state.LivelinessProbe.Http == nil) {
+		if plan.LivelinessProbe.Http == nil && (!(state != nil && state.LivelinessProbe != nil) || state.LivelinessProbe.Http == nil) {
 			body.LivelinessProbe.Http = nil
-		} else if len(plan.LivelinessProbe.Http) == 0 && (state.LivelinessProbe == nil || len(state.LivelinessProbe.Http) == 0) {
+		} else if len(plan.LivelinessProbe.Http) == 0 && (!(state != nil && state.LivelinessProbe != nil) || len(state.LivelinessProbe.Http) == 0) {
 			body.LivelinessProbe.Http = []sdwan_schema.HttpProbe{}
-		} else if len(plan.LivelinessProbe.Http) != 0 || (state.LivelinessProbe != nil && len(state.LivelinessProbe.Http) != 0) {
+		} else if len(plan.LivelinessProbe.Http) != 0 || (state != nil && state.LivelinessProbe != nil && len(state.LivelinessProbe.Http) != 0) {
 			HttpToUse := plan.LivelinessProbe.Http
 			if len(plan.LivelinessProbe.Http) == 0 {
 				HttpToUse = state.LivelinessProbe.Http
@@ -1244,11 +1350,11 @@ func (r *serviceEndpointResource) doPut(ctx context.Context, plan *rsModelServic
 			}
 		}
 		// property: name=icmp_ping, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-		if plan.LivelinessProbe.IcmpPing == nil && (state.LivelinessProbe == nil || state.LivelinessProbe.IcmpPing == nil) {
+		if plan.LivelinessProbe.IcmpPing == nil && (!(state != nil && state.LivelinessProbe != nil) || state.LivelinessProbe.IcmpPing == nil) {
 			body.LivelinessProbe.IcmpPing = nil
-		} else if len(plan.LivelinessProbe.IcmpPing) == 0 && (state.LivelinessProbe == nil || len(state.LivelinessProbe.IcmpPing) == 0) {
+		} else if len(plan.LivelinessProbe.IcmpPing) == 0 && (!(state != nil && state.LivelinessProbe != nil) || len(state.LivelinessProbe.IcmpPing) == 0) {
 			body.LivelinessProbe.IcmpPing = []sdwan_schema.IcmpPingProbe{}
-		} else if len(plan.LivelinessProbe.IcmpPing) != 0 || (state.LivelinessProbe != nil && len(state.LivelinessProbe.IcmpPing) != 0) {
+		} else if len(plan.LivelinessProbe.IcmpPing) != 0 || (state != nil && state.LivelinessProbe != nil && len(state.LivelinessProbe.IcmpPing) != 0) {
 			IcmpPingToUse := plan.LivelinessProbe.IcmpPing
 			if len(plan.LivelinessProbe.IcmpPing) == 0 {
 				IcmpPingToUse = state.LivelinessProbe.IcmpPing
@@ -1269,7 +1375,7 @@ func (r *serviceEndpointResource) doPut(ctx context.Context, plan *rsModelServic
 			}
 		}
 		// property: name=use_tunnel_for_url_dns_resolution, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.LivelinessProbe != nil {
+		if state != nil && state.LivelinessProbe != nil {
 			body.LivelinessProbe.UseTunnelForUrlDnsResolution = ValueBoolPointerFromPlanOrState(plan.LivelinessProbe.UseTunnelForUrlDnsResolution, state.LivelinessProbe.UseTunnelForUrlDnsResolution)
 		} else {
 			body.LivelinessProbe.UseTunnelForUrlDnsResolution = BoolValueOrNil(plan.LivelinessProbe.UseTunnelForUrlDnsResolution)
@@ -1283,19 +1389,19 @@ func (r *serviceEndpointResource) doPut(ctx context.Context, plan *rsModelServic
 		// copy_from_plan_or_state: body=body.Location prefix=rsModel state=state.Location plan=plan.Location properties=3
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.Location prefix=rsModel state=state.Location plan=plan.Location")
 		// property: name=description, type=STRING macro=copy_from_plan_or_state
-		if state.Location != nil {
+		if state != nil && state.Location != nil {
 			body.Location.Description = ValueStringPointerFromPlanOrState(plan.Location.Description, state.Location.Description)
 		} else {
 			body.Location.Description = StringValueOrNil(plan.Location.Description)
 		}
 		// property: name=latitude, type=NUMBER macro=copy_from_plan_or_state
-		if state.Location != nil {
+		if state != nil && state.Location != nil {
 			body.Location.Latitude = ValueFloat64PointerFromPlanOrState(plan.Location.Latitude, state.Location.Latitude)
 		} else {
 			body.Location.Latitude = Float64ValueOrNil(plan.Location.Latitude)
 		}
 		// property: name=longitude, type=NUMBER macro=copy_from_plan_or_state
-		if state.Location != nil {
+		if state != nil && state.Location != nil {
 			body.Location.Longitude = ValueFloat64PointerFromPlanOrState(plan.Location.Longitude, state.Location.Longitude)
 		} else {
 			body.Location.Longitude = Float64ValueOrNil(plan.Location.Longitude)
@@ -1315,13 +1421,13 @@ func (r *serviceEndpointResource) doPut(ctx context.Context, plan *rsModelServic
 		// copy_from_plan_or_state: body=body.SaseProperties prefix=rsModel state=state.SaseProperties plan=plan.SaseProperties properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.SaseProperties prefix=rsModel state=state.SaseProperties plan=plan.SaseProperties")
 		// property: name=active, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.SaseProperties != nil {
+		if state != nil && state.SaseProperties != nil {
 			body.SaseProperties.Active = ValueBoolPointerFromPlanOrState(plan.SaseProperties.Active, state.SaseProperties.Active)
 		} else {
 			body.SaseProperties.Active = BoolValueOrNil(plan.SaseProperties.Active)
 		}
 		// property: name=lqm_enabled, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.SaseProperties != nil {
+		if state != nil && state.SaseProperties != nil {
 			body.SaseProperties.LqmEnabled = ValueBoolPointerFromPlanOrState(plan.SaseProperties.LqmEnabled, state.SaseProperties.LqmEnabled)
 		} else {
 			body.SaseProperties.LqmEnabled = BoolValueOrNil(plan.SaseProperties.LqmEnabled)
@@ -1335,9 +1441,19 @@ func (r *serviceEndpointResource) doPut(ctx context.Context, plan *rsModelServic
 		// copy_from_plan_or_state: body=body.ServiceLinkPeers prefix=rsModel state=state.ServiceLinkPeers plan=plan.ServiceLinkPeers properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.ServiceLinkPeers prefix=rsModel state=state.ServiceLinkPeers plan=plan.ServiceLinkPeers")
 		// property: name=hostnames, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.ServiceLinkPeers.Hostnames = ListStringValueOrNil(ctx, plan.ServiceLinkPeers.Hostnames)
+		if state != nil && state.ServiceLinkPeers != nil && plan.ServiceLinkPeers.Hostnames.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.ServiceLinkPeers.Hostnames = ListStringValueOrNil(ctx, state.ServiceLinkPeers.Hostnames)
+		} else {
+			body.ServiceLinkPeers.Hostnames = ListStringValueOrNil(ctx, plan.ServiceLinkPeers.Hostnames)
+		}
 		// property: name=ip_addresses, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.ServiceLinkPeers.IpAddresses = ListStringValueOrNil(ctx, plan.ServiceLinkPeers.IpAddresses)
+		if state != nil && state.ServiceLinkPeers != nil && plan.ServiceLinkPeers.IpAddresses.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.ServiceLinkPeers.IpAddresses = ListStringValueOrNil(ctx, state.ServiceLinkPeers.IpAddresses)
+		} else {
+			body.ServiceLinkPeers.IpAddresses = ListStringValueOrNil(ctx, plan.ServiceLinkPeers.IpAddresses)
+		}
 	}
 	// property: name=site_id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
@@ -1346,7 +1462,12 @@ func (r *serviceEndpointResource) doPut(ctx context.Context, plan *rsModelServic
 		body.SiteId = StringValueOrNil(plan.SiteId)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=type, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.Type = ValueStringPointerFromPlanOrState(plan.Type, state.Type)
@@ -1400,6 +1521,12 @@ func (r *serviceEndpointResource) doPut(ctx context.Context, plan *rsModelServic
 	if json_err != nil {
 		resp.Diagnostics.AddError("error in json unmarshal to ServiceEndpointV3N1 in update", json_err.Error())
 		return false
+	}
+
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
 	}
 
 	// Store the answer to state. schema=ServiceEndpointV3N1
@@ -1508,8 +1635,18 @@ func (r *serviceEndpointResource) doPut(ctx context.Context, plan *rsModelServic
 		state.Location.Description = types.StringPointerValue(ans.Location.Description)
 		// property: name=latitude, type=NUMBER macro=copy_to_state
 		state.Location.Latitude = types.Float64PointerValue(ans.Location.Latitude)
+		// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+		// value when the answer is the same number to six decimals
+		if plan.Location != nil {
+			state.Location.Latitude = Float64KeepPlanWhenNear(ans.Location.Latitude, plan.Location.Latitude)
+		}
 		// property: name=longitude, type=NUMBER macro=copy_to_state
 		state.Location.Longitude = types.Float64PointerValue(ans.Location.Longitude)
+		// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+		// value when the answer is the same number to six decimals
+		if plan.Location != nil {
+			state.Location.Longitude = Float64KeepPlanWhenNear(ans.Location.Longitude, plan.Location.Longitude)
+		}
 	}
 	// property: name=name, type=STRING macro=copy_to_state
 	state.Name = types.StringPointerValue(ans.Name)
@@ -1547,6 +1684,14 @@ func (r *serviceEndpointResource) doPut(ctx context.Context, plan *rsModelServic
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=type, type=STRING macro=copy_to_state
 	state.Type = types.StringPointerValue(ans.Type)
 	return true

@@ -34,9 +34,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &qosPolicyRuleResource{}
-	_ resource.ResourceWithConfigure   = &qosPolicyRuleResource{}
-	_ resource.ResourceWithImportState = &qosPolicyRuleResource{}
+	_ resource.Resource                   = &qosPolicyRuleResource{}
+	_ resource.ResourceWithConfigure      = &qosPolicyRuleResource{}
+	_ resource.ResourceWithImportState    = &qosPolicyRuleResource{}
+	_ resource.ResourceWithValidateConfig = &qosPolicyRuleResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -57,6 +58,12 @@ type qosPolicyRuleResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *qosPolicyRuleResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"policy_set_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *qosPolicyRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_qos_policy_rule"
@@ -65,13 +72,14 @@ func (r *qosPolicyRuleResource) Metadata(_ context.Context, req resource.Metadat
 // Schema defines the schema for this data source.
 func (r *qosPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Qos Policy Rule.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=PriorityPolicyRuleV2N2
 			// generic x_parameters is added to accomodate path parameters
@@ -80,21 +88,24 @@ func (r *qosPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=app_def_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -103,15 +114,18 @@ func (r *qosPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "App def ids. At most 256 items.",
+				Validators:  ListMaxItems(256),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=app_def_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -120,89 +134,101 @@ func (r *qosPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Dest device ids. At most 10 items.",
+				Validators:  ListMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=destination_prefixes_id, type=STRING macro=rss_schema
 			"destination_prefixes_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Destination prefixes id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
 			},
 			// key name holder for attribute: name=destination_prefixes_id, type=STRING macro=rss_schema
 			// property: name=dscp, type=REFERENCE macro=rss_schema
 			"dscp": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Dscp.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=value, type=INTEGER macro=rss_schema
 					"value": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Value. Value: between 0 and 63.",
 					},
 					// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=dscp, type=REFERENCE macro=rss_schema
 			// property: name=enabled, type=BOOLEAN macro=rss_schema
 			"enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Enabled.",
 			},
 			// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=network_context_id, type=STRING macro=rss_schema
 			"network_context_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Network context id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
 			},
 			// key name holder for attribute: name=network_context_id, type=STRING macro=rss_schema
 			// property: name=order_number, type=INTEGER macro=rss_schema
 			"order_number": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Order number. Value: between 1 and 65535.",
 			},
 			// key name holder for attribute: name=order_number, type=INTEGER macro=rss_schema
 			// property: name=priority_number, type=INTEGER macro=rss_schema
 			"priority_number": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Priority number. Value: between 1 and 4.",
 			},
 			// key name holder for attribute: name=priority_number, type=INTEGER macro=rss_schema
 			// property: name=source_prefixes_id, type=STRING macro=rss_schema
 			"source_prefixes_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Source prefixes id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
 			},
 			// key name holder for attribute: name=source_prefixes_id, type=STRING macro=rss_schema
 			// property: name=src_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -211,6 +237,8 @@ func (r *qosPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Src device ids. At most 256 items.",
+				Validators:  ListMaxItems(256),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=src_device_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -220,15 +248,18 @@ func (r *qosPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=user_or_group, type=REFERENCE macro=rss_schema
 			"user_or_group": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "User or group.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=user_group_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 					"user_group_ids": rsschema.ListAttribute{
@@ -236,6 +267,7 @@ func (r *qosPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaReque
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "User group ids.",
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=user_group_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -245,12 +277,13 @@ func (r *qosPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaReque
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "User ids.",
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=user_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=user_ids, type=ARRAY_PRIMITIVE macro=rss_schema
+			// key name holder for attribute: name=user_or_group, type=REFERENCE macro=rss_schema
 		},
 	}
 }
@@ -482,6 +515,14 @@ func (r *qosPolicyRuleResource) doPost(ctx context.Context, plan *rsModelPriorit
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=user_or_group, type=REFERENCE macro=copy_to_state
 	if ans.UserOrGroup == nil {
 		state.UserOrGroup = nil
@@ -569,7 +610,23 @@ func (r *qosPolicyRuleResource) doGet(ctx context.Context, state *rsModelPriorit
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -633,6 +690,14 @@ func (r *qosPolicyRuleResource) doGet(ctx context.Context, state *rsModelPriorit
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=user_or_group, type=REFERENCE macro=copy_to_state
 	if ans.UserOrGroup == nil {
 		state.UserOrGroup = nil
@@ -718,7 +783,12 @@ func (r *qosPolicyRuleResource) doPut(ctx context.Context, plan *rsModelPriority
 		body.Schema = Int64ValueOrNil(plan.Schema)
 	}
 	// property: name=app_def_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.AppDefIds = ListStringValueOrNil(ctx, plan.AppDefIds)
+	if state != nil && plan.AppDefIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.AppDefIds = ListStringValueOrNil(ctx, state.AppDefIds)
+	} else {
+		body.AppDefIds = ListStringValueOrNil(ctx, plan.AppDefIds)
+	}
 	// property: name=description, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.Description = ValueStringPointerFromPlanOrState(plan.Description, state.Description)
@@ -726,7 +796,12 @@ func (r *qosPolicyRuleResource) doPut(ctx context.Context, plan *rsModelPriority
 		body.Description = StringValueOrNil(plan.Description)
 	}
 	// property: name=dest_device_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.DestDeviceIds = ListStringValueOrNil(ctx, plan.DestDeviceIds)
+	if state != nil && plan.DestDeviceIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.DestDeviceIds = ListStringValueOrNil(ctx, state.DestDeviceIds)
+	} else {
+		body.DestDeviceIds = ListStringValueOrNil(ctx, plan.DestDeviceIds)
+	}
 	// property: name=destination_prefixes_id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.DestinationPrefixesId = ValueStringPointerFromPlanOrState(plan.DestinationPrefixesId, state.DestinationPrefixesId)
@@ -741,7 +816,7 @@ func (r *qosPolicyRuleResource) doPut(ctx context.Context, plan *rsModelPriority
 		// copy_from_plan_or_state: body=body.Dscp prefix=rsModel state=state.Dscp plan=plan.Dscp properties=1
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.Dscp prefix=rsModel state=state.Dscp plan=plan.Dscp")
 		// property: name=value, type=INTEGER macro=copy_from_plan_or_state
-		if state.Dscp != nil {
+		if state != nil && state.Dscp != nil {
 			body.Dscp.Value = ValueInt64PointerFromPlanOrState(plan.Dscp.Value, state.Dscp.Value)
 		} else {
 			body.Dscp.Value = Int64ValueOrNil(plan.Dscp.Value)
@@ -790,9 +865,19 @@ func (r *qosPolicyRuleResource) doPut(ctx context.Context, plan *rsModelPriority
 		body.SourcePrefixesId = StringValueOrNil(plan.SourcePrefixesId)
 	}
 	// property: name=src_device_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.SrcDeviceIds = ListStringValueOrNil(ctx, plan.SrcDeviceIds)
+	if state != nil && plan.SrcDeviceIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.SrcDeviceIds = ListStringValueOrNil(ctx, state.SrcDeviceIds)
+	} else {
+		body.SrcDeviceIds = ListStringValueOrNil(ctx, plan.SrcDeviceIds)
+	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=user_or_group, type=REFERENCE macro=copy_from_plan_or_state
 	if plan.UserOrGroup == nil {
 		body.UserOrGroup = nil
@@ -801,9 +886,19 @@ func (r *qosPolicyRuleResource) doPut(ctx context.Context, plan *rsModelPriority
 		// copy_from_plan_or_state: body=body.UserOrGroup prefix=rsModel state=state.UserOrGroup plan=plan.UserOrGroup properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.UserOrGroup prefix=rsModel state=state.UserOrGroup plan=plan.UserOrGroup")
 		// property: name=user_group_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.UserOrGroup.UserGroupIds = ListStringValueOrNil(ctx, plan.UserOrGroup.UserGroupIds)
+		if state != nil && state.UserOrGroup != nil && plan.UserOrGroup.UserGroupIds.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.UserOrGroup.UserGroupIds = ListStringValueOrNil(ctx, state.UserOrGroup.UserGroupIds)
+		} else {
+			body.UserOrGroup.UserGroupIds = ListStringValueOrNil(ctx, plan.UserOrGroup.UserGroupIds)
+		}
 		// property: name=user_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.UserOrGroup.UserIds = ListStringValueOrNil(ctx, plan.UserOrGroup.UserIds)
+		if state != nil && state.UserOrGroup != nil && plan.UserOrGroup.UserIds.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.UserOrGroup.UserIds = ListStringValueOrNil(ctx, state.UserOrGroup.UserIds)
+		} else {
+			body.UserOrGroup.UserIds = ListStringValueOrNil(ctx, plan.UserOrGroup.UserIds)
+		}
 	}
 
 	// convert body to map
@@ -852,6 +947,12 @@ func (r *qosPolicyRuleResource) doPut(ctx context.Context, plan *rsModelPriority
 	if json_err != nil {
 		resp.Diagnostics.AddError("error in json unmarshal to PriorityPolicyRuleV2N2 in update", json_err.Error())
 		return false
+	}
+
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
 	}
 
 	// Store the answer to state. schema=PriorityPolicyRuleV2N2
@@ -905,6 +1006,14 @@ func (r *qosPolicyRuleResource) doPut(ctx context.Context, plan *rsModelPriority
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=user_or_group, type=REFERENCE macro=copy_to_state
 	if ans.UserOrGroup == nil {
 		state.UserOrGroup = nil

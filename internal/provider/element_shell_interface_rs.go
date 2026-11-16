@@ -32,6 +32,7 @@ import (
 // | CellularInterfaceConfig HasID=false
 // | PortChannelConfig HasID=false
 // | PassiveMode HasID=false
+// | PPKConfig HasID=false
 // | IKEV1Params HasID=false
 // | IPSECAuthenticationV1 HasID=false
 // | IPSECConfigV1 HasID=false
@@ -49,7 +50,7 @@ import (
 // | StormControlConfig HasID=false
 // | SwitchPortConfig HasID=false
 // | MulticastIgmpStaticJoin HasID=false
-// | MulticastInterfaceConfig HasID=false
+// | MulticastInterfaceConfigV4N12 HasID=false
 // | StaticARPConfig HasID=false
 // | SecondaryIPConfig HasID=false
 // | IPv4Range HasID=false
@@ -59,7 +60,6 @@ import (
 // | EthernetPort HasID=false
 // | DHCPRelayOption82 HasID=false
 // | DHCPRelay HasID=false
-// | Ipv4Pppoe HasID=false
 // | Ipv4Dhcp HasID=false
 // | Ipv4Static HasID=false
 // | Ipv4Config HasID=false
@@ -69,9 +69,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &elementShellInterfaceResource{}
-	_ resource.ResourceWithConfigure   = &elementShellInterfaceResource{}
-	_ resource.ResourceWithImportState = &elementShellInterfaceResource{}
+	_ resource.Resource                   = &elementShellInterfaceResource{}
+	_ resource.ResourceWithConfigure      = &elementShellInterfaceResource{}
+	_ resource.ResourceWithImportState    = &elementShellInterfaceResource{}
+	_ resource.ResourceWithValidateConfig = &elementShellInterfaceResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -92,6 +93,12 @@ type elementShellInterfaceResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *elementShellInterfaceResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id", "element_shell_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *elementShellInterfaceResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_element_shell_interface"
@@ -100,13 +107,14 @@ func (r *elementShellInterfaceResource) Metadata(_ context.Context, req resource
 // Schema defines the schema for this data source.
 func (r *elementShellInterfaceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Element Shell Interface.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=InterfaceScreenV4N21
 			// generic x_parameters is added to accomodate path parameters
@@ -115,462 +123,528 @@ func (r *elementShellInterfaceResource) Schema(_ context.Context, _ resource.Sch
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=admin_up, type=BOOLEAN macro=rss_schema
 			"admin_up": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Admin up.",
 			},
 			// key name holder for attribute: name=admin_up, type=BOOLEAN macro=rss_schema
 			// property: name=attached_lan_networks, type=ARRAY_REFERENCE macro=rss_schema
 			"attached_lan_networks": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Attached lan networks.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=lan_network_id, type=STRING macro=rss_schema
 						"lan_network_id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Lan network id.",
 						},
 						// key name holder for attribute: name=lan_network_id, type=STRING macro=rss_schema
 						// property: name=vlan_id, type=INTEGER macro=rss_schema
 						"vlan_id": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Vlan id. Value: between 0 and 4095.",
 						},
 						// key name holder for attribute: name=vlan_id, type=INTEGER macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=vlan_id, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=attached_lan_networks, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=authentication_config, type=REFERENCE macro=rss_schema
 			"authentication_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Authentication config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=fallback_retry_count, type=INTEGER macro=rss_schema
 					"fallback_retry_count": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Fallback retry count.",
 					},
 					// key name holder for attribute: name=fallback_retry_count, type=INTEGER macro=rss_schema
 					// property: name=mode, type=STRING macro=rss_schema
 					"mode": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Mode. Value: one of none, dot1x, macauth, dot1x-to-macauth-fallback.",
 					},
 					// key name holder for attribute: name=mode, type=STRING macro=rss_schema
 					// property: name=reauthentication_timeout, type=INTEGER macro=rss_schema
 					"reauthentication_timeout": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Reauthentication timeout.",
 					},
 					// key name holder for attribute: name=reauthentication_timeout, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=reauthentication_timeout, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=authentication_config, type=REFERENCE macro=rss_schema
 			// property: name=bound_interfaces, type=ARRAY_PRIMITIVE macro=rss_schema
 			"bound_interfaces": rsschema.ListAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Bound interfaces.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=bound_interfaces, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=bypass_pair, type=REFERENCE macro=rss_schema
 			"bypass_pair": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Bypass pair.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=lan, type=STRING macro=rss_schema
 					"lan": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Lan.",
 					},
 					// key name holder for attribute: name=lan, type=STRING macro=rss_schema
 					// property: name=lan_state_propagation, type=BOOLEAN macro=rss_schema
 					"lan_state_propagation": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Lan state propagation.",
 					},
 					// key name holder for attribute: name=lan_state_propagation, type=BOOLEAN macro=rss_schema
 					// property: name=use_relay, type=BOOLEAN macro=rss_schema
 					"use_relay": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Use relay.",
 					},
 					// key name holder for attribute: name=use_relay, type=BOOLEAN macro=rss_schema
 					// property: name=wan, type=STRING macro=rss_schema
 					"wan": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Wan.",
 					},
 					// key name holder for attribute: name=wan, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=wan, type=STRING macro=rss_schema
+			// key name holder for attribute: name=bypass_pair, type=REFERENCE macro=rss_schema
 			// property: name=cellular_config, type=REFERENCE macro=rss_schema
 			"cellular_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Cellular config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=apn_config, type=REFERENCE macro=rss_schema
 					"apn_config": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Apn config.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=apn, type=STRING macro=rss_schema
 							"apn": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Apn. Value: at most 100 characters.",
 							},
 							// key name holder for attribute: name=apn, type=STRING macro=rss_schema
 							// property: name=authentication, type=STRING macro=rss_schema
 							"authentication": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Authentication. Value: one of none, pap, chap, pap_or_chap.",
 							},
 							// key name holder for attribute: name=authentication, type=STRING macro=rss_schema
 							// property: name=clear_password, type=BOOLEAN macro=rss_schema
 							"clear_password": rsschema.BoolAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Clear password.",
 							},
 							// key name holder for attribute: name=clear_password, type=BOOLEAN macro=rss_schema
 							// property: name=password, type=STRING macro=rss_schema
 							"password": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: true,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   true,
+								Description: "Password.",
 							},
 							// key name holder for attribute: name=password, type=STRING macro=rss_schema
 							"password_internal_key_name": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  true,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    true,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Internal key name for the sensitive attribute password, managed automatically by the provider.",
 							},
 							// property: name=password_encrypted, type=STRING macro=rss_schema
 							"password_encrypted": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: true,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   true,
+								Description: "Password encrypted.",
 							},
 							// key name holder for attribute: name=password_encrypted, type=STRING macro=rss_schema
 							"password_encrypted_internal_key_name": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  true,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    true,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Internal key name for the sensitive attribute password_encrypted, managed automatically by the provider.",
 							},
 							// property: name=user_name, type=STRING macro=rss_schema
 							"user_name": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "User name. Value: at most 100 characters.",
 							},
 							// key name holder for attribute: name=user_name, type=STRING macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=user_name, type=STRING macro=rss_schema
+					// key name holder for attribute: name=apn_config, type=REFERENCE macro=rss_schema
 					// property: name=apnprofile_id, type=STRING macro=rss_schema
 					"apnprofile_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Apnprofile id.",
 					},
 					// key name holder for attribute: name=apnprofile_id, type=STRING macro=rss_schema
 					// property: name=auto_apn, type=BOOLEAN macro=rss_schema
 					"auto_apn": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Auto apn.",
 					},
 					// key name holder for attribute: name=auto_apn, type=BOOLEAN macro=rss_schema
+					// property: name=ip_address_type, type=STRING macro=rss_schema
+					"ip_address_type": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Ip address type. Value: one of ipv4, ipv6, ipv4v6.",
+					},
+					// key name holder for attribute: name=ip_address_type, type=STRING macro=rss_schema
 					// property: name=parent_module_id, type=STRING macro=rss_schema
 					"parent_module_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Parent module id.",
 					},
 					// key name holder for attribute: name=parent_module_id, type=STRING macro=rss_schema
 					// property: name=parent_sim_slot_number, type=INTEGER macro=rss_schema
 					"parent_sim_slot_number": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Parent sim slot number.",
 					},
 					// key name holder for attribute: name=parent_sim_slot_number, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=parent_sim_slot_number, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=cellular_config, type=REFERENCE macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=devicemgmt_policysetstack_id, type=STRING macro=rss_schema
 			"devicemgmt_policysetstack_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Devicemgmt policysetstack id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
 			},
 			// key name holder for attribute: name=devicemgmt_policysetstack_id, type=STRING macro=rss_schema
 			// property: name=dhcp_relay, type=REFERENCE macro=rss_schema
 			"dhcp_relay": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Dhcp relay.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=enabled, type=BOOLEAN macro=rss_schema
 					"enabled": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Enabled.",
 					},
 					// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 					// property: name=option_82, type=REFERENCE macro=rss_schema
 					"option_82": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Option 82.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=circuit_id, type=STRING macro=rss_schema
 							"circuit_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Circuit id. Value: at most 255 characters.",
 							},
 							// key name holder for attribute: name=circuit_id, type=STRING macro=rss_schema
 							// property: name=enabled, type=BOOLEAN macro=rss_schema
 							"enabled": rsschema.BoolAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Enabled.",
 							},
 							// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 							// property: name=reforwarding_policy, type=STRING macro=rss_schema
 							"reforwarding_policy": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Reforwarding policy. Value: one of replace, keep, append, drop.",
 							},
 							// key name holder for attribute: name=reforwarding_policy, type=STRING macro=rss_schema
 							// property: name=remote_id, type=STRING macro=rss_schema
 							"remote_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Remote id. Value: at most 255 characters.",
 							},
 							// key name holder for attribute: name=remote_id, type=STRING macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=remote_id, type=STRING macro=rss_schema
+					// key name holder for attribute: name=option_82, type=REFERENCE macro=rss_schema
 					// property: name=server_ips, type=ARRAY_PRIMITIVE macro=rss_schema
 					"server_ips": rsschema.ListAttribute{
 						Required:    false,
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "Server ips. At most 16 items.",
+						Validators:  ListMaxItems(16),
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=server_ips, type=ARRAY_PRIMITIVE macro=rss_schema
 					// property: name=source_interface, type=STRING macro=rss_schema
 					"source_interface": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Source interface.",
 					},
 					// key name holder for attribute: name=source_interface, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=source_interface, type=STRING macro=rss_schema
+			// key name holder for attribute: name=dhcp_relay, type=REFERENCE macro=rss_schema
 			// property: name=directed_broadcast, type=BOOLEAN macro=rss_schema
 			"directed_broadcast": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Directed broadcast. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=directed_broadcast, type=BOOLEAN macro=rss_schema
 			// property: name=ethernet_port, type=REFERENCE macro=rss_schema
 			"ethernet_port": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ethernet port.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=full_duplex, type=BOOLEAN macro=rss_schema
 					"full_duplex": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  true,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Full duplex. Filled in by the server when it is not set.",
 					},
 					// key name holder for attribute: name=full_duplex, type=BOOLEAN macro=rss_schema
 					// property: name=speed, type=INTEGER macro=rss_schema
 					"speed": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  true,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Speed. Filled in by the server when it is not set.",
 					},
 					// key name holder for attribute: name=speed, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=speed, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=ethernet_port, type=REFERENCE macro=rss_schema
 			// property: name=fec_mode, type=STRING macro=rss_schema
 			"fec_mode": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Fec mode. Value: one of auto, rs_fec, fc_fec, none.",
 			},
 			// key name holder for attribute: name=fec_mode, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=interface_profile_id, type=STRING macro=rss_schema
 			"interface_profile_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Interface profile id.",
 			},
 			// key name holder for attribute: name=interface_profile_id, type=STRING macro=rss_schema
 			// property: name=ipfixcollectorcontext_id, type=STRING macro=rss_schema
 			"ipfixcollectorcontext_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ipfixcollectorcontext id.",
 			},
 			// key name holder for attribute: name=ipfixcollectorcontext_id, type=STRING macro=rss_schema
 			// property: name=ipfixfiltercontext_id, type=STRING macro=rss_schema
 			"ipfixfiltercontext_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ipfixfiltercontext id.",
 			},
 			// key name holder for attribute: name=ipfixfiltercontext_id, type=STRING macro=rss_schema
 			// property: name=ipv4_config, type=REFERENCE macro=rss_schema
 			"ipv4_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ipv4 config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=dhcp_config, type=REFERENCE macro=rss_schema
 					"dhcp_config": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Dhcp config.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=client_id, type=STRING macro=rss_schema
 							"client_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Client id.",
 							},
 							// key name holder for attribute: name=client_id, type=STRING macro=rss_schema
 							// property: name=hostname, type=STRING macro=rss_schema
 							"hostname": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Hostname.",
 							},
 							// key name holder for attribute: name=hostname, type=STRING macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=hostname, type=STRING macro=rss_schema
+					// key name holder for attribute: name=dhcp_config, type=REFERENCE macro=rss_schema
 					// property: name=dns_v4_config, type=REFERENCE macro=rss_schema
 					"dns_v4_config": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Dns v4 config.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=name_servers, type=ARRAY_PRIMITIVE macro=rss_schema
 							"name_servers": rsschema.ListAttribute{
@@ -578,6 +652,8 @@ func (r *elementShellInterfaceResource) Schema(_ context.Context, _ resource.Sch
 								Computed:    false,
 								Optional:    true,
 								Sensitive:   false,
+								Description: "Name servers. At most 3 items.",
+								Validators:  ListMaxItems(3),
 								ElementType: types.StringType,
 							},
 							// key name holder for attribute: name=name_servers, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -587,142 +663,120 @@ func (r *elementShellInterfaceResource) Schema(_ context.Context, _ resource.Sch
 								Computed:    false,
 								Optional:    true,
 								Sensitive:   false,
+								Description: "Search.",
 								ElementType: types.StringType,
 							},
 							// key name holder for attribute: name=search, type=ARRAY_PRIMITIVE macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=search, type=ARRAY_PRIMITIVE macro=rss_schema
-					// property: name=pppoe_config, type=REFERENCE macro=rss_schema
-					"pppoe_config": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
-						Attributes: map[string]rsschema.Attribute{
-							// property: name=chap_passwd, type=STRING macro=rss_schema
-							"chap_passwd": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=chap_passwd, type=STRING macro=rss_schema
-							// property: name=chap_user, type=STRING macro=rss_schema
-							"chap_user": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=chap_user, type=STRING macro=rss_schema
-							// property: name=set_route, type=BOOLEAN macro=rss_schema
-							"set_route": rsschema.BoolAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=set_route, type=BOOLEAN macro=rss_schema
-						},
-					},
-					// key name holder for attribute: name=set_route, type=BOOLEAN macro=rss_schema
+					// key name holder for attribute: name=dns_v4_config, type=REFERENCE macro=rss_schema
 					// property: name=routes, type=ARRAY_REFERENCE macro=rss_schema
 					"routes": rsschema.ListNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Routes.",
 						NestedObject: rsschema.NestedAttributeObject{
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=destination, type=STRING macro=rss_schema
 								"destination": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Destination.",
 								},
 								// key name holder for attribute: name=destination, type=STRING macro=rss_schema
 								// property: name=via, type=STRING macro=rss_schema
 								"via": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Via.",
 								},
 								// key name holder for attribute: name=via, type=STRING macro=rss_schema
 							},
 						},
 					},
-					// key name holder for attribute: name=via, type=STRING macro=rss_schema
+					// key name holder for attribute: name=routes, type=ARRAY_REFERENCE macro=rss_schema
 					// property: name=static_config, type=REFERENCE macro=rss_schema
 					"static_config": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Static config.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=address, type=STRING macro=rss_schema
 							"address": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Address.",
 							},
 							// key name holder for attribute: name=address, type=STRING macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=address, type=STRING macro=rss_schema
+					// key name holder for attribute: name=static_config, type=REFERENCE macro=rss_schema
 					// property: name=type, type=STRING macro=rss_schema
 					"type": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Type.",
 					},
 					// key name holder for attribute: name=type, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=type, type=STRING macro=rss_schema
+			// key name holder for attribute: name=ipv4_config, type=REFERENCE macro=rss_schema
 			// property: name=ipv6_config, type=REFERENCE macro=rss_schema
 			"ipv6_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ipv6 config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=dhcp_config, type=REFERENCE macro=rss_schema
 					"dhcp_config": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Dhcp config.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=client_id, type=STRING macro=rss_schema
 							"client_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Client id.",
 							},
 							// key name holder for attribute: name=client_id, type=STRING macro=rss_schema
 							// property: name=hostname, type=STRING macro=rss_schema
 							"hostname": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Hostname.",
 							},
 							// key name holder for attribute: name=hostname, type=STRING macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=hostname, type=STRING macro=rss_schema
+					// key name holder for attribute: name=dhcp_config, type=REFERENCE macro=rss_schema
 					// property: name=dns_v6_config, type=REFERENCE macro=rss_schema
 					"dns_v6_config": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Dns v6 config.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=name_servers, type=ARRAY_PRIMITIVE macro=rss_schema
 							"name_servers": rsschema.ListAttribute{
@@ -730,6 +784,8 @@ func (r *elementShellInterfaceResource) Schema(_ context.Context, _ resource.Sch
 								Computed:    false,
 								Optional:    true,
 								Sensitive:   false,
+								Description: "Name servers. At most 3 items.",
+								Validators:  ListMaxItems(3),
 								ElementType: types.StringType,
 							},
 							// key name holder for attribute: name=name_servers, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -739,829 +795,1060 @@ func (r *elementShellInterfaceResource) Schema(_ context.Context, _ resource.Sch
 								Computed:    false,
 								Optional:    true,
 								Sensitive:   false,
+								Description: "Search.",
 								ElementType: types.StringType,
 							},
 							// key name holder for attribute: name=search, type=ARRAY_PRIMITIVE macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=search, type=ARRAY_PRIMITIVE macro=rss_schema
+					// key name holder for attribute: name=dns_v6_config, type=REFERENCE macro=rss_schema
 					// property: name=routes, type=ARRAY_REFERENCE macro=rss_schema
 					"routes": rsschema.ListNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Routes.",
 						NestedObject: rsschema.NestedAttributeObject{
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=destination, type=STRING macro=rss_schema
 								"destination": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Destination.",
 								},
 								// key name holder for attribute: name=destination, type=STRING macro=rss_schema
 								// property: name=via, type=STRING macro=rss_schema
 								"via": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Via.",
 								},
 								// key name holder for attribute: name=via, type=STRING macro=rss_schema
 							},
 						},
 					},
-					// key name holder for attribute: name=via, type=STRING macro=rss_schema
+					// key name holder for attribute: name=routes, type=ARRAY_REFERENCE macro=rss_schema
 					// property: name=static_config, type=REFERENCE macro=rss_schema
 					"static_config": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Static config.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=address, type=STRING macro=rss_schema
 							"address": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Address.",
 							},
 							// key name holder for attribute: name=address, type=STRING macro=rss_schema
 							// property: name=enable_prefix_distribution, type=BOOLEAN macro=rss_schema
 							"enable_prefix_distribution": rsschema.BoolAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Enable prefix distribution.",
 							},
 							// key name holder for attribute: name=enable_prefix_distribution, type=BOOLEAN macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=enable_prefix_distribution, type=BOOLEAN macro=rss_schema
+					// key name holder for attribute: name=static_config, type=REFERENCE macro=rss_schema
 					// property: name=type, type=STRING macro=rss_schema
 					"type": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Type.",
 					},
 					// key name holder for attribute: name=type, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=type, type=STRING macro=rss_schema
+			// key name holder for attribute: name=ipv6_config, type=REFERENCE macro=rss_schema
 			// property: name=lldp_enabled, type=BOOLEAN macro=rss_schema
 			"lldp_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Lldp enabled. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=lldp_enabled, type=BOOLEAN macro=rss_schema
 			// property: name=loopback_config, type=REFERENCE macro=rss_schema
 			"loopback_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Loopback config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=binding_interface_id, type=STRING macro=rss_schema
 					"binding_interface_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Binding interface id.",
 					},
 					// key name holder for attribute: name=binding_interface_id, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=binding_interface_id, type=STRING macro=rss_schema
+			// key name holder for attribute: name=loopback_config, type=REFERENCE macro=rss_schema
 			// property: name=mac_address, type=STRING macro=rss_schema
 			"mac_address": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Mac address. Value: matching `([0-9a-f]{2}[:]){5}([0-9a-f]{2})`.",
 			},
 			// key name holder for attribute: name=mac_address, type=STRING macro=rss_schema
 			// property: name=mtu, type=INTEGER macro=rss_schema
 			"mtu": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Mtu. Value: between 0 and 9216. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=mtu, type=INTEGER macro=rss_schema
 			// property: name=multicast_config, type=REFERENCE macro=rss_schema
 			"multicast_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Multicast config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=dr_priority, type=INTEGER macro=rss_schema
 					"dr_priority": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Dr priority.",
 					},
 					// key name holder for attribute: name=dr_priority, type=INTEGER macro=rss_schema
 					// property: name=igmp_static_joins, type=ARRAY_REFERENCE macro=rss_schema
 					"igmp_static_joins": rsschema.ListNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Igmp static joins.",
 						NestedObject: rsschema.NestedAttributeObject{
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=igmp_static_grp_ipv4, type=STRING macro=rss_schema
 								"igmp_static_grp_ipv4": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Igmp static grp ipv4.",
 								},
 								// key name holder for attribute: name=igmp_static_grp_ipv4, type=STRING macro=rss_schema
 								// property: name=igmp_static_src_ipv4, type=STRING macro=rss_schema
 								"igmp_static_src_ipv4": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Igmp static src ipv4.",
 								},
 								// key name holder for attribute: name=igmp_static_src_ipv4, type=STRING macro=rss_schema
 							},
 						},
 					},
-					// key name holder for attribute: name=igmp_static_src_ipv4, type=STRING macro=rss_schema
+					// key name holder for attribute: name=igmp_static_joins, type=ARRAY_REFERENCE macro=rss_schema
 					// property: name=igmp_version, type=STRING macro=rss_schema
 					"igmp_version": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Igmp version. Value: one of IGMPV2, IGMPV3.",
 					},
 					// key name holder for attribute: name=igmp_version, type=STRING macro=rss_schema
 					// property: name=multicast_enabled, type=BOOLEAN macro=rss_schema
 					"multicast_enabled": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Multicast enabled.",
 					},
 					// key name holder for attribute: name=multicast_enabled, type=BOOLEAN macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=multicast_enabled, type=BOOLEAN macro=rss_schema
+			// key name holder for attribute: name=multicast_config, type=REFERENCE macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=nat_address, type=STRING macro=rss_schema
 			"nat_address": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Nat address.",
 			},
 			// key name holder for attribute: name=nat_address, type=STRING macro=rss_schema
 			// property: name=nat_address_v6, type=STRING macro=rss_schema
 			"nat_address_v6": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Nat address v6.",
 			},
 			// key name holder for attribute: name=nat_address_v6, type=STRING macro=rss_schema
 			// property: name=nat_pools, type=ARRAY_REFERENCE macro=rss_schema
 			"nat_pools": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Nat pools.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=ipv4_ranges, type=ARRAY_REFERENCE macro=rss_schema
 						"ipv4_ranges": rsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Ipv4 ranges. At most 4 items. At least 1 items.",
+							Validators:  ListMaxItems(4),
 							NestedObject: rsschema.NestedAttributeObject{
 								Attributes: map[string]rsschema.Attribute{
 									// property: name=end, type=STRING macro=rss_schema
 									"end": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "End.",
 									},
 									// key name holder for attribute: name=end, type=STRING macro=rss_schema
 									// property: name=start, type=STRING macro=rss_schema
 									"start": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Start.",
 									},
 									// key name holder for attribute: name=start, type=STRING macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=start, type=STRING macro=rss_schema
+						// key name holder for attribute: name=ipv4_ranges, type=ARRAY_REFERENCE macro=rss_schema
 						// property: name=nat_pool_id, type=STRING macro=rss_schema
 						"nat_pool_id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Nat pool id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
 						},
 						// key name holder for attribute: name=nat_pool_id, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=nat_pool_id, type=STRING macro=rss_schema
+			// key name holder for attribute: name=nat_pools, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=nat_port, type=INTEGER macro=rss_schema
 			"nat_port": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Nat port. Value: between 0 and 65535. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=nat_port, type=INTEGER macro=rss_schema
 			// property: name=nat_port_v6, type=INTEGER macro=rss_schema
 			"nat_port_v6": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Nat port v6. Value: between 0 and 65535. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=nat_port_v6, type=INTEGER macro=rss_schema
 			// property: name=nat_zone_id, type=STRING macro=rss_schema
 			"nat_zone_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Nat zone id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
 			},
 			// key name holder for attribute: name=nat_zone_id, type=STRING macro=rss_schema
 			// property: name=network_context_id, type=STRING macro=rss_schema
 			"network_context_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Network context id.",
 			},
 			// key name holder for attribute: name=network_context_id, type=STRING macro=rss_schema
 			// property: name=parent, type=STRING macro=rss_schema
 			"parent": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Parent.",
 			},
 			// key name holder for attribute: name=parent, type=STRING macro=rss_schema
 			// property: name=peer_bypasspair_wan_port_type, type=STRING macro=rss_schema
 			"peer_bypasspair_wan_port_type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Peer bypasspair wan port type. Value: one of none, cellular. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=peer_bypasspair_wan_port_type, type=STRING macro=rss_schema
 			// property: name=poe_enabled, type=BOOLEAN macro=rss_schema
 			"poe_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Poe enabled. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=poe_enabled, type=BOOLEAN macro=rss_schema
 			// property: name=port_channel_config, type=REFERENCE macro=rss_schema
 			"port_channel_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Port channel config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=lacp_enabled, type=BOOLEAN macro=rss_schema
 					"lacp_enabled": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Lacp enabled.",
 					},
 					// key name holder for attribute: name=lacp_enabled, type=BOOLEAN macro=rss_schema
 					// property: name=transmission_mode, type=STRING macro=rss_schema
 					"transmission_mode": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Transmission mode. Value: one of Slow, Fast.",
 					},
 					// key name holder for attribute: name=transmission_mode, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=transmission_mode, type=STRING macro=rss_schema
+			// key name holder for attribute: name=port_channel_config, type=REFERENCE macro=rss_schema
 			// property: name=power_usage_threshold, type=INTEGER macro=rss_schema
 			"power_usage_threshold": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Power usage threshold. Value: between 50 and 100. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=power_usage_threshold, type=INTEGER macro=rss_schema
 			// property: name=pppoe_config, type=REFERENCE macro=rss_schema
 			"pppoe_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Pppoe config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=host_uniq, type=STRING macro=rss_schema
 					"host_uniq": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Host uniq.",
 					},
 					// key name holder for attribute: name=host_uniq, type=STRING macro=rss_schema
 					// property: name=ip_address_type, type=STRING macro=rss_schema
 					"ip_address_type": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Ip address type.",
 					},
 					// key name holder for attribute: name=ip_address_type, type=STRING macro=rss_schema
 					// property: name=password, type=STRING macro=rss_schema
 					"password": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: true,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Password.",
 					},
 					// key name holder for attribute: name=password, type=STRING macro=rss_schema
 					"password_internal_key_name": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  true,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute password, managed automatically by the provider.",
 					},
 					// property: name=reconnection_delay, type=INTEGER macro=rss_schema
 					"reconnection_delay": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Reconnection delay.",
 					},
 					// key name holder for attribute: name=reconnection_delay, type=INTEGER macro=rss_schema
 					// property: name=service_name, type=STRING macro=rss_schema
 					"service_name": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Service name.",
 					},
 					// key name holder for attribute: name=service_name, type=STRING macro=rss_schema
 					// property: name=username, type=STRING macro=rss_schema
 					"username": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Username.",
 					},
 					// key name holder for attribute: name=username, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=username, type=STRING macro=rss_schema
+			// key name holder for attribute: name=pppoe_config, type=REFERENCE macro=rss_schema
 			// property: name=scope, type=STRING macro=rss_schema
 			"scope": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Scope. Value: one of global, local.",
 			},
 			// key name holder for attribute: name=scope, type=STRING macro=rss_schema
 			// property: name=secondary_ip_configs, type=ARRAY_REFERENCE macro=rss_schema
 			"secondary_ip_configs": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Secondary ip configs.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=ipv4_address, type=STRING macro=rss_schema
 						"ipv4_address": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Ipv4 address.",
 						},
 						// key name holder for attribute: name=ipv4_address, type=STRING macro=rss_schema
 						// property: name=scope, type=STRING macro=rss_schema
 						"scope": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Scope.",
 						},
 						// key name holder for attribute: name=scope, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=scope, type=STRING macro=rss_schema
+			// key name holder for attribute: name=secondary_ip_configs, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=service_link_config, type=REFERENCE macro=rss_schema
 			"service_link_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Service link config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=gre_config, type=REFERENCE macro=rss_schema
 					"gre_config": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Gre config.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=csum, type=BOOLEAN macro=rss_schema
 							"csum": rsschema.BoolAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Csum.",
 							},
 							// key name holder for attribute: name=csum, type=BOOLEAN macro=rss_schema
 							// property: name=keepalive_enable, type=BOOLEAN macro=rss_schema
 							"keepalive_enable": rsschema.BoolAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Keepalive enable.",
 							},
 							// key name holder for attribute: name=keepalive_enable, type=BOOLEAN macro=rss_schema
 							// property: name=keepalive_fail_count, type=INTEGER macro=rss_schema
 							"keepalive_fail_count": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Keepalive fail count. Value: between 1 and 10.",
 							},
 							// key name holder for attribute: name=keepalive_fail_count, type=INTEGER macro=rss_schema
 							// property: name=keepalive_interval, type=INTEGER macro=rss_schema
 							"keepalive_interval": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Keepalive interval. Value: between 3 and 30.",
 							},
 							// key name holder for attribute: name=keepalive_interval, type=INTEGER macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=keepalive_interval, type=INTEGER macro=rss_schema
+					// key name holder for attribute: name=gre_config, type=REFERENCE macro=rss_schema
 					// property: name=ipsec_config, type=REFERENCE macro=rss_schema
 					"ipsec_config": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Ipsec config.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=authentication, type=REFERENCE macro=rss_schema
 							"authentication": rsschema.SingleNestedAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Authentication.",
 								Attributes: map[string]rsschema.Attribute{
 									// property: name=certificate, type=STRING macro=rss_schema
 									"certificate": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Certificate.",
 									},
 									// key name holder for attribute: name=certificate, type=STRING macro=rss_schema
 									// property: name=certificate_profile_id, type=STRING macro=rss_schema
 									"certificate_profile_id": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Certificate profile id.",
 									},
 									// key name holder for attribute: name=certificate_profile_id, type=STRING macro=rss_schema
 									// property: name=comment, type=STRING macro=rss_schema
 									"comment": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Comment.",
 									},
 									// key name holder for attribute: name=comment, type=STRING macro=rss_schema
 									// property: name=ikev1_params, type=REFERENCE macro=rss_schema
 									"ikev1_params": rsschema.SingleNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Ikev1 params.",
 										Attributes: map[string]rsschema.Attribute{
 											// property: name=xauth_id, type=STRING macro=rss_schema
 											"xauth_id": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Xauth id.",
 											},
 											// key name holder for attribute: name=xauth_id, type=STRING macro=rss_schema
 											// property: name=xauth_secret, type=STRING macro=rss_schema
 											"xauth_secret": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: true,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   true,
+												Description: "Xauth secret. Value: length 4 to 128 characters.",
 											},
 											// key name holder for attribute: name=xauth_secret, type=STRING macro=rss_schema
 											"xauth_secret_internal_key_name": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  true,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Internal key name for the sensitive attribute xauth_secret, managed automatically by the provider.",
 											},
 											// property: name=xauth_secret_encrypted, type=STRING macro=rss_schema
 											"xauth_secret_encrypted": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: true,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   true,
+												Description: "Xauth secret encrypted.",
 											},
 											// key name holder for attribute: name=xauth_secret_encrypted, type=STRING macro=rss_schema
 											"xauth_secret_encrypted_internal_key_name": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  true,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Internal key name for the sensitive attribute xauth_secret_encrypted, managed automatically by the provider.",
 											},
 											// property: name=xauth_secret_hash, type=STRING macro=rss_schema
 											"xauth_secret_hash": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: true,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   true,
+												Description: "Xauth secret hash.",
 											},
 											// key name holder for attribute: name=xauth_secret_hash, type=STRING macro=rss_schema
 											"xauth_secret_hash_internal_key_name": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  true,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Internal key name for the sensitive attribute xauth_secret_hash, managed automatically by the provider.",
 											},
 											// property: name=xauth_type, type=STRING macro=rss_schema
 											"xauth_type": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Xauth type. Value: one of none, secret.",
 											},
 											// key name holder for attribute: name=xauth_type, type=STRING macro=rss_schema
 										},
 									},
-									// key name holder for attribute: name=xauth_type, type=STRING macro=rss_schema
+									// key name holder for attribute: name=ikev1_params, type=REFERENCE macro=rss_schema
 									// property: name=local_ca_certificate, type=STRING macro=rss_schema
 									"local_ca_certificate": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Local ca certificate.",
 									},
 									// key name holder for attribute: name=local_ca_certificate, type=STRING macro=rss_schema
 									// property: name=local_id, type=STRING macro=rss_schema
 									"local_id": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Local id. Value: one of local_ip, dn, hostname, custom, none.",
 									},
 									// key name holder for attribute: name=local_id, type=STRING macro=rss_schema
 									// property: name=local_id_custom, type=STRING macro=rss_schema
 									"local_id_custom": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Local id custom. Value: length 2 to 255 characters.",
 									},
 									// key name holder for attribute: name=local_id_custom, type=STRING macro=rss_schema
 									// property: name=local_pa_certificate_id, type=STRING macro=rss_schema
 									"local_pa_certificate_id": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Local pa certificate id.",
 									},
 									// key name holder for attribute: name=local_pa_certificate_id, type=STRING macro=rss_schema
 									// property: name=pa_master_key_id, type=STRING macro=rss_schema
 									"pa_master_key_id": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Pa master key id.",
 									},
 									// key name holder for attribute: name=pa_master_key_id, type=STRING macro=rss_schema
 									// property: name=passphrase, type=STRING macro=rss_schema
 									"passphrase": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   true,
+										Description: "Passphrase.",
 									},
 									// key name holder for attribute: name=passphrase, type=STRING macro=rss_schema
+									"passphrase_internal_key_name": rsschema.StringAttribute{
+										Required:    false,
+										Computed:    true,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Internal key name for the sensitive attribute passphrase, managed automatically by the provider.",
+									},
 									// property: name=passphrase_encrypted, type=STRING macro=rss_schema
 									"passphrase_encrypted": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   true,
+										Description: "Passphrase encrypted.",
 									},
 									// key name holder for attribute: name=passphrase_encrypted, type=STRING macro=rss_schema
+									"passphrase_encrypted_internal_key_name": rsschema.StringAttribute{
+										Required:    false,
+										Computed:    true,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Internal key name for the sensitive attribute passphrase_encrypted, managed automatically by the provider.",
+									},
 									// property: name=peer_id_check, type=STRING macro=rss_schema
 									"peer_id_check": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Peer id check. Value: one of Exact, Wildcard.",
 									},
 									// key name holder for attribute: name=peer_id_check, type=STRING macro=rss_schema
 									// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=rss_schema
 									"permit_peer_id_mismatch": rsschema.BoolAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Permit peer id mismatch.",
 									},
 									// key name holder for attribute: name=permit_peer_id_mismatch, type=BOOLEAN macro=rss_schema
+									// property: name=ppk_config, type=REFERENCE macro=rss_schema
+									"ppk_config": rsschema.SingleNestedAttribute{
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Ppk config.",
+										Attributes: map[string]rsschema.Attribute{
+											// property: name=enabled, type=BOOLEAN macro=rss_schema
+											"enabled": rsschema.BoolAttribute{
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Enabled.",
+											},
+											// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
+											// property: name=key_enabled, type=BOOLEAN macro=rss_schema
+											"key_enabled": rsschema.BoolAttribute{
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Key enabled.",
+											},
+											// key name holder for attribute: name=key_enabled, type=BOOLEAN macro=rss_schema
+											// property: name=mode, type=STRING macro=rss_schema
+											"mode": rsschema.StringAttribute{
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Mode. Value: one of preferred, mandatory.",
+											},
+											// key name holder for attribute: name=mode, type=STRING macro=rss_schema
+											// property: name=ppk_key_id, type=STRING macro=rss_schema
+											"ppk_key_id": rsschema.StringAttribute{
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Ppk key id.",
+											},
+											// key name holder for attribute: name=ppk_key_id, type=STRING macro=rss_schema
+											// property: name=ppk_secret, type=STRING macro=rss_schema
+											"ppk_secret": rsschema.StringAttribute{
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   true,
+												Description: "Ppk secret.",
+											},
+											// key name holder for attribute: name=ppk_secret, type=STRING macro=rss_schema
+											"ppk_secret_internal_key_name": rsschema.StringAttribute{
+												Required:    false,
+												Computed:    true,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Internal key name for the sensitive attribute ppk_secret, managed automatically by the provider.",
+											},
+											// property: name=ppk_secret_configured, type=BOOLEAN macro=rss_schema
+											"ppk_secret_configured": rsschema.BoolAttribute{
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   true,
+												Description: "Ppk secret configured.",
+											},
+											// key name holder for attribute: name=ppk_secret_configured, type=BOOLEAN macro=rss_schema
+											"ppk_secret_configured_internal_key_name": rsschema.BoolAttribute{
+												Required:    false,
+												Computed:    true,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Internal key name for the sensitive attribute ppk_secret_configured, managed automatically by the provider.",
+											},
+											// property: name=ppk_secret_encrypted, type=STRING macro=rss_schema
+											"ppk_secret_encrypted": rsschema.StringAttribute{
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   true,
+												Description: "Ppk secret encrypted.",
+											},
+											// key name holder for attribute: name=ppk_secret_encrypted, type=STRING macro=rss_schema
+											"ppk_secret_encrypted_internal_key_name": rsschema.StringAttribute{
+												Required:    false,
+												Computed:    true,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Internal key name for the sensitive attribute ppk_secret_encrypted, managed automatically by the provider.",
+											},
+											// property: name=ppk_secret_hash, type=STRING macro=rss_schema
+											"ppk_secret_hash": rsschema.StringAttribute{
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   true,
+												Description: "Ppk secret hash.",
+											},
+											// key name holder for attribute: name=ppk_secret_hash, type=STRING macro=rss_schema
+											"ppk_secret_hash_internal_key_name": rsschema.StringAttribute{
+												Required:    false,
+												Computed:    true,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Internal key name for the sensitive attribute ppk_secret_hash, managed automatically by the provider.",
+											},
+										},
+									},
+									// key name holder for attribute: name=ppk_config, type=REFERENCE macro=rss_schema
 									// property: name=private_key, type=STRING macro=rss_schema
 									"private_key": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   true,
+										Description: "Private key.",
 									},
 									// key name holder for attribute: name=private_key, type=STRING macro=rss_schema
+									"private_key_internal_key_name": rsschema.StringAttribute{
+										Required:    false,
+										Computed:    true,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Internal key name for the sensitive attribute private_key, managed automatically by the provider.",
+									},
 									// property: name=private_key_encrypted, type=STRING macro=rss_schema
 									"private_key_encrypted": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   true,
+										Description: "Private key encrypted.",
 									},
 									// key name holder for attribute: name=private_key_encrypted, type=STRING macro=rss_schema
+									"private_key_encrypted_internal_key_name": rsschema.StringAttribute{
+										Required:    false,
+										Computed:    true,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Internal key name for the sensitive attribute private_key_encrypted, managed automatically by the provider.",
+									},
 									// property: name=remote_ca_certificate, type=STRING macro=rss_schema
 									"remote_ca_certificate": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Remote ca certificate.",
 									},
 									// key name holder for attribute: name=remote_ca_certificate, type=STRING macro=rss_schema
 									// property: name=remote_id, type=STRING macro=rss_schema
 									"remote_id": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Remote id. Value: length 2 to 255 characters.",
 									},
 									// key name holder for attribute: name=remote_id, type=STRING macro=rss_schema
 									// property: name=secret, type=STRING macro=rss_schema
 									"secret": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: true,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   true,
+										Description: "Secret.",
 									},
 									// key name holder for attribute: name=secret, type=STRING macro=rss_schema
 									"secret_internal_key_name": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  true,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Internal key name for the sensitive attribute secret, managed automatically by the provider.",
 									},
 									// property: name=secret_encrypted, type=STRING macro=rss_schema
 									"secret_encrypted": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: true,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   true,
+										Description: "Secret encrypted.",
 									},
 									// key name holder for attribute: name=secret_encrypted, type=STRING macro=rss_schema
 									"secret_encrypted_internal_key_name": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  true,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Internal key name for the sensitive attribute secret_encrypted, managed automatically by the provider.",
 									},
 									// property: name=secret_hash, type=STRING macro=rss_schema
 									"secret_hash": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: true,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   true,
+										Description: "Secret hash.",
 									},
 									// key name holder for attribute: name=secret_hash, type=STRING macro=rss_schema
 									"secret_hash_internal_key_name": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  true,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Internal key name for the sensitive attribute secret_hash, managed automatically by the provider.",
 									},
 									// property: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=rss_schema
 									"strict_validation_peer_extended_key_use": rsschema.BoolAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Strict validation peer extended key use.",
 									},
 									// key name holder for attribute: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=rss_schema
 									// property: name=type, type=STRING macro=rss_schema
 									"type": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Type. Value: one of none, psk, x509.",
 									},
 									// key name holder for attribute: name=type, type=STRING macro=rss_schema
 								},
 							},
-							// key name holder for attribute: name=type, type=STRING macro=rss_schema
+							// key name holder for attribute: name=authentication, type=REFERENCE macro=rss_schema
 							// property: name=ipsec_profile_id, type=STRING macro=rss_schema
 							"ipsec_profile_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Ipsec profile id.",
 							},
 							// key name holder for attribute: name=ipsec_profile_id, type=STRING macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=ipsec_profile_id, type=STRING macro=rss_schema
+					// key name holder for attribute: name=ipsec_config, type=REFERENCE macro=rss_schema
 					// property: name=last_parent, type=STRING macro=rss_schema
 					"last_parent": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Last parent.",
 					},
 					// key name holder for attribute: name=last_parent, type=STRING macro=rss_schema
 					// property: name=parent, type=STRING macro=rss_schema
 					"parent": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Parent.",
 					},
 					// key name holder for attribute: name=parent, type=STRING macro=rss_schema
 					// property: name=passive_mode, type=REFERENCE macro=rss_schema
 					"passive_mode": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Passive mode.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=enable, type=BOOLEAN macro=rss_schema
 							"enable": rsschema.BoolAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Enable.",
 							},
 							// key name holder for attribute: name=enable, type=BOOLEAN macro=rss_schema
-							// property: name=peer_ip_dynamic, type=BOOLEAN macro=rss_schema
-							"peer_ip_dynamic": rsschema.BoolAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=peer_ip_dynamic, type=BOOLEAN macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=peer_ip_dynamic, type=BOOLEAN macro=rss_schema
+					// key name holder for attribute: name=passive_mode, type=REFERENCE macro=rss_schema
 					// property: name=peer, type=REFERENCE macro=rss_schema
 					"peer": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Peer.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=hostname, type=STRING macro=rss_schema
 							"hostname": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Hostname. Value: at most 256 characters.",
 							},
 							// key name holder for attribute: name=hostname, type=STRING macro=rss_schema
 							// property: name=ip_addresses, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -1570,37 +1857,41 @@ func (r *elementShellInterfaceResource) Schema(_ context.Context, _ resource.Sch
 								Computed:    false,
 								Optional:    true,
 								Sensitive:   false,
+								Description: "Ip addresses.",
 								ElementType: types.StringType,
 							},
 							// key name holder for attribute: name=ip_addresses, type=ARRAY_PRIMITIVE macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=ip_addresses, type=ARRAY_PRIMITIVE macro=rss_schema
+					// key name holder for attribute: name=peer, type=REFERENCE macro=rss_schema
 					// property: name=service_endpoint_id, type=STRING macro=rss_schema
 					"service_endpoint_id": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Service endpoint id.",
 					},
 					// key name holder for attribute: name=service_endpoint_id, type=STRING macro=rss_schema
 					// property: name=type, type=STRING macro=rss_schema
 					"type": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Type. Value: one of ipsec, gre, geneve.",
 					},
 					// key name holder for attribute: name=type, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=type, type=STRING macro=rss_schema
+			// key name holder for attribute: name=service_link_config, type=REFERENCE macro=rss_schema
 			// property: name=sgi_apply_static_tag, type=BOOLEAN macro=rss_schema
 			"sgi_apply_static_tag": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Sgi apply static tag. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=sgi_apply_static_tag, type=BOOLEAN macro=rss_schema
 			// property: name=site_wan_interface_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -1609,158 +1900,187 @@ func (r *elementShellInterfaceResource) Schema(_ context.Context, _ resource.Sch
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Site wan interface ids.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=site_wan_interface_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=static_arp_configs, type=ARRAY_REFERENCE macro=rss_schema
 			"static_arp_configs": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Static arp configs. At most 32 items.",
+				Validators:  ListMaxItems(32),
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=ipv4_address, type=STRING macro=rss_schema
 						"ipv4_address": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Ipv4 address.",
 						},
 						// key name holder for attribute: name=ipv4_address, type=STRING macro=rss_schema
 						// property: name=mac_address, type=STRING macro=rss_schema
 						"mac_address": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Mac address. Value: matching `^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$`.",
 						},
 						// key name holder for attribute: name=mac_address, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=mac_address, type=STRING macro=rss_schema
+			// key name holder for attribute: name=static_arp_configs, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=sub_interface, type=REFERENCE macro=rss_schema
 			"sub_interface": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Sub interface.",
 				Attributes: map[string]rsschema.Attribute{
+					// property: name=native_vlan, type=BOOLEAN macro=rss_schema
+					"native_vlan": rsschema.BoolAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Native vlan.",
+					},
+					// key name holder for attribute: name=native_vlan, type=BOOLEAN macro=rss_schema
 					// property: name=vlan_id, type=INTEGER macro=rss_schema
 					"vlan_id": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Vlan id.",
 					},
 					// key name holder for attribute: name=vlan_id, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=vlan_id, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=sub_interface, type=REFERENCE macro=rss_schema
 			// property: name=switch_port_config, type=REFERENCE macro=rss_schema
 			"switch_port_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Switch port config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=access_vlan_id, type=INTEGER macro=rss_schema
 					"access_vlan_id": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Access vlan id.",
 					},
 					// key name holder for attribute: name=access_vlan_id, type=INTEGER macro=rss_schema
 					// property: name=bpdu_guard_enabled, type=BOOLEAN macro=rss_schema
 					"bpdu_guard_enabled": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Bpdu guard enabled.",
 					},
 					// key name holder for attribute: name=bpdu_guard_enabled, type=BOOLEAN macro=rss_schema
 					// property: name=forward_fast_enabled, type=BOOLEAN macro=rss_schema
 					"forward_fast_enabled": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Forward fast enabled.",
 					},
 					// key name holder for attribute: name=forward_fast_enabled, type=BOOLEAN macro=rss_schema
 					// property: name=native_vlan_id, type=INTEGER macro=rss_schema
 					"native_vlan_id": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Native vlan id.",
 					},
 					// key name holder for attribute: name=native_vlan_id, type=INTEGER macro=rss_schema
 					// property: name=root_guard_enabled, type=BOOLEAN macro=rss_schema
 					"root_guard_enabled": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Root guard enabled.",
 					},
 					// key name holder for attribute: name=root_guard_enabled, type=BOOLEAN macro=rss_schema
 					// property: name=storm_control_config, type=REFERENCE macro=rss_schema
 					"storm_control_config": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Storm control config.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=broadcast_threshold, type=INTEGER macro=rss_schema
 							"broadcast_threshold": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Broadcast threshold. Value: between 64 and 1000000.",
 							},
 							// key name holder for attribute: name=broadcast_threshold, type=INTEGER macro=rss_schema
 							// property: name=multicast_threshold, type=INTEGER macro=rss_schema
 							"multicast_threshold": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Multicast threshold. Value: between 64 and 1000000.",
 							},
 							// key name holder for attribute: name=multicast_threshold, type=INTEGER macro=rss_schema
 							// property: name=unicast_threshold, type=INTEGER macro=rss_schema
 							"unicast_threshold": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Unicast threshold. Value: between 64 and 1000000.",
 							},
 							// key name holder for attribute: name=unicast_threshold, type=INTEGER macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=unicast_threshold, type=INTEGER macro=rss_schema
+					// key name holder for attribute: name=storm_control_config, type=REFERENCE macro=rss_schema
 					// property: name=stp_port_cost, type=INTEGER macro=rss_schema
 					"stp_port_cost": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Stp port cost. Value: between 1 and 65535.",
 					},
 					// key name holder for attribute: name=stp_port_cost, type=INTEGER macro=rss_schema
 					// property: name=stp_port_enabled, type=BOOLEAN macro=rss_schema
 					"stp_port_enabled": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Stp port enabled.",
 					},
 					// key name holder for attribute: name=stp_port_enabled, type=BOOLEAN macro=rss_schema
 					// property: name=stp_port_priority, type=INTEGER macro=rss_schema
 					"stp_port_priority": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Stp port priority. Value: between 0 and 240.",
 					},
 					// key name holder for attribute: name=stp_port_priority, type=INTEGER macro=rss_schema
 					// property: name=trunk_vlans, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -1769,93 +2089,106 @@ func (r *elementShellInterfaceResource) Schema(_ context.Context, _ resource.Sch
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "Trunk vlans. At most 32 items.",
+						Validators:  ListMaxItems(32),
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=trunk_vlans, type=ARRAY_PRIMITIVE macro=rss_schema
 					// property: name=vlan_mode, type=STRING macro=rss_schema
 					"vlan_mode": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Vlan mode. Value: one of access, trunk.",
 					},
 					// key name holder for attribute: name=vlan_mode, type=STRING macro=rss_schema
 					// property: name=voice_vlan_id, type=INTEGER macro=rss_schema
 					"voice_vlan_id": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Voice vlan id.",
 					},
 					// key name holder for attribute: name=voice_vlan_id, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=voice_vlan_id, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=switch_port_config, type=REFERENCE macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			"tags": rsschema.SetAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=type, type=STRING macro=rss_schema
 			"type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Type. Value: one of service_link, loopback, bypasspair, subinterface, pppoe, port, virtual_interface, cellular, switch_port, vlan, port_channel, ngfw_sdwan_interface.",
 			},
 			// key name holder for attribute: name=type, type=STRING macro=rss_schema
 			// property: name=used_for, type=STRING macro=rss_schema
 			"used_for": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Used for. Value: one of none, public, private, lan, private-l2, private_wan, switch-access, control, controller. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=used_for, type=STRING macro=rss_schema
 			// property: name=vlan_config, type=REFERENCE macro=rss_schema
 			"vlan_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Vlan config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=mstp_instance, type=INTEGER macro=rss_schema
 					"mstp_instance": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Mstp instance.",
 					},
 					// key name holder for attribute: name=mstp_instance, type=INTEGER macro=rss_schema
 					// property: name=vlan_id, type=INTEGER macro=rss_schema
 					"vlan_id": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Vlan id.",
 					},
 					// key name holder for attribute: name=vlan_id, type=INTEGER macro=rss_schema
 					// property: name=voice_enabled, type=BOOLEAN macro=rss_schema
 					"voice_enabled": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Voice enabled.",
 					},
 					// key name holder for attribute: name=voice_enabled, type=BOOLEAN macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=voice_enabled, type=BOOLEAN macro=rss_schema
+			// key name holder for attribute: name=vlan_config, type=REFERENCE macro=rss_schema
 			// property: name=vrf_context_id, type=STRING macro=rss_schema
 			"vrf_context_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Vrf context id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
 		},
@@ -1966,7 +2299,7 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 	// property: name=cellular_config, type=REFERENCE macro=copy_from_plan
 	if plan.CellularConfig != nil {
 		body.CellularConfig = &sdwan_schema.CellularInterfaceConfig{}
-		// copy_from_plan: body=body.CellularConfig prefix=rsModel plan=plan.CellularConfig properties=5
+		// copy_from_plan: body=body.CellularConfig prefix=rsModel plan=plan.CellularConfig properties=6
 		tflog.Debug(ctx, "copy_from_plan body=body.CellularConfig prefix=rsModel plan=plan.CellularConfig")
 		// property: name=apn_config, type=REFERENCE macro=copy_from_plan
 		if plan.CellularConfig.ApnConfig != nil {
@@ -1990,6 +2323,8 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 		body.CellularConfig.ApnprofileId = StringValueOrNil(plan.CellularConfig.ApnprofileId)
 		// property: name=auto_apn, type=BOOLEAN macro=copy_from_plan
 		body.CellularConfig.AutoApn = BoolValueOrNil(plan.CellularConfig.AutoApn)
+		// property: name=ip_address_type, type=STRING macro=copy_from_plan
+		body.CellularConfig.IpAddressType = StringValueOrNil(plan.CellularConfig.IpAddressType)
 		// property: name=parent_module_id, type=STRING macro=copy_from_plan
 		body.CellularConfig.ParentModuleId = StringValueOrNil(plan.CellularConfig.ParentModuleId)
 		// property: name=parent_sim_slot_number, type=INTEGER macro=copy_from_plan
@@ -2050,7 +2385,7 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 	// property: name=ipv4_config, type=REFERENCE macro=copy_from_plan
 	if plan.Ipv4Config != nil {
 		body.Ipv4Config = &sdwan_schema.Ipv4Config{}
-		// copy_from_plan: body=body.Ipv4Config prefix=rsModel plan=plan.Ipv4Config properties=6
+		// copy_from_plan: body=body.Ipv4Config prefix=rsModel plan=plan.Ipv4Config properties=5
 		tflog.Debug(ctx, "copy_from_plan body=body.Ipv4Config prefix=rsModel plan=plan.Ipv4Config")
 		// property: name=dhcp_config, type=REFERENCE macro=copy_from_plan
 		if plan.Ipv4Config.DhcpConfig != nil {
@@ -2071,18 +2406,6 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 			body.Ipv4Config.DnsV4Config.NameServers = ListStringValueOrNil(ctx, plan.Ipv4Config.DnsV4Config.NameServers)
 			// property: name=search, type=ARRAY_PRIMITIVE macro=copy_from_plan
 			body.Ipv4Config.DnsV4Config.Search = ListStringValueOrNil(ctx, plan.Ipv4Config.DnsV4Config.Search)
-		}
-		// property: name=pppoe_config, type=REFERENCE macro=copy_from_plan
-		if plan.Ipv4Config.PppoeConfig != nil {
-			body.Ipv4Config.PppoeConfig = &sdwan_schema.Ipv4Pppoe{}
-			// copy_from_plan: body=body.Ipv4Config.PppoeConfig prefix=rsModel plan=plan.Ipv4Config.PppoeConfig properties=3
-			tflog.Debug(ctx, "copy_from_plan body=body.Ipv4Config.PppoeConfig prefix=rsModel plan=plan.Ipv4Config.PppoeConfig")
-			// property: name=chap_passwd, type=STRING macro=copy_from_plan
-			body.Ipv4Config.PppoeConfig.ChapPasswd = StringValueOrNil(plan.Ipv4Config.PppoeConfig.ChapPasswd)
-			// property: name=chap_user, type=STRING macro=copy_from_plan
-			body.Ipv4Config.PppoeConfig.ChapUser = StringValueOrNil(plan.Ipv4Config.PppoeConfig.ChapUser)
-			// property: name=set_route, type=BOOLEAN macro=copy_from_plan
-			body.Ipv4Config.PppoeConfig.SetRoute = BoolValueOrNil(plan.Ipv4Config.PppoeConfig.SetRoute)
 		}
 		// property: name=routes, type=ARRAY_REFERENCE macro=copy_from_plan
 		if plan.Ipv4Config.Routes == nil {
@@ -2185,7 +2508,7 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 	body.Mtu = Int64ValueOrNil(plan.Mtu)
 	// property: name=multicast_config, type=REFERENCE macro=copy_from_plan
 	if plan.MulticastConfig != nil {
-		body.MulticastConfig = &sdwan_schema.MulticastInterfaceConfig{}
+		body.MulticastConfig = &sdwan_schema.MulticastInterfaceConfigV4N12{}
 		// copy_from_plan: body=body.MulticastConfig prefix=rsModel plan=plan.MulticastConfig properties=4
 		tflog.Debug(ctx, "copy_from_plan body=body.MulticastConfig prefix=rsModel plan=plan.MulticastConfig")
 		// property: name=dr_priority, type=INTEGER macro=copy_from_plan
@@ -2344,7 +2667,7 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 			// property: name=authentication, type=REFERENCE macro=copy_from_plan
 			if plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 				body.ServiceLinkConfig.IpsecConfig.Authentication = &sdwan_schema.IPSECAuthenticationV1{}
-				// copy_from_plan: body=body.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel plan=plan.ServiceLinkConfig.IpsecConfig.Authentication properties=22
+				// copy_from_plan: body=body.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel plan=plan.ServiceLinkConfig.IpsecConfig.Authentication properties=23
 				tflog.Debug(ctx, "copy_from_plan body=body.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel plan=plan.ServiceLinkConfig.IpsecConfig.Authentication")
 				// property: name=certificate, type=STRING macro=copy_from_plan
 				body.ServiceLinkConfig.IpsecConfig.Authentication.Certificate = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.Certificate)
@@ -2386,6 +2709,28 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 				body.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck)
 				// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=copy_from_plan
 				body.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch = BoolValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch)
+				// property: name=ppk_config, type=REFERENCE macro=copy_from_plan
+				if plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+					body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig = &sdwan_schema.PPKConfig{}
+					// copy_from_plan: body=body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig prefix=rsModel plan=plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig properties=8
+					tflog.Debug(ctx, "copy_from_plan body=body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig prefix=rsModel plan=plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig")
+					// property: name=enabled, type=BOOLEAN macro=copy_from_plan
+					body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled = BoolValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled)
+					// property: name=key_enabled, type=BOOLEAN macro=copy_from_plan
+					body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled = BoolValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled)
+					// property: name=mode, type=STRING macro=copy_from_plan
+					body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode)
+					// property: name=ppk_key_id, type=STRING macro=copy_from_plan
+					body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId)
+					// property: name=ppk_secret, type=STRING macro=copy_from_plan
+					body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret)
+					// property: name=ppk_secret_configured, type=BOOLEAN macro=copy_from_plan
+					body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured = BoolValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured)
+					// property: name=ppk_secret_encrypted, type=STRING macro=copy_from_plan
+					body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted)
+					// property: name=ppk_secret_hash, type=STRING macro=copy_from_plan
+					body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash)
+				}
 				// property: name=private_key, type=STRING macro=copy_from_plan
 				body.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey)
 				// property: name=private_key_encrypted, type=STRING macro=copy_from_plan
@@ -2415,12 +2760,10 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 		// property: name=passive_mode, type=REFERENCE macro=copy_from_plan
 		if plan.ServiceLinkConfig.PassiveMode != nil {
 			body.ServiceLinkConfig.PassiveMode = &sdwan_schema.PassiveMode{}
-			// copy_from_plan: body=body.ServiceLinkConfig.PassiveMode prefix=rsModel plan=plan.ServiceLinkConfig.PassiveMode properties=2
+			// copy_from_plan: body=body.ServiceLinkConfig.PassiveMode prefix=rsModel plan=plan.ServiceLinkConfig.PassiveMode properties=1
 			tflog.Debug(ctx, "copy_from_plan body=body.ServiceLinkConfig.PassiveMode prefix=rsModel plan=plan.ServiceLinkConfig.PassiveMode")
 			// property: name=enable, type=BOOLEAN macro=copy_from_plan
 			body.ServiceLinkConfig.PassiveMode.Enable = BoolValueOrNil(plan.ServiceLinkConfig.PassiveMode.Enable)
-			// property: name=peer_ip_dynamic, type=BOOLEAN macro=copy_from_plan
-			body.ServiceLinkConfig.PassiveMode.PeerIpDynamic = BoolValueOrNil(plan.ServiceLinkConfig.PassiveMode.PeerIpDynamic)
 		}
 		// property: name=peer, type=REFERENCE macro=copy_from_plan
 		if plan.ServiceLinkConfig.Peer != nil {
@@ -2462,8 +2805,10 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 	// property: name=sub_interface, type=REFERENCE macro=copy_from_plan
 	if plan.SubInterface != nil {
 		body.SubInterface = &sdwan_schema.SubInterface{}
-		// copy_from_plan: body=body.SubInterface prefix=rsModel plan=plan.SubInterface properties=1
+		// copy_from_plan: body=body.SubInterface prefix=rsModel plan=plan.SubInterface properties=2
 		tflog.Debug(ctx, "copy_from_plan body=body.SubInterface prefix=rsModel plan=plan.SubInterface")
+		// property: name=native_vlan, type=BOOLEAN macro=copy_from_plan
+		body.SubInterface.NativeVlan = BoolValueOrNil(plan.SubInterface.NativeVlan)
 		// property: name=vlan_id, type=INTEGER macro=copy_from_plan
 		body.SubInterface.VlanId = Int64ValueOrNil(plan.SubInterface.VlanId)
 	}
@@ -2670,7 +3015,7 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 		state.CellularConfig = nil
 	} else {
 		state.CellularConfig = &rsModelCellularInterfaceConfig{}
-		// copy_to_state: state=state.CellularConfig prefix=rsModel ans=ans.CellularConfig properties=5
+		// copy_to_state: state=state.CellularConfig prefix=rsModel ans=ans.CellularConfig properties=6
 		tflog.Debug(ctx, "copy_to_state state=state.CellularConfig prefix=rsModel ans=ans.CellularConfig")
 		// property: name=apn_config, type=REFERENCE macro=copy_to_state
 		if ans.CellularConfig.ApnConfig == nil {
@@ -2686,22 +3031,34 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 			// property: name=clear_password, type=BOOLEAN macro=copy_to_state
 			state.CellularConfig.ApnConfig.ClearPassword = types.BoolPointerValue(ans.CellularConfig.ApnConfig.ClearPassword)
 			// property: name=password, type=STRING macro=copy_to_state
-			state.CellularConfig.ApnConfig.Password = types.StringPointerValue(plan.CellularConfig.ApnConfig.Password.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.CellularConfig.ApnConfig.PasswordInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.CellularConfig.ApnConfig.Password = types.StringNull()
+			if plan.CellularConfig != nil && plan.CellularConfig.ApnConfig != nil {
+				state.CellularConfig.ApnConfig.Password = types.StringPointerValue(plan.CellularConfig.ApnConfig.Password.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.CellularConfig.ApnConfig.Password.IsNull() {
-				encryptedPassword, _ := Encrypt([]byte(state.CellularConfig.ApnConfig.Password.String()))
-				resp.Private.SetKey(ctx, state.CellularConfig.ApnConfig.PasswordInternalKeyName.String(), []byte(encryptedPassword))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedPassword, _ := Encrypt([]byte(state.CellularConfig.ApnConfig.Password.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedPasswordJson, _ := json.Marshal(encryptedPassword)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.CellularConfig.ApnConfig.PasswordInternalKeyName.String(), encryptedPasswordJson)...)
 			}
 			// property: name=password_encrypted, type=STRING macro=copy_to_state
-			state.CellularConfig.ApnConfig.PasswordEncrypted = types.StringPointerValue(plan.CellularConfig.ApnConfig.PasswordEncrypted.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.CellularConfig.ApnConfig.PasswordEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.CellularConfig.ApnConfig.PasswordEncrypted = types.StringNull()
+			if plan.CellularConfig != nil && plan.CellularConfig.ApnConfig != nil {
+				state.CellularConfig.ApnConfig.PasswordEncrypted = types.StringPointerValue(plan.CellularConfig.ApnConfig.PasswordEncrypted.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.CellularConfig.ApnConfig.PasswordEncrypted.IsNull() {
-				encryptedPasswordEncrypted, _ := Encrypt([]byte(state.CellularConfig.ApnConfig.PasswordEncrypted.String()))
-				resp.Private.SetKey(ctx, state.CellularConfig.ApnConfig.PasswordEncryptedInternalKeyName.String(), []byte(encryptedPasswordEncrypted))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedPasswordEncrypted, _ := Encrypt([]byte(state.CellularConfig.ApnConfig.PasswordEncrypted.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedPasswordEncryptedJson, _ := json.Marshal(encryptedPasswordEncrypted)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.CellularConfig.ApnConfig.PasswordEncryptedInternalKeyName.String(), encryptedPasswordEncryptedJson)...)
 			}
 			// property: name=user_name, type=STRING macro=copy_to_state
 			state.CellularConfig.ApnConfig.UserName = types.StringPointerValue(ans.CellularConfig.ApnConfig.UserName)
@@ -2710,6 +3067,8 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 		state.CellularConfig.ApnprofileId = types.StringPointerValue(ans.CellularConfig.ApnprofileId)
 		// property: name=auto_apn, type=BOOLEAN macro=copy_to_state
 		state.CellularConfig.AutoApn = types.BoolPointerValue(ans.CellularConfig.AutoApn)
+		// property: name=ip_address_type, type=STRING macro=copy_to_state
+		state.CellularConfig.IpAddressType = types.StringPointerValue(ans.CellularConfig.IpAddressType)
 		// property: name=parent_module_id, type=STRING macro=copy_to_state
 		state.CellularConfig.ParentModuleId = types.StringPointerValue(ans.CellularConfig.ParentModuleId)
 		// property: name=parent_sim_slot_number, type=INTEGER macro=copy_to_state
@@ -2780,7 +3139,7 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 		state.Ipv4Config = nil
 	} else {
 		state.Ipv4Config = &rsModelIpv4Config{}
-		// copy_to_state: state=state.Ipv4Config prefix=rsModel ans=ans.Ipv4Config properties=6
+		// copy_to_state: state=state.Ipv4Config prefix=rsModel ans=ans.Ipv4Config properties=5
 		tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config prefix=rsModel ans=ans.Ipv4Config")
 		// property: name=dhcp_config, type=REFERENCE macro=copy_to_state
 		if ans.Ipv4Config.DhcpConfig == nil {
@@ -2809,20 +3168,6 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 			varSearch, errSearch := types.ListValueFrom(ctx, types.StringType, ans.Ipv4Config.DnsV4Config.Search)
 			state.Ipv4Config.DnsV4Config.Search = varSearch
 			resp.Diagnostics.Append(errSearch.Errors()...)
-		}
-		// property: name=pppoe_config, type=REFERENCE macro=copy_to_state
-		if ans.Ipv4Config.PppoeConfig == nil {
-			state.Ipv4Config.PppoeConfig = nil
-		} else {
-			state.Ipv4Config.PppoeConfig = &rsModelIpv4Pppoe{}
-			// copy_to_state: state=state.Ipv4Config.PppoeConfig prefix=rsModel ans=ans.Ipv4Config.PppoeConfig properties=3
-			tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.PppoeConfig prefix=rsModel ans=ans.Ipv4Config.PppoeConfig")
-			// property: name=chap_passwd, type=STRING macro=copy_to_state
-			state.Ipv4Config.PppoeConfig.ChapPasswd = types.StringPointerValue(ans.Ipv4Config.PppoeConfig.ChapPasswd)
-			// property: name=chap_user, type=STRING macro=copy_to_state
-			state.Ipv4Config.PppoeConfig.ChapUser = types.StringPointerValue(ans.Ipv4Config.PppoeConfig.ChapUser)
-			// property: name=set_route, type=BOOLEAN macro=copy_to_state
-			state.Ipv4Config.PppoeConfig.SetRoute = types.BoolPointerValue(ans.Ipv4Config.PppoeConfig.SetRoute)
 		}
 		// property: name=routes, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.Ipv4Config.Routes == nil {
@@ -2943,7 +3288,7 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 	if ans.MulticastConfig == nil {
 		state.MulticastConfig = nil
 	} else {
-		state.MulticastConfig = &rsModelMulticastInterfaceConfig{}
+		state.MulticastConfig = &rsModelMulticastInterfaceConfigV4N12{}
 		// copy_to_state: state=state.MulticastConfig prefix=rsModel ans=ans.MulticastConfig properties=4
 		tflog.Debug(ctx, "copy_to_state state=state.MulticastConfig prefix=rsModel ans=ans.MulticastConfig")
 		// property: name=dr_priority, type=INTEGER macro=copy_to_state
@@ -3051,13 +3396,19 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 		// property: name=ip_address_type, type=STRING macro=copy_to_state
 		state.PppoeConfig.IpAddressType = types.StringPointerValue(ans.PppoeConfig.IpAddressType)
 		// property: name=password, type=STRING macro=copy_to_state
-		state.PppoeConfig.Password = types.StringPointerValue(plan.PppoeConfig.Password.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.PppoeConfig.PasswordInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.PppoeConfig.Password = types.StringNull()
+		if plan.PppoeConfig != nil {
+			state.PppoeConfig.Password = types.StringPointerValue(plan.PppoeConfig.Password.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.PppoeConfig.Password.IsNull() {
-			encryptedPassword, _ := Encrypt([]byte(state.PppoeConfig.Password.String()))
-			resp.Private.SetKey(ctx, state.PppoeConfig.PasswordInternalKeyName.String(), []byte(encryptedPassword))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedPassword, _ := Encrypt([]byte(state.PppoeConfig.Password.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedPasswordJson, _ := json.Marshal(encryptedPassword)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.PppoeConfig.PasswordInternalKeyName.String(), encryptedPasswordJson)...)
 		}
 		// property: name=reconnection_delay, type=INTEGER macro=copy_to_state
 		state.PppoeConfig.ReconnectionDelay = types.Int64PointerValue(ans.PppoeConfig.ReconnectionDelay)
@@ -3121,7 +3472,7 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 				state.ServiceLinkConfig.IpsecConfig.Authentication = nil
 			} else {
 				state.ServiceLinkConfig.IpsecConfig.Authentication = &rsModelIPSECAuthenticationV1{}
-				// copy_to_state: state=state.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication properties=22
+				// copy_to_state: state=state.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication properties=23
 				tflog.Debug(ctx, "copy_to_state state=state.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication")
 				// property: name=certificate, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.Certificate = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.Certificate)
@@ -3139,31 +3490,49 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 					// property: name=xauth_id, type=STRING macro=copy_to_state
 					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthId = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthId)
 					// property: name=xauth_secret, type=STRING macro=copy_to_state
-					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret.ValueStringPointer())
 					// this property is sensitive and will be stored in the state's internal key name
 					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret = types.StringNull()
+					if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret.ValueStringPointer())
+					}
 					// store value if needed
 					if !state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret.IsNull() {
-						encryptedXauthSecret, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret.String()))
-						resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretInternalKeyName.String(), []byte(encryptedXauthSecret))
+						// ValueString, not String: String() returns the value quoted, which drifts on read
+						encryptedXauthSecret, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret.ValueString()))
+						// private state only accepts valid JSON, so store the ciphertext as a JSON string
+						encryptedXauthSecretJson, _ := json.Marshal(encryptedXauthSecret)
+						resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretInternalKeyName.String(), encryptedXauthSecretJson)...)
 					}
 					// property: name=xauth_secret_encrypted, type=STRING macro=copy_to_state
-					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted.ValueStringPointer())
 					// this property is sensitive and will be stored in the state's internal key name
 					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringNull()
+					if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted.ValueStringPointer())
+					}
 					// store value if needed
 					if !state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted.IsNull() {
-						encryptedXauthSecretEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted.String()))
-						resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName.String(), []byte(encryptedXauthSecretEncrypted))
+						// ValueString, not String: String() returns the value quoted, which drifts on read
+						encryptedXauthSecretEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted.ValueString()))
+						// private state only accepts valid JSON, so store the ciphertext as a JSON string
+						encryptedXauthSecretEncryptedJson, _ := json.Marshal(encryptedXauthSecretEncrypted)
+						resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName.String(), encryptedXauthSecretEncryptedJson)...)
 					}
 					// property: name=xauth_secret_hash, type=STRING macro=copy_to_state
-					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash.ValueStringPointer())
 					// this property is sensitive and will be stored in the state's internal key name
 					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHashInternalKeyName = types.StringValue(GenerateRandomString(16))
+					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash = types.StringNull()
+					if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash.ValueStringPointer())
+					}
 					// store value if needed
 					if !state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash.IsNull() {
-						encryptedXauthSecretHash, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash.String()))
-						resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHashInternalKeyName.String(), []byte(encryptedXauthSecretHash))
+						// ValueString, not String: String() returns the value quoted, which drifts on read
+						encryptedXauthSecretHash, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash.ValueString()))
+						// private state only accepts valid JSON, so store the ciphertext as a JSON string
+						encryptedXauthSecretHashJson, _ := json.Marshal(encryptedXauthSecretHash)
+						resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHashInternalKeyName.String(), encryptedXauthSecretHashJson)...)
 					}
 					// property: name=xauth_type, type=STRING macro=copy_to_state
 					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthType = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthType)
@@ -3179,47 +3548,180 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 				// property: name=pa_master_key_id, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.PaMasterKeyId = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PaMasterKeyId)
 				// property: name=passphrase, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase)
+				// this property is sensitive and will be stored in the state's internal key name
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase.ValueStringPointer())
+				}
+				// store value if needed
+				if !state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase.IsNull() {
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedPassphrase, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedPassphraseJson, _ := json.Marshal(encryptedPassphrase)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseInternalKeyName.String(), encryptedPassphraseJson)...)
+				}
 				// property: name=passphrase_encrypted, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted)
+				// this property is sensitive and will be stored in the state's internal key name
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted.ValueStringPointer())
+				}
+				// store value if needed
+				if !state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted.IsNull() {
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedPassphraseEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedPassphraseEncryptedJson, _ := json.Marshal(encryptedPassphraseEncrypted)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncryptedInternalKeyName.String(), encryptedPassphraseEncryptedJson)...)
+				}
 				// property: name=peer_id_check, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck)
 				// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch)
+				// property: name=ppk_config, type=REFERENCE macro=copy_to_state
+				if ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig == nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig = nil
+				} else {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig = &rsModelPPKConfig{}
+					// copy_to_state: state=state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig properties=8
+					tflog.Debug(ctx, "copy_to_state state=state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig")
+					// property: name=enabled, type=BOOLEAN macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled)
+					// property: name=key_enabled, type=BOOLEAN macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled)
+					// property: name=mode, type=STRING macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode)
+					// property: name=ppk_key_id, type=STRING macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId)
+					// property: name=ppk_secret, type=STRING macro=copy_to_state
+					// this property is sensitive and will be stored in the state's internal key name
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret = types.StringNull()
+					if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret.ValueStringPointer())
+					}
+					// store value if needed
+					if !state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret.IsNull() {
+						// ValueString, not String: String() returns the value quoted, which drifts on read
+						encryptedPpkSecret, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret.ValueString()))
+						// private state only accepts valid JSON, so store the ciphertext as a JSON string
+						encryptedPpkSecretJson, _ := json.Marshal(encryptedPpkSecret)
+						resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretInternalKeyName.String(), encryptedPpkSecretJson)...)
+					}
+					// property: name=ppk_secret_configured, type=BOOLEAN macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured)
+					// property: name=ppk_secret_encrypted, type=STRING macro=copy_to_state
+					// this property is sensitive and will be stored in the state's internal key name
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted = types.StringNull()
+					if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted.ValueStringPointer())
+					}
+					// store value if needed
+					if !state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted.IsNull() {
+						// ValueString, not String: String() returns the value quoted, which drifts on read
+						encryptedPpkSecretEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted.ValueString()))
+						// private state only accepts valid JSON, so store the ciphertext as a JSON string
+						encryptedPpkSecretEncryptedJson, _ := json.Marshal(encryptedPpkSecretEncrypted)
+						resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName.String(), encryptedPpkSecretEncryptedJson)...)
+					}
+					// property: name=ppk_secret_hash, type=STRING macro=copy_to_state
+					// this property is sensitive and will be stored in the state's internal key name
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHashInternalKeyName = types.StringValue(GenerateRandomString(16))
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash = types.StringNull()
+					if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash.ValueStringPointer())
+					}
+					// store value if needed
+					if !state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash.IsNull() {
+						// ValueString, not String: String() returns the value quoted, which drifts on read
+						encryptedPpkSecretHash, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash.ValueString()))
+						// private state only accepts valid JSON, so store the ciphertext as a JSON string
+						encryptedPpkSecretHashJson, _ := json.Marshal(encryptedPpkSecretHash)
+						resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHashInternalKeyName.String(), encryptedPpkSecretHashJson)...)
+					}
+				}
 				// property: name=private_key, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey)
+				// this property is sensitive and will be stored in the state's internal key name
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey.ValueStringPointer())
+				}
+				// store value if needed
+				if !state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey.IsNull() {
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedPrivateKey, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedPrivateKeyJson, _ := json.Marshal(encryptedPrivateKey)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyInternalKeyName.String(), encryptedPrivateKeyJson)...)
+				}
 				// property: name=private_key_encrypted, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted)
+				// this property is sensitive and will be stored in the state's internal key name
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted.ValueStringPointer())
+				}
+				// store value if needed
+				if !state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted.IsNull() {
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedPrivateKeyEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedPrivateKeyEncryptedJson, _ := json.Marshal(encryptedPrivateKeyEncrypted)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncryptedInternalKeyName.String(), encryptedPrivateKeyEncryptedJson)...)
+				}
 				// property: name=remote_ca_certificate, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.RemoteCaCertificate = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.RemoteCaCertificate)
 				// property: name=remote_id, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.RemoteId = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.RemoteId)
 				// property: name=secret, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.Secret = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Secret.ValueStringPointer())
 				// this property is sensitive and will be stored in the state's internal key name
 				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.Secret = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.Secret = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Secret.ValueStringPointer())
+				}
 				// store value if needed
 				if !state.ServiceLinkConfig.IpsecConfig.Authentication.Secret.IsNull() {
-					encryptedSecret, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Secret.String()))
-					resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretInternalKeyName.String(), []byte(encryptedSecret))
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedSecret, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Secret.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedSecretJson, _ := json.Marshal(encryptedSecret)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretInternalKeyName.String(), encryptedSecretJson)...)
 				}
 				// property: name=secret_encrypted, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted.ValueStringPointer())
 				// this property is sensitive and will be stored in the state's internal key name
 				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted.ValueStringPointer())
+				}
 				// store value if needed
 				if !state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted.IsNull() {
-					encryptedSecretEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted.String()))
-					resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncryptedInternalKeyName.String(), []byte(encryptedSecretEncrypted))
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedSecretEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedSecretEncryptedJson, _ := json.Marshal(encryptedSecretEncrypted)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncryptedInternalKeyName.String(), encryptedSecretEncryptedJson)...)
 				}
 				// property: name=secret_hash, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash.ValueStringPointer())
 				// this property is sensitive and will be stored in the state's internal key name
 				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHashInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash.ValueStringPointer())
+				}
 				// store value if needed
 				if !state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash.IsNull() {
-					encryptedSecretHash, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash.String()))
-					resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHashInternalKeyName.String(), []byte(encryptedSecretHash))
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedSecretHash, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedSecretHashJson, _ := json.Marshal(encryptedSecretHash)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHashInternalKeyName.String(), encryptedSecretHashJson)...)
 				}
 				// property: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.StrictValidationPeerExtendedKeyUse = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.StrictValidationPeerExtendedKeyUse)
@@ -3238,12 +3740,10 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 			state.ServiceLinkConfig.PassiveMode = nil
 		} else {
 			state.ServiceLinkConfig.PassiveMode = &rsModelPassiveMode{}
-			// copy_to_state: state=state.ServiceLinkConfig.PassiveMode prefix=rsModel ans=ans.ServiceLinkConfig.PassiveMode properties=2
+			// copy_to_state: state=state.ServiceLinkConfig.PassiveMode prefix=rsModel ans=ans.ServiceLinkConfig.PassiveMode properties=1
 			tflog.Debug(ctx, "copy_to_state state=state.ServiceLinkConfig.PassiveMode prefix=rsModel ans=ans.ServiceLinkConfig.PassiveMode")
 			// property: name=enable, type=BOOLEAN macro=copy_to_state
 			state.ServiceLinkConfig.PassiveMode.Enable = types.BoolPointerValue(ans.ServiceLinkConfig.PassiveMode.Enable)
-			// property: name=peer_ip_dynamic, type=BOOLEAN macro=copy_to_state
-			state.ServiceLinkConfig.PassiveMode.PeerIpDynamic = types.BoolPointerValue(ans.ServiceLinkConfig.PassiveMode.PeerIpDynamic)
 		}
 		// property: name=peer, type=REFERENCE macro=copy_to_state
 		if ans.ServiceLinkConfig.Peer == nil {
@@ -3293,8 +3793,10 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 		state.SubInterface = nil
 	} else {
 		state.SubInterface = &rsModelSubInterface{}
-		// copy_to_state: state=state.SubInterface prefix=rsModel ans=ans.SubInterface properties=1
+		// copy_to_state: state=state.SubInterface prefix=rsModel ans=ans.SubInterface properties=2
 		tflog.Debug(ctx, "copy_to_state state=state.SubInterface prefix=rsModel ans=ans.SubInterface")
+		// property: name=native_vlan, type=BOOLEAN macro=copy_to_state
+		state.SubInterface.NativeVlan = types.BoolPointerValue(ans.SubInterface.NativeVlan)
 		// property: name=vlan_id, type=INTEGER macro=copy_to_state
 		state.SubInterface.VlanId = types.Int64PointerValue(ans.SubInterface.VlanId)
 	}
@@ -3348,6 +3850,14 @@ func (r *elementShellInterfaceResource) doPost(ctx context.Context, plan *rsMode
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=type, type=STRING macro=copy_to_state
 	state.Type = types.StringPointerValue(ans.Type)
 	// property: name=used_for, type=STRING macro=copy_to_state
@@ -3439,7 +3949,23 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -3518,7 +4044,7 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 		state.CellularConfig = nil
 	} else {
 		state.CellularConfig = &rsModelCellularInterfaceConfig{}
-		// copy_to_state: state=state.CellularConfig prefix=rsModel ans=ans.CellularConfig properties=5
+		// copy_to_state: state=state.CellularConfig prefix=rsModel ans=ans.CellularConfig properties=6
 		tflog.Debug(ctx, "copy_to_state state=state.CellularConfig prefix=rsModel ans=ans.CellularConfig")
 		// property: name=apn_config, type=REFERENCE macro=copy_to_state
 		if ans.CellularConfig.ApnConfig == nil {
@@ -3534,17 +4060,27 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 			// property: name=clear_password, type=BOOLEAN macro=copy_to_state
 			state.CellularConfig.ApnConfig.ClearPassword = types.BoolPointerValue(ans.CellularConfig.ApnConfig.ClearPassword)
 			// property: name=password, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if savestate.CellularConfig != nil && savestate.CellularConfig.ApnConfig != nil {
+				state.CellularConfig.ApnConfig.PasswordInternalKeyName = savestate.CellularConfig.ApnConfig.PasswordInternalKeyName
+			}
 			encryptedPasswordKeyName := state.CellularConfig.ApnConfig.PasswordInternalKeyName.String()
 			encryptedPasswordValueBytes, _ := resp.Private.GetKey(ctx, encryptedPasswordKeyName)
-			if encryptedPasswordValueBytes != nil {
-				decryptedPassword, _ := Decrypt(string(encryptedPasswordValueBytes))
+			var encryptedPasswordValue string
+			if encryptedPasswordValueBytes != nil && json.Unmarshal(encryptedPasswordValueBytes, &encryptedPasswordValue) == nil {
+				decryptedPassword, _ := Decrypt(encryptedPasswordValue)
 				state.CellularConfig.ApnConfig.Password = types.StringValue(decryptedPassword)
 			}
 			// property: name=password_encrypted, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if savestate.CellularConfig != nil && savestate.CellularConfig.ApnConfig != nil {
+				state.CellularConfig.ApnConfig.PasswordEncryptedInternalKeyName = savestate.CellularConfig.ApnConfig.PasswordEncryptedInternalKeyName
+			}
 			encryptedPasswordEncryptedKeyName := state.CellularConfig.ApnConfig.PasswordEncryptedInternalKeyName.String()
 			encryptedPasswordEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedPasswordEncryptedKeyName)
-			if encryptedPasswordEncryptedValueBytes != nil {
-				decryptedPasswordEncrypted, _ := Decrypt(string(encryptedPasswordEncryptedValueBytes))
+			var encryptedPasswordEncryptedValue string
+			if encryptedPasswordEncryptedValueBytes != nil && json.Unmarshal(encryptedPasswordEncryptedValueBytes, &encryptedPasswordEncryptedValue) == nil {
+				decryptedPasswordEncrypted, _ := Decrypt(encryptedPasswordEncryptedValue)
 				state.CellularConfig.ApnConfig.PasswordEncrypted = types.StringValue(decryptedPasswordEncrypted)
 			}
 			// property: name=user_name, type=STRING macro=copy_to_state
@@ -3554,6 +4090,8 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 		state.CellularConfig.ApnprofileId = types.StringPointerValue(ans.CellularConfig.ApnprofileId)
 		// property: name=auto_apn, type=BOOLEAN macro=copy_to_state
 		state.CellularConfig.AutoApn = types.BoolPointerValue(ans.CellularConfig.AutoApn)
+		// property: name=ip_address_type, type=STRING macro=copy_to_state
+		state.CellularConfig.IpAddressType = types.StringPointerValue(ans.CellularConfig.IpAddressType)
 		// property: name=parent_module_id, type=STRING macro=copy_to_state
 		state.CellularConfig.ParentModuleId = types.StringPointerValue(ans.CellularConfig.ParentModuleId)
 		// property: name=parent_sim_slot_number, type=INTEGER macro=copy_to_state
@@ -3624,7 +4162,7 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 		state.Ipv4Config = nil
 	} else {
 		state.Ipv4Config = &rsModelIpv4Config{}
-		// copy_to_state: state=state.Ipv4Config prefix=rsModel ans=ans.Ipv4Config properties=6
+		// copy_to_state: state=state.Ipv4Config prefix=rsModel ans=ans.Ipv4Config properties=5
 		tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config prefix=rsModel ans=ans.Ipv4Config")
 		// property: name=dhcp_config, type=REFERENCE macro=copy_to_state
 		if ans.Ipv4Config.DhcpConfig == nil {
@@ -3653,20 +4191,6 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 			varSearch, errSearch := types.ListValueFrom(ctx, types.StringType, ans.Ipv4Config.DnsV4Config.Search)
 			state.Ipv4Config.DnsV4Config.Search = varSearch
 			resp.Diagnostics.Append(errSearch.Errors()...)
-		}
-		// property: name=pppoe_config, type=REFERENCE macro=copy_to_state
-		if ans.Ipv4Config.PppoeConfig == nil {
-			state.Ipv4Config.PppoeConfig = nil
-		} else {
-			state.Ipv4Config.PppoeConfig = &rsModelIpv4Pppoe{}
-			// copy_to_state: state=state.Ipv4Config.PppoeConfig prefix=rsModel ans=ans.Ipv4Config.PppoeConfig properties=3
-			tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.PppoeConfig prefix=rsModel ans=ans.Ipv4Config.PppoeConfig")
-			// property: name=chap_passwd, type=STRING macro=copy_to_state
-			state.Ipv4Config.PppoeConfig.ChapPasswd = types.StringPointerValue(ans.Ipv4Config.PppoeConfig.ChapPasswd)
-			// property: name=chap_user, type=STRING macro=copy_to_state
-			state.Ipv4Config.PppoeConfig.ChapUser = types.StringPointerValue(ans.Ipv4Config.PppoeConfig.ChapUser)
-			// property: name=set_route, type=BOOLEAN macro=copy_to_state
-			state.Ipv4Config.PppoeConfig.SetRoute = types.BoolPointerValue(ans.Ipv4Config.PppoeConfig.SetRoute)
 		}
 		// property: name=routes, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.Ipv4Config.Routes == nil {
@@ -3787,7 +4311,7 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 	if ans.MulticastConfig == nil {
 		state.MulticastConfig = nil
 	} else {
-		state.MulticastConfig = &rsModelMulticastInterfaceConfig{}
+		state.MulticastConfig = &rsModelMulticastInterfaceConfigV4N12{}
 		// copy_to_state: state=state.MulticastConfig prefix=rsModel ans=ans.MulticastConfig properties=4
 		tflog.Debug(ctx, "copy_to_state state=state.MulticastConfig prefix=rsModel ans=ans.MulticastConfig")
 		// property: name=dr_priority, type=INTEGER macro=copy_to_state
@@ -3895,10 +4419,15 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 		// property: name=ip_address_type, type=STRING macro=copy_to_state
 		state.PppoeConfig.IpAddressType = types.StringPointerValue(ans.PppoeConfig.IpAddressType)
 		// property: name=password, type=STRING macro=copy_to_state
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.PppoeConfig != nil {
+			state.PppoeConfig.PasswordInternalKeyName = savestate.PppoeConfig.PasswordInternalKeyName
+		}
 		encryptedPasswordKeyName := state.PppoeConfig.PasswordInternalKeyName.String()
 		encryptedPasswordValueBytes, _ := resp.Private.GetKey(ctx, encryptedPasswordKeyName)
-		if encryptedPasswordValueBytes != nil {
-			decryptedPassword, _ := Decrypt(string(encryptedPasswordValueBytes))
+		var encryptedPasswordValue string
+		if encryptedPasswordValueBytes != nil && json.Unmarshal(encryptedPasswordValueBytes, &encryptedPasswordValue) == nil {
+			decryptedPassword, _ := Decrypt(encryptedPasswordValue)
 			state.PppoeConfig.Password = types.StringValue(decryptedPassword)
 		}
 		// property: name=reconnection_delay, type=INTEGER macro=copy_to_state
@@ -3963,7 +4492,7 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 				state.ServiceLinkConfig.IpsecConfig.Authentication = nil
 			} else {
 				state.ServiceLinkConfig.IpsecConfig.Authentication = &rsModelIPSECAuthenticationV1{}
-				// copy_to_state: state=state.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication properties=22
+				// copy_to_state: state=state.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication properties=23
 				tflog.Debug(ctx, "copy_to_state state=state.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication")
 				// property: name=certificate, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.Certificate = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.Certificate)
@@ -3981,24 +4510,39 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 					// property: name=xauth_id, type=STRING macro=copy_to_state
 					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthId = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthId)
 					// property: name=xauth_secret, type=STRING macro=copy_to_state
+					// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+					if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretInternalKeyName
+					}
 					encryptedXauthSecretKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretInternalKeyName.String()
 					encryptedXauthSecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedXauthSecretKeyName)
-					if encryptedXauthSecretValueBytes != nil {
-						decryptedXauthSecret, _ := Decrypt(string(encryptedXauthSecretValueBytes))
+					var encryptedXauthSecretValue string
+					if encryptedXauthSecretValueBytes != nil && json.Unmarshal(encryptedXauthSecretValueBytes, &encryptedXauthSecretValue) == nil {
+						decryptedXauthSecret, _ := Decrypt(encryptedXauthSecretValue)
 						state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret = types.StringValue(decryptedXauthSecret)
 					}
 					// property: name=xauth_secret_encrypted, type=STRING macro=copy_to_state
+					// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+					if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName
+					}
 					encryptedXauthSecretEncryptedKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName.String()
 					encryptedXauthSecretEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedXauthSecretEncryptedKeyName)
-					if encryptedXauthSecretEncryptedValueBytes != nil {
-						decryptedXauthSecretEncrypted, _ := Decrypt(string(encryptedXauthSecretEncryptedValueBytes))
+					var encryptedXauthSecretEncryptedValue string
+					if encryptedXauthSecretEncryptedValueBytes != nil && json.Unmarshal(encryptedXauthSecretEncryptedValueBytes, &encryptedXauthSecretEncryptedValue) == nil {
+						decryptedXauthSecretEncrypted, _ := Decrypt(encryptedXauthSecretEncryptedValue)
 						state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringValue(decryptedXauthSecretEncrypted)
 					}
 					// property: name=xauth_secret_hash, type=STRING macro=copy_to_state
+					// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+					if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHashInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHashInternalKeyName
+					}
 					encryptedXauthSecretHashKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHashInternalKeyName.String()
 					encryptedXauthSecretHashValueBytes, _ := resp.Private.GetKey(ctx, encryptedXauthSecretHashKeyName)
-					if encryptedXauthSecretHashValueBytes != nil {
-						decryptedXauthSecretHash, _ := Decrypt(string(encryptedXauthSecretHashValueBytes))
+					var encryptedXauthSecretHashValue string
+					if encryptedXauthSecretHashValueBytes != nil && json.Unmarshal(encryptedXauthSecretHashValueBytes, &encryptedXauthSecretHashValue) == nil {
+						decryptedXauthSecretHash, _ := Decrypt(encryptedXauthSecretHashValue)
 						state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash = types.StringValue(decryptedXauthSecretHash)
 					}
 					// property: name=xauth_type, type=STRING macro=copy_to_state
@@ -4015,40 +4559,149 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 				// property: name=pa_master_key_id, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.PaMasterKeyId = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PaMasterKeyId)
 				// property: name=passphrase, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase)
+				// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+				if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseInternalKeyName
+				}
+				encryptedPassphraseKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseInternalKeyName.String()
+				encryptedPassphraseValueBytes, _ := resp.Private.GetKey(ctx, encryptedPassphraseKeyName)
+				var encryptedPassphraseValue string
+				if encryptedPassphraseValueBytes != nil && json.Unmarshal(encryptedPassphraseValueBytes, &encryptedPassphraseValue) == nil {
+					decryptedPassphrase, _ := Decrypt(encryptedPassphraseValue)
+					state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase = types.StringValue(decryptedPassphrase)
+				}
 				// property: name=passphrase_encrypted, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted)
+				// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+				if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncryptedInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncryptedInternalKeyName
+				}
+				encryptedPassphraseEncryptedKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncryptedInternalKeyName.String()
+				encryptedPassphraseEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedPassphraseEncryptedKeyName)
+				var encryptedPassphraseEncryptedValue string
+				if encryptedPassphraseEncryptedValueBytes != nil && json.Unmarshal(encryptedPassphraseEncryptedValueBytes, &encryptedPassphraseEncryptedValue) == nil {
+					decryptedPassphraseEncrypted, _ := Decrypt(encryptedPassphraseEncryptedValue)
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted = types.StringValue(decryptedPassphraseEncrypted)
+				}
 				// property: name=peer_id_check, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck)
 				// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch)
+				// property: name=ppk_config, type=REFERENCE macro=copy_to_state
+				if ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig == nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig = nil
+				} else {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig = &rsModelPPKConfig{}
+					// copy_to_state: state=state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig properties=8
+					tflog.Debug(ctx, "copy_to_state state=state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig")
+					// property: name=enabled, type=BOOLEAN macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled)
+					// property: name=key_enabled, type=BOOLEAN macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled)
+					// property: name=mode, type=STRING macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode)
+					// property: name=ppk_key_id, type=STRING macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId)
+					// property: name=ppk_secret, type=STRING macro=copy_to_state
+					// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+					if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretInternalKeyName
+					}
+					encryptedPpkSecretKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretInternalKeyName.String()
+					encryptedPpkSecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedPpkSecretKeyName)
+					var encryptedPpkSecretValue string
+					if encryptedPpkSecretValueBytes != nil && json.Unmarshal(encryptedPpkSecretValueBytes, &encryptedPpkSecretValue) == nil {
+						decryptedPpkSecret, _ := Decrypt(encryptedPpkSecretValue)
+						state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret = types.StringValue(decryptedPpkSecret)
+					}
+					// property: name=ppk_secret_configured, type=BOOLEAN macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured)
+					// property: name=ppk_secret_encrypted, type=STRING macro=copy_to_state
+					// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+					if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName
+					}
+					encryptedPpkSecretEncryptedKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName.String()
+					encryptedPpkSecretEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedPpkSecretEncryptedKeyName)
+					var encryptedPpkSecretEncryptedValue string
+					if encryptedPpkSecretEncryptedValueBytes != nil && json.Unmarshal(encryptedPpkSecretEncryptedValueBytes, &encryptedPpkSecretEncryptedValue) == nil {
+						decryptedPpkSecretEncrypted, _ := Decrypt(encryptedPpkSecretEncryptedValue)
+						state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted = types.StringValue(decryptedPpkSecretEncrypted)
+					}
+					// property: name=ppk_secret_hash, type=STRING macro=copy_to_state
+					// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+					if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHashInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHashInternalKeyName
+					}
+					encryptedPpkSecretHashKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHashInternalKeyName.String()
+					encryptedPpkSecretHashValueBytes, _ := resp.Private.GetKey(ctx, encryptedPpkSecretHashKeyName)
+					var encryptedPpkSecretHashValue string
+					if encryptedPpkSecretHashValueBytes != nil && json.Unmarshal(encryptedPpkSecretHashValueBytes, &encryptedPpkSecretHashValue) == nil {
+						decryptedPpkSecretHash, _ := Decrypt(encryptedPpkSecretHashValue)
+						state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash = types.StringValue(decryptedPpkSecretHash)
+					}
+				}
 				// property: name=private_key, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey)
+				// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+				if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyInternalKeyName
+				}
+				encryptedPrivateKeyKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyInternalKeyName.String()
+				encryptedPrivateKeyValueBytes, _ := resp.Private.GetKey(ctx, encryptedPrivateKeyKeyName)
+				var encryptedPrivateKeyValue string
+				if encryptedPrivateKeyValueBytes != nil && json.Unmarshal(encryptedPrivateKeyValueBytes, &encryptedPrivateKeyValue) == nil {
+					decryptedPrivateKey, _ := Decrypt(encryptedPrivateKeyValue)
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey = types.StringValue(decryptedPrivateKey)
+				}
 				// property: name=private_key_encrypted, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted)
+				// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+				if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncryptedInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncryptedInternalKeyName
+				}
+				encryptedPrivateKeyEncryptedKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncryptedInternalKeyName.String()
+				encryptedPrivateKeyEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedPrivateKeyEncryptedKeyName)
+				var encryptedPrivateKeyEncryptedValue string
+				if encryptedPrivateKeyEncryptedValueBytes != nil && json.Unmarshal(encryptedPrivateKeyEncryptedValueBytes, &encryptedPrivateKeyEncryptedValue) == nil {
+					decryptedPrivateKeyEncrypted, _ := Decrypt(encryptedPrivateKeyEncryptedValue)
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted = types.StringValue(decryptedPrivateKeyEncrypted)
+				}
 				// property: name=remote_ca_certificate, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.RemoteCaCertificate = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.RemoteCaCertificate)
 				// property: name=remote_id, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.RemoteId = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.RemoteId)
 				// property: name=secret, type=STRING macro=copy_to_state
+				// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+				if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.SecretInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.SecretInternalKeyName
+				}
 				encryptedSecretKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.SecretInternalKeyName.String()
 				encryptedSecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedSecretKeyName)
-				if encryptedSecretValueBytes != nil {
-					decryptedSecret, _ := Decrypt(string(encryptedSecretValueBytes))
+				var encryptedSecretValue string
+				if encryptedSecretValueBytes != nil && json.Unmarshal(encryptedSecretValueBytes, &encryptedSecretValue) == nil {
+					decryptedSecret, _ := Decrypt(encryptedSecretValue)
 					state.ServiceLinkConfig.IpsecConfig.Authentication.Secret = types.StringValue(decryptedSecret)
 				}
 				// property: name=secret_encrypted, type=STRING macro=copy_to_state
+				// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+				if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncryptedInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncryptedInternalKeyName
+				}
 				encryptedSecretEncryptedKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncryptedInternalKeyName.String()
 				encryptedSecretEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedSecretEncryptedKeyName)
-				if encryptedSecretEncryptedValueBytes != nil {
-					decryptedSecretEncrypted, _ := Decrypt(string(encryptedSecretEncryptedValueBytes))
+				var encryptedSecretEncryptedValue string
+				if encryptedSecretEncryptedValueBytes != nil && json.Unmarshal(encryptedSecretEncryptedValueBytes, &encryptedSecretEncryptedValue) == nil {
+					decryptedSecretEncrypted, _ := Decrypt(encryptedSecretEncryptedValue)
 					state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted = types.StringValue(decryptedSecretEncrypted)
 				}
 				// property: name=secret_hash, type=STRING macro=copy_to_state
+				// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+				if savestate.ServiceLinkConfig != nil && savestate.ServiceLinkConfig.IpsecConfig != nil && savestate.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHashInternalKeyName = savestate.ServiceLinkConfig.IpsecConfig.Authentication.SecretHashInternalKeyName
+				}
 				encryptedSecretHashKeyName := state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHashInternalKeyName.String()
 				encryptedSecretHashValueBytes, _ := resp.Private.GetKey(ctx, encryptedSecretHashKeyName)
-				if encryptedSecretHashValueBytes != nil {
-					decryptedSecretHash, _ := Decrypt(string(encryptedSecretHashValueBytes))
+				var encryptedSecretHashValue string
+				if encryptedSecretHashValueBytes != nil && json.Unmarshal(encryptedSecretHashValueBytes, &encryptedSecretHashValue) == nil {
+					decryptedSecretHash, _ := Decrypt(encryptedSecretHashValue)
 					state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash = types.StringValue(decryptedSecretHash)
 				}
 				// property: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=copy_to_state
@@ -4068,12 +4721,10 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 			state.ServiceLinkConfig.PassiveMode = nil
 		} else {
 			state.ServiceLinkConfig.PassiveMode = &rsModelPassiveMode{}
-			// copy_to_state: state=state.ServiceLinkConfig.PassiveMode prefix=rsModel ans=ans.ServiceLinkConfig.PassiveMode properties=2
+			// copy_to_state: state=state.ServiceLinkConfig.PassiveMode prefix=rsModel ans=ans.ServiceLinkConfig.PassiveMode properties=1
 			tflog.Debug(ctx, "copy_to_state state=state.ServiceLinkConfig.PassiveMode prefix=rsModel ans=ans.ServiceLinkConfig.PassiveMode")
 			// property: name=enable, type=BOOLEAN macro=copy_to_state
 			state.ServiceLinkConfig.PassiveMode.Enable = types.BoolPointerValue(ans.ServiceLinkConfig.PassiveMode.Enable)
-			// property: name=peer_ip_dynamic, type=BOOLEAN macro=copy_to_state
-			state.ServiceLinkConfig.PassiveMode.PeerIpDynamic = types.BoolPointerValue(ans.ServiceLinkConfig.PassiveMode.PeerIpDynamic)
 		}
 		// property: name=peer, type=REFERENCE macro=copy_to_state
 		if ans.ServiceLinkConfig.Peer == nil {
@@ -4123,8 +4774,10 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 		state.SubInterface = nil
 	} else {
 		state.SubInterface = &rsModelSubInterface{}
-		// copy_to_state: state=state.SubInterface prefix=rsModel ans=ans.SubInterface properties=1
+		// copy_to_state: state=state.SubInterface prefix=rsModel ans=ans.SubInterface properties=2
 		tflog.Debug(ctx, "copy_to_state state=state.SubInterface prefix=rsModel ans=ans.SubInterface")
+		// property: name=native_vlan, type=BOOLEAN macro=copy_to_state
+		state.SubInterface.NativeVlan = types.BoolPointerValue(ans.SubInterface.NativeVlan)
 		// property: name=vlan_id, type=INTEGER macro=copy_to_state
 		state.SubInterface.VlanId = types.Int64PointerValue(ans.SubInterface.VlanId)
 	}
@@ -4178,6 +4831,14 @@ func (r *elementShellInterfaceResource) doGet(ctx context.Context, state *rsMode
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=type, type=STRING macro=copy_to_state
 	state.Type = types.StringPointerValue(ans.Type)
 	// property: name=used_for, type=STRING macro=copy_to_state
@@ -4273,9 +4934,9 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		body.AdminUp = BoolValueOrNil(plan.AdminUp)
 	}
 	// property: name=attached_lan_networks, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.AttachedLanNetworks == nil && (state == nil || state.AttachedLanNetworks == nil) {
+	if plan.AttachedLanNetworks == nil && (!(state != nil) || state.AttachedLanNetworks == nil) {
 		body.AttachedLanNetworks = nil
-	} else if len(plan.AttachedLanNetworks) == 0 && (state == nil || len(state.AttachedLanNetworks) == 0) {
+	} else if len(plan.AttachedLanNetworks) == 0 && (!(state != nil) || len(state.AttachedLanNetworks) == 0) {
 		body.AttachedLanNetworks = []sdwan_schema.LanNetworkVlanMapping{}
 	} else if len(plan.AttachedLanNetworks) != 0 || (state != nil && len(state.AttachedLanNetworks) != 0) {
 		AttachedLanNetworksToUse := plan.AttachedLanNetworks
@@ -4303,26 +4964,31 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		// copy_from_plan_or_state: body=body.AuthenticationConfig prefix=rsModel state=state.AuthenticationConfig plan=plan.AuthenticationConfig properties=3
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.AuthenticationConfig prefix=rsModel state=state.AuthenticationConfig plan=plan.AuthenticationConfig")
 		// property: name=fallback_retry_count, type=INTEGER macro=copy_from_plan_or_state
-		if state.AuthenticationConfig != nil {
+		if state != nil && state.AuthenticationConfig != nil {
 			body.AuthenticationConfig.FallbackRetryCount = ValueInt64PointerFromPlanOrState(plan.AuthenticationConfig.FallbackRetryCount, state.AuthenticationConfig.FallbackRetryCount)
 		} else {
 			body.AuthenticationConfig.FallbackRetryCount = Int64ValueOrNil(plan.AuthenticationConfig.FallbackRetryCount)
 		}
 		// property: name=mode, type=STRING macro=copy_from_plan_or_state
-		if state.AuthenticationConfig != nil {
+		if state != nil && state.AuthenticationConfig != nil {
 			body.AuthenticationConfig.Mode = ValueStringPointerFromPlanOrState(plan.AuthenticationConfig.Mode, state.AuthenticationConfig.Mode)
 		} else {
 			body.AuthenticationConfig.Mode = StringValueOrNil(plan.AuthenticationConfig.Mode)
 		}
 		// property: name=reauthentication_timeout, type=INTEGER macro=copy_from_plan_or_state
-		if state.AuthenticationConfig != nil {
+		if state != nil && state.AuthenticationConfig != nil {
 			body.AuthenticationConfig.ReauthenticationTimeout = ValueInt64PointerFromPlanOrState(plan.AuthenticationConfig.ReauthenticationTimeout, state.AuthenticationConfig.ReauthenticationTimeout)
 		} else {
 			body.AuthenticationConfig.ReauthenticationTimeout = Int64ValueOrNil(plan.AuthenticationConfig.ReauthenticationTimeout)
 		}
 	}
 	// property: name=bound_interfaces, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.BoundInterfaces = ListStringValueOrNil(ctx, plan.BoundInterfaces)
+	if state != nil && plan.BoundInterfaces.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.BoundInterfaces = ListStringValueOrNil(ctx, state.BoundInterfaces)
+	} else {
+		body.BoundInterfaces = ListStringValueOrNil(ctx, plan.BoundInterfaces)
+	}
 	// property: name=bypass_pair, type=REFERENCE macro=copy_from_plan_or_state
 	if plan.BypassPair == nil {
 		body.BypassPair = nil
@@ -4331,25 +4997,25 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		// copy_from_plan_or_state: body=body.BypassPair prefix=rsModel state=state.BypassPair plan=plan.BypassPair properties=4
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.BypassPair prefix=rsModel state=state.BypassPair plan=plan.BypassPair")
 		// property: name=lan, type=STRING macro=copy_from_plan_or_state
-		if state.BypassPair != nil {
+		if state != nil && state.BypassPair != nil {
 			body.BypassPair.Lan = ValueStringPointerFromPlanOrState(plan.BypassPair.Lan, state.BypassPair.Lan)
 		} else {
 			body.BypassPair.Lan = StringValueOrNil(plan.BypassPair.Lan)
 		}
 		// property: name=lan_state_propagation, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.BypassPair != nil {
+		if state != nil && state.BypassPair != nil {
 			body.BypassPair.LanStatePropagation = ValueBoolPointerFromPlanOrState(plan.BypassPair.LanStatePropagation, state.BypassPair.LanStatePropagation)
 		} else {
 			body.BypassPair.LanStatePropagation = BoolValueOrNil(plan.BypassPair.LanStatePropagation)
 		}
 		// property: name=use_relay, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.BypassPair != nil {
+		if state != nil && state.BypassPair != nil {
 			body.BypassPair.UseRelay = ValueBoolPointerFromPlanOrState(plan.BypassPair.UseRelay, state.BypassPair.UseRelay)
 		} else {
 			body.BypassPair.UseRelay = BoolValueOrNil(plan.BypassPair.UseRelay)
 		}
 		// property: name=wan, type=STRING macro=copy_from_plan_or_state
-		if state.BypassPair != nil {
+		if state != nil && state.BypassPair != nil {
 			body.BypassPair.Wan = ValueStringPointerFromPlanOrState(plan.BypassPair.Wan, state.BypassPair.Wan)
 		} else {
 			body.BypassPair.Wan = StringValueOrNil(plan.BypassPair.Wan)
@@ -4360,7 +5026,7 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		body.CellularConfig = nil
 	} else {
 		body.CellularConfig = &sdwan_schema.CellularInterfaceConfig{}
-		// copy_from_plan_or_state: body=body.CellularConfig prefix=rsModel state=state.CellularConfig plan=plan.CellularConfig properties=5
+		// copy_from_plan_or_state: body=body.CellularConfig prefix=rsModel state=state.CellularConfig plan=plan.CellularConfig properties=6
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.CellularConfig prefix=rsModel state=state.CellularConfig plan=plan.CellularConfig")
 		// property: name=apn_config, type=REFERENCE macro=copy_from_plan_or_state
 		if plan.CellularConfig.ApnConfig == nil {
@@ -4370,62 +5036,68 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			// copy_from_plan_or_state: body=body.CellularConfig.ApnConfig prefix=rsModel state=state.CellularConfig.ApnConfig plan=plan.CellularConfig.ApnConfig properties=6
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.CellularConfig.ApnConfig prefix=rsModel state=state.CellularConfig.ApnConfig plan=plan.CellularConfig.ApnConfig")
 			// property: name=apn, type=STRING macro=copy_from_plan_or_state
-			if state.CellularConfig.ApnConfig != nil {
+			if state != nil && state.CellularConfig != nil && state.CellularConfig.ApnConfig != nil {
 				body.CellularConfig.ApnConfig.Apn = ValueStringPointerFromPlanOrState(plan.CellularConfig.ApnConfig.Apn, state.CellularConfig.ApnConfig.Apn)
 			} else {
 				body.CellularConfig.ApnConfig.Apn = StringValueOrNil(plan.CellularConfig.ApnConfig.Apn)
 			}
 			// property: name=authentication, type=STRING macro=copy_from_plan_or_state
-			if state.CellularConfig.ApnConfig != nil {
+			if state != nil && state.CellularConfig != nil && state.CellularConfig.ApnConfig != nil {
 				body.CellularConfig.ApnConfig.Authentication = ValueStringPointerFromPlanOrState(plan.CellularConfig.ApnConfig.Authentication, state.CellularConfig.ApnConfig.Authentication)
 			} else {
 				body.CellularConfig.ApnConfig.Authentication = StringValueOrNil(plan.CellularConfig.ApnConfig.Authentication)
 			}
 			// property: name=clear_password, type=BOOLEAN macro=copy_from_plan_or_state
-			if state.CellularConfig.ApnConfig != nil {
+			if state != nil && state.CellularConfig != nil && state.CellularConfig.ApnConfig != nil {
 				body.CellularConfig.ApnConfig.ClearPassword = ValueBoolPointerFromPlanOrState(plan.CellularConfig.ApnConfig.ClearPassword, state.CellularConfig.ApnConfig.ClearPassword)
 			} else {
 				body.CellularConfig.ApnConfig.ClearPassword = BoolValueOrNil(plan.CellularConfig.ApnConfig.ClearPassword)
 			}
 			// property: name=password, type=STRING macro=copy_from_plan_or_state
-			if state.CellularConfig.ApnConfig != nil {
+			if state != nil && state.CellularConfig != nil && state.CellularConfig.ApnConfig != nil {
 				body.CellularConfig.ApnConfig.Password = ValueStringPointerFromPlanOrState(plan.CellularConfig.ApnConfig.Password, state.CellularConfig.ApnConfig.Password)
 			} else {
 				body.CellularConfig.ApnConfig.Password = StringValueOrNil(plan.CellularConfig.ApnConfig.Password)
 			}
 			// property: name=password_encrypted, type=STRING macro=copy_from_plan_or_state
-			if state.CellularConfig.ApnConfig != nil {
+			if state != nil && state.CellularConfig != nil && state.CellularConfig.ApnConfig != nil {
 				body.CellularConfig.ApnConfig.PasswordEncrypted = ValueStringPointerFromPlanOrState(plan.CellularConfig.ApnConfig.PasswordEncrypted, state.CellularConfig.ApnConfig.PasswordEncrypted)
 			} else {
 				body.CellularConfig.ApnConfig.PasswordEncrypted = StringValueOrNil(plan.CellularConfig.ApnConfig.PasswordEncrypted)
 			}
 			// property: name=user_name, type=STRING macro=copy_from_plan_or_state
-			if state.CellularConfig.ApnConfig != nil {
+			if state != nil && state.CellularConfig != nil && state.CellularConfig.ApnConfig != nil {
 				body.CellularConfig.ApnConfig.UserName = ValueStringPointerFromPlanOrState(plan.CellularConfig.ApnConfig.UserName, state.CellularConfig.ApnConfig.UserName)
 			} else {
 				body.CellularConfig.ApnConfig.UserName = StringValueOrNil(plan.CellularConfig.ApnConfig.UserName)
 			}
 		}
 		// property: name=apnprofile_id, type=STRING macro=copy_from_plan_or_state
-		if state.CellularConfig != nil {
+		if state != nil && state.CellularConfig != nil {
 			body.CellularConfig.ApnprofileId = ValueStringPointerFromPlanOrState(plan.CellularConfig.ApnprofileId, state.CellularConfig.ApnprofileId)
 		} else {
 			body.CellularConfig.ApnprofileId = StringValueOrNil(plan.CellularConfig.ApnprofileId)
 		}
 		// property: name=auto_apn, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.CellularConfig != nil {
+		if state != nil && state.CellularConfig != nil {
 			body.CellularConfig.AutoApn = ValueBoolPointerFromPlanOrState(plan.CellularConfig.AutoApn, state.CellularConfig.AutoApn)
 		} else {
 			body.CellularConfig.AutoApn = BoolValueOrNil(plan.CellularConfig.AutoApn)
 		}
+		// property: name=ip_address_type, type=STRING macro=copy_from_plan_or_state
+		if state != nil && state.CellularConfig != nil {
+			body.CellularConfig.IpAddressType = ValueStringPointerFromPlanOrState(plan.CellularConfig.IpAddressType, state.CellularConfig.IpAddressType)
+		} else {
+			body.CellularConfig.IpAddressType = StringValueOrNil(plan.CellularConfig.IpAddressType)
+		}
 		// property: name=parent_module_id, type=STRING macro=copy_from_plan_or_state
-		if state.CellularConfig != nil {
+		if state != nil && state.CellularConfig != nil {
 			body.CellularConfig.ParentModuleId = ValueStringPointerFromPlanOrState(plan.CellularConfig.ParentModuleId, state.CellularConfig.ParentModuleId)
 		} else {
 			body.CellularConfig.ParentModuleId = StringValueOrNil(plan.CellularConfig.ParentModuleId)
 		}
 		// property: name=parent_sim_slot_number, type=INTEGER macro=copy_from_plan_or_state
-		if state.CellularConfig != nil {
+		if state != nil && state.CellularConfig != nil {
 			body.CellularConfig.ParentSimSlotNumber = ValueInt64PointerFromPlanOrState(plan.CellularConfig.ParentSimSlotNumber, state.CellularConfig.ParentSimSlotNumber)
 		} else {
 			body.CellularConfig.ParentSimSlotNumber = Int64ValueOrNil(plan.CellularConfig.ParentSimSlotNumber)
@@ -4451,7 +5123,7 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		// copy_from_plan_or_state: body=body.DhcpRelay prefix=rsModel state=state.DhcpRelay plan=plan.DhcpRelay properties=4
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.DhcpRelay prefix=rsModel state=state.DhcpRelay plan=plan.DhcpRelay")
 		// property: name=enabled, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.DhcpRelay != nil {
+		if state != nil && state.DhcpRelay != nil {
 			body.DhcpRelay.Enabled = ValueBoolPointerFromPlanOrState(plan.DhcpRelay.Enabled, state.DhcpRelay.Enabled)
 		} else {
 			body.DhcpRelay.Enabled = BoolValueOrNil(plan.DhcpRelay.Enabled)
@@ -4464,34 +5136,39 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			// copy_from_plan_or_state: body=body.DhcpRelay.Option82 prefix=rsModel state=state.DhcpRelay.Option82 plan=plan.DhcpRelay.Option82 properties=4
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.DhcpRelay.Option82 prefix=rsModel state=state.DhcpRelay.Option82 plan=plan.DhcpRelay.Option82")
 			// property: name=circuit_id, type=STRING macro=copy_from_plan_or_state
-			if state.DhcpRelay.Option82 != nil {
+			if state != nil && state.DhcpRelay != nil && state.DhcpRelay.Option82 != nil {
 				body.DhcpRelay.Option82.CircuitId = ValueStringPointerFromPlanOrState(plan.DhcpRelay.Option82.CircuitId, state.DhcpRelay.Option82.CircuitId)
 			} else {
 				body.DhcpRelay.Option82.CircuitId = StringValueOrNil(plan.DhcpRelay.Option82.CircuitId)
 			}
 			// property: name=enabled, type=BOOLEAN macro=copy_from_plan_or_state
-			if state.DhcpRelay.Option82 != nil {
+			if state != nil && state.DhcpRelay != nil && state.DhcpRelay.Option82 != nil {
 				body.DhcpRelay.Option82.Enabled = ValueBoolPointerFromPlanOrState(plan.DhcpRelay.Option82.Enabled, state.DhcpRelay.Option82.Enabled)
 			} else {
 				body.DhcpRelay.Option82.Enabled = BoolValueOrNil(plan.DhcpRelay.Option82.Enabled)
 			}
 			// property: name=reforwarding_policy, type=STRING macro=copy_from_plan_or_state
-			if state.DhcpRelay.Option82 != nil {
+			if state != nil && state.DhcpRelay != nil && state.DhcpRelay.Option82 != nil {
 				body.DhcpRelay.Option82.ReforwardingPolicy = ValueStringPointerFromPlanOrState(plan.DhcpRelay.Option82.ReforwardingPolicy, state.DhcpRelay.Option82.ReforwardingPolicy)
 			} else {
 				body.DhcpRelay.Option82.ReforwardingPolicy = StringValueOrNil(plan.DhcpRelay.Option82.ReforwardingPolicy)
 			}
 			// property: name=remote_id, type=STRING macro=copy_from_plan_or_state
-			if state.DhcpRelay.Option82 != nil {
+			if state != nil && state.DhcpRelay != nil && state.DhcpRelay.Option82 != nil {
 				body.DhcpRelay.Option82.RemoteId = ValueStringPointerFromPlanOrState(plan.DhcpRelay.Option82.RemoteId, state.DhcpRelay.Option82.RemoteId)
 			} else {
 				body.DhcpRelay.Option82.RemoteId = StringValueOrNil(plan.DhcpRelay.Option82.RemoteId)
 			}
 		}
 		// property: name=server_ips, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.DhcpRelay.ServerIps = ListStringValueOrNil(ctx, plan.DhcpRelay.ServerIps)
+		if state != nil && state.DhcpRelay != nil && plan.DhcpRelay.ServerIps.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.DhcpRelay.ServerIps = ListStringValueOrNil(ctx, state.DhcpRelay.ServerIps)
+		} else {
+			body.DhcpRelay.ServerIps = ListStringValueOrNil(ctx, plan.DhcpRelay.ServerIps)
+		}
 		// property: name=source_interface, type=STRING macro=copy_from_plan_or_state
-		if state.DhcpRelay != nil {
+		if state != nil && state.DhcpRelay != nil {
 			body.DhcpRelay.SourceInterface = ValueStringPointerFromPlanOrState(plan.DhcpRelay.SourceInterface, state.DhcpRelay.SourceInterface)
 		} else {
 			body.DhcpRelay.SourceInterface = StringValueOrNil(plan.DhcpRelay.SourceInterface)
@@ -4511,13 +5188,13 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		// copy_from_plan_or_state: body=body.EthernetPort prefix=rsModel state=state.EthernetPort plan=plan.EthernetPort properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.EthernetPort prefix=rsModel state=state.EthernetPort plan=plan.EthernetPort")
 		// property: name=full_duplex, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.EthernetPort != nil {
+		if state != nil && state.EthernetPort != nil {
 			body.EthernetPort.FullDuplex = ValueBoolPointerFromPlanOrState(plan.EthernetPort.FullDuplex, state.EthernetPort.FullDuplex)
 		} else {
 			body.EthernetPort.FullDuplex = BoolValueOrNil(plan.EthernetPort.FullDuplex)
 		}
 		// property: name=speed, type=INTEGER macro=copy_from_plan_or_state
-		if state.EthernetPort != nil {
+		if state != nil && state.EthernetPort != nil {
 			body.EthernetPort.Speed = ValueInt64PointerFromPlanOrState(plan.EthernetPort.Speed, state.EthernetPort.Speed)
 		} else {
 			body.EthernetPort.Speed = Int64ValueOrNil(plan.EthernetPort.Speed)
@@ -4558,7 +5235,7 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		body.Ipv4Config = nil
 	} else {
 		body.Ipv4Config = &sdwan_schema.Ipv4Config{}
-		// copy_from_plan_or_state: body=body.Ipv4Config prefix=rsModel state=state.Ipv4Config plan=plan.Ipv4Config properties=6
+		// copy_from_plan_or_state: body=body.Ipv4Config prefix=rsModel state=state.Ipv4Config plan=plan.Ipv4Config properties=5
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv4Config prefix=rsModel state=state.Ipv4Config plan=plan.Ipv4Config")
 		// property: name=dhcp_config, type=REFERENCE macro=copy_from_plan_or_state
 		if plan.Ipv4Config.DhcpConfig == nil {
@@ -4568,13 +5245,13 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			// copy_from_plan_or_state: body=body.Ipv4Config.DhcpConfig prefix=rsModel state=state.Ipv4Config.DhcpConfig plan=plan.Ipv4Config.DhcpConfig properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv4Config.DhcpConfig prefix=rsModel state=state.Ipv4Config.DhcpConfig plan=plan.Ipv4Config.DhcpConfig")
 			// property: name=client_id, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpConfig != nil {
+			if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpConfig != nil {
 				body.Ipv4Config.DhcpConfig.ClientId = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpConfig.ClientId, state.Ipv4Config.DhcpConfig.ClientId)
 			} else {
 				body.Ipv4Config.DhcpConfig.ClientId = StringValueOrNil(plan.Ipv4Config.DhcpConfig.ClientId)
 			}
 			// property: name=hostname, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpConfig != nil {
+			if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpConfig != nil {
 				body.Ipv4Config.DhcpConfig.Hostname = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpConfig.Hostname, state.Ipv4Config.DhcpConfig.Hostname)
 			} else {
 				body.Ipv4Config.DhcpConfig.Hostname = StringValueOrNil(plan.Ipv4Config.DhcpConfig.Hostname)
@@ -4588,42 +5265,26 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			// copy_from_plan_or_state: body=body.Ipv4Config.DnsV4Config prefix=rsModel state=state.Ipv4Config.DnsV4Config plan=plan.Ipv4Config.DnsV4Config properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv4Config.DnsV4Config prefix=rsModel state=state.Ipv4Config.DnsV4Config plan=plan.Ipv4Config.DnsV4Config")
 			// property: name=name_servers, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-			body.Ipv4Config.DnsV4Config.NameServers = ListStringValueOrNil(ctx, plan.Ipv4Config.DnsV4Config.NameServers)
+			if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DnsV4Config != nil && plan.Ipv4Config.DnsV4Config.NameServers.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.Ipv4Config.DnsV4Config.NameServers = ListStringValueOrNil(ctx, state.Ipv4Config.DnsV4Config.NameServers)
+			} else {
+				body.Ipv4Config.DnsV4Config.NameServers = ListStringValueOrNil(ctx, plan.Ipv4Config.DnsV4Config.NameServers)
+			}
 			// property: name=search, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-			body.Ipv4Config.DnsV4Config.Search = ListStringValueOrNil(ctx, plan.Ipv4Config.DnsV4Config.Search)
-		}
-		// property: name=pppoe_config, type=REFERENCE macro=copy_from_plan_or_state
-		if plan.Ipv4Config.PppoeConfig == nil {
-			body.Ipv4Config.PppoeConfig = nil
-		} else {
-			body.Ipv4Config.PppoeConfig = &sdwan_schema.Ipv4Pppoe{}
-			// copy_from_plan_or_state: body=body.Ipv4Config.PppoeConfig prefix=rsModel state=state.Ipv4Config.PppoeConfig plan=plan.Ipv4Config.PppoeConfig properties=3
-			tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv4Config.PppoeConfig prefix=rsModel state=state.Ipv4Config.PppoeConfig plan=plan.Ipv4Config.PppoeConfig")
-			// property: name=chap_passwd, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.PppoeConfig != nil {
-				body.Ipv4Config.PppoeConfig.ChapPasswd = ValueStringPointerFromPlanOrState(plan.Ipv4Config.PppoeConfig.ChapPasswd, state.Ipv4Config.PppoeConfig.ChapPasswd)
+			if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DnsV4Config != nil && plan.Ipv4Config.DnsV4Config.Search.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.Ipv4Config.DnsV4Config.Search = ListStringValueOrNil(ctx, state.Ipv4Config.DnsV4Config.Search)
 			} else {
-				body.Ipv4Config.PppoeConfig.ChapPasswd = StringValueOrNil(plan.Ipv4Config.PppoeConfig.ChapPasswd)
-			}
-			// property: name=chap_user, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.PppoeConfig != nil {
-				body.Ipv4Config.PppoeConfig.ChapUser = ValueStringPointerFromPlanOrState(plan.Ipv4Config.PppoeConfig.ChapUser, state.Ipv4Config.PppoeConfig.ChapUser)
-			} else {
-				body.Ipv4Config.PppoeConfig.ChapUser = StringValueOrNil(plan.Ipv4Config.PppoeConfig.ChapUser)
-			}
-			// property: name=set_route, type=BOOLEAN macro=copy_from_plan_or_state
-			if state.Ipv4Config.PppoeConfig != nil {
-				body.Ipv4Config.PppoeConfig.SetRoute = ValueBoolPointerFromPlanOrState(plan.Ipv4Config.PppoeConfig.SetRoute, state.Ipv4Config.PppoeConfig.SetRoute)
-			} else {
-				body.Ipv4Config.PppoeConfig.SetRoute = BoolValueOrNil(plan.Ipv4Config.PppoeConfig.SetRoute)
+				body.Ipv4Config.DnsV4Config.Search = ListStringValueOrNil(ctx, plan.Ipv4Config.DnsV4Config.Search)
 			}
 		}
 		// property: name=routes, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-		if plan.Ipv4Config.Routes == nil && (state.Ipv4Config == nil || state.Ipv4Config.Routes == nil) {
+		if plan.Ipv4Config.Routes == nil && (!(state != nil && state.Ipv4Config != nil) || state.Ipv4Config.Routes == nil) {
 			body.Ipv4Config.Routes = nil
-		} else if len(plan.Ipv4Config.Routes) == 0 && (state.Ipv4Config == nil || len(state.Ipv4Config.Routes) == 0) {
+		} else if len(plan.Ipv4Config.Routes) == 0 && (!(state != nil && state.Ipv4Config != nil) || len(state.Ipv4Config.Routes) == 0) {
 			body.Ipv4Config.Routes = []sdwan_schema.Route{}
-		} else if len(plan.Ipv4Config.Routes) != 0 || (state.Ipv4Config != nil && len(state.Ipv4Config.Routes) != 0) {
+		} else if len(plan.Ipv4Config.Routes) != 0 || (state != nil && state.Ipv4Config != nil && len(state.Ipv4Config.Routes) != 0) {
 			RoutesToUse := plan.Ipv4Config.Routes
 			if len(plan.Ipv4Config.Routes) == 0 {
 				RoutesToUse = state.Ipv4Config.Routes
@@ -4649,14 +5310,14 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			// copy_from_plan_or_state: body=body.Ipv4Config.StaticConfig prefix=rsModel state=state.Ipv4Config.StaticConfig plan=plan.Ipv4Config.StaticConfig properties=1
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv4Config.StaticConfig prefix=rsModel state=state.Ipv4Config.StaticConfig plan=plan.Ipv4Config.StaticConfig")
 			// property: name=address, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.StaticConfig != nil {
+			if state != nil && state.Ipv4Config != nil && state.Ipv4Config.StaticConfig != nil {
 				body.Ipv4Config.StaticConfig.Address = ValueStringPointerFromPlanOrState(plan.Ipv4Config.StaticConfig.Address, state.Ipv4Config.StaticConfig.Address)
 			} else {
 				body.Ipv4Config.StaticConfig.Address = StringValueOrNil(plan.Ipv4Config.StaticConfig.Address)
 			}
 		}
 		// property: name=type, type=STRING macro=copy_from_plan_or_state
-		if state.Ipv4Config != nil {
+		if state != nil && state.Ipv4Config != nil {
 			body.Ipv4Config.Type = ValueStringPointerFromPlanOrState(plan.Ipv4Config.Type, state.Ipv4Config.Type)
 		} else {
 			body.Ipv4Config.Type = StringValueOrNil(plan.Ipv4Config.Type)
@@ -4677,13 +5338,13 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			// copy_from_plan_or_state: body=body.Ipv6Config.DhcpConfig prefix=rsModel state=state.Ipv6Config.DhcpConfig plan=plan.Ipv6Config.DhcpConfig properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv6Config.DhcpConfig prefix=rsModel state=state.Ipv6Config.DhcpConfig plan=plan.Ipv6Config.DhcpConfig")
 			// property: name=client_id, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv6Config.DhcpConfig != nil {
+			if state != nil && state.Ipv6Config != nil && state.Ipv6Config.DhcpConfig != nil {
 				body.Ipv6Config.DhcpConfig.ClientId = ValueStringPointerFromPlanOrState(plan.Ipv6Config.DhcpConfig.ClientId, state.Ipv6Config.DhcpConfig.ClientId)
 			} else {
 				body.Ipv6Config.DhcpConfig.ClientId = StringValueOrNil(plan.Ipv6Config.DhcpConfig.ClientId)
 			}
 			// property: name=hostname, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv6Config.DhcpConfig != nil {
+			if state != nil && state.Ipv6Config != nil && state.Ipv6Config.DhcpConfig != nil {
 				body.Ipv6Config.DhcpConfig.Hostname = ValueStringPointerFromPlanOrState(plan.Ipv6Config.DhcpConfig.Hostname, state.Ipv6Config.DhcpConfig.Hostname)
 			} else {
 				body.Ipv6Config.DhcpConfig.Hostname = StringValueOrNil(plan.Ipv6Config.DhcpConfig.Hostname)
@@ -4697,16 +5358,26 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			// copy_from_plan_or_state: body=body.Ipv6Config.DnsV6Config prefix=rsModel state=state.Ipv6Config.DnsV6Config plan=plan.Ipv6Config.DnsV6Config properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv6Config.DnsV6Config prefix=rsModel state=state.Ipv6Config.DnsV6Config plan=plan.Ipv6Config.DnsV6Config")
 			// property: name=name_servers, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-			body.Ipv6Config.DnsV6Config.NameServers = ListStringValueOrNil(ctx, plan.Ipv6Config.DnsV6Config.NameServers)
+			if state != nil && state.Ipv6Config != nil && state.Ipv6Config.DnsV6Config != nil && plan.Ipv6Config.DnsV6Config.NameServers.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.Ipv6Config.DnsV6Config.NameServers = ListStringValueOrNil(ctx, state.Ipv6Config.DnsV6Config.NameServers)
+			} else {
+				body.Ipv6Config.DnsV6Config.NameServers = ListStringValueOrNil(ctx, plan.Ipv6Config.DnsV6Config.NameServers)
+			}
 			// property: name=search, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-			body.Ipv6Config.DnsV6Config.Search = ListStringValueOrNil(ctx, plan.Ipv6Config.DnsV6Config.Search)
+			if state != nil && state.Ipv6Config != nil && state.Ipv6Config.DnsV6Config != nil && plan.Ipv6Config.DnsV6Config.Search.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.Ipv6Config.DnsV6Config.Search = ListStringValueOrNil(ctx, state.Ipv6Config.DnsV6Config.Search)
+			} else {
+				body.Ipv6Config.DnsV6Config.Search = ListStringValueOrNil(ctx, plan.Ipv6Config.DnsV6Config.Search)
+			}
 		}
 		// property: name=routes, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-		if plan.Ipv6Config.Routes == nil && (state.Ipv6Config == nil || state.Ipv6Config.Routes == nil) {
+		if plan.Ipv6Config.Routes == nil && (!(state != nil && state.Ipv6Config != nil) || state.Ipv6Config.Routes == nil) {
 			body.Ipv6Config.Routes = nil
-		} else if len(plan.Ipv6Config.Routes) == 0 && (state.Ipv6Config == nil || len(state.Ipv6Config.Routes) == 0) {
+		} else if len(plan.Ipv6Config.Routes) == 0 && (!(state != nil && state.Ipv6Config != nil) || len(state.Ipv6Config.Routes) == 0) {
 			body.Ipv6Config.Routes = []sdwan_schema.Route{}
-		} else if len(plan.Ipv6Config.Routes) != 0 || (state.Ipv6Config != nil && len(state.Ipv6Config.Routes) != 0) {
+		} else if len(plan.Ipv6Config.Routes) != 0 || (state != nil && state.Ipv6Config != nil && len(state.Ipv6Config.Routes) != 0) {
 			RoutesToUse := plan.Ipv6Config.Routes
 			if len(plan.Ipv6Config.Routes) == 0 {
 				RoutesToUse = state.Ipv6Config.Routes
@@ -4732,20 +5403,20 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			// copy_from_plan_or_state: body=body.Ipv6Config.StaticConfig prefix=rsModel state=state.Ipv6Config.StaticConfig plan=plan.Ipv6Config.StaticConfig properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv6Config.StaticConfig prefix=rsModel state=state.Ipv6Config.StaticConfig plan=plan.Ipv6Config.StaticConfig")
 			// property: name=address, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv6Config.StaticConfig != nil {
+			if state != nil && state.Ipv6Config != nil && state.Ipv6Config.StaticConfig != nil {
 				body.Ipv6Config.StaticConfig.Address = ValueStringPointerFromPlanOrState(plan.Ipv6Config.StaticConfig.Address, state.Ipv6Config.StaticConfig.Address)
 			} else {
 				body.Ipv6Config.StaticConfig.Address = StringValueOrNil(plan.Ipv6Config.StaticConfig.Address)
 			}
 			// property: name=enable_prefix_distribution, type=BOOLEAN macro=copy_from_plan_or_state
-			if state.Ipv6Config.StaticConfig != nil {
+			if state != nil && state.Ipv6Config != nil && state.Ipv6Config.StaticConfig != nil {
 				body.Ipv6Config.StaticConfig.EnablePrefixDistribution = ValueBoolPointerFromPlanOrState(plan.Ipv6Config.StaticConfig.EnablePrefixDistribution, state.Ipv6Config.StaticConfig.EnablePrefixDistribution)
 			} else {
 				body.Ipv6Config.StaticConfig.EnablePrefixDistribution = BoolValueOrNil(plan.Ipv6Config.StaticConfig.EnablePrefixDistribution)
 			}
 		}
 		// property: name=type, type=STRING macro=copy_from_plan_or_state
-		if state.Ipv6Config != nil {
+		if state != nil && state.Ipv6Config != nil {
 			body.Ipv6Config.Type = ValueStringPointerFromPlanOrState(plan.Ipv6Config.Type, state.Ipv6Config.Type)
 		} else {
 			body.Ipv6Config.Type = StringValueOrNil(plan.Ipv6Config.Type)
@@ -4765,7 +5436,7 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		// copy_from_plan_or_state: body=body.LoopbackConfig prefix=rsModel state=state.LoopbackConfig plan=plan.LoopbackConfig properties=1
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.LoopbackConfig prefix=rsModel state=state.LoopbackConfig plan=plan.LoopbackConfig")
 		// property: name=binding_interface_id, type=STRING macro=copy_from_plan_or_state
-		if state.LoopbackConfig != nil {
+		if state != nil && state.LoopbackConfig != nil {
 			body.LoopbackConfig.BindingInterfaceId = ValueStringPointerFromPlanOrState(plan.LoopbackConfig.BindingInterfaceId, state.LoopbackConfig.BindingInterfaceId)
 		} else {
 			body.LoopbackConfig.BindingInterfaceId = StringValueOrNil(plan.LoopbackConfig.BindingInterfaceId)
@@ -4787,21 +5458,21 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 	if plan.MulticastConfig == nil {
 		body.MulticastConfig = nil
 	} else {
-		body.MulticastConfig = &sdwan_schema.MulticastInterfaceConfig{}
+		body.MulticastConfig = &sdwan_schema.MulticastInterfaceConfigV4N12{}
 		// copy_from_plan_or_state: body=body.MulticastConfig prefix=rsModel state=state.MulticastConfig plan=plan.MulticastConfig properties=4
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.MulticastConfig prefix=rsModel state=state.MulticastConfig plan=plan.MulticastConfig")
 		// property: name=dr_priority, type=INTEGER macro=copy_from_plan_or_state
-		if state.MulticastConfig != nil {
+		if state != nil && state.MulticastConfig != nil {
 			body.MulticastConfig.DrPriority = ValueInt64PointerFromPlanOrState(plan.MulticastConfig.DrPriority, state.MulticastConfig.DrPriority)
 		} else {
 			body.MulticastConfig.DrPriority = Int64ValueOrNil(plan.MulticastConfig.DrPriority)
 		}
 		// property: name=igmp_static_joins, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-		if plan.MulticastConfig.IgmpStaticJoins == nil && (state.MulticastConfig == nil || state.MulticastConfig.IgmpStaticJoins == nil) {
+		if plan.MulticastConfig.IgmpStaticJoins == nil && (!(state != nil && state.MulticastConfig != nil) || state.MulticastConfig.IgmpStaticJoins == nil) {
 			body.MulticastConfig.IgmpStaticJoins = nil
-		} else if len(plan.MulticastConfig.IgmpStaticJoins) == 0 && (state.MulticastConfig == nil || len(state.MulticastConfig.IgmpStaticJoins) == 0) {
+		} else if len(plan.MulticastConfig.IgmpStaticJoins) == 0 && (!(state != nil && state.MulticastConfig != nil) || len(state.MulticastConfig.IgmpStaticJoins) == 0) {
 			body.MulticastConfig.IgmpStaticJoins = []sdwan_schema.MulticastIgmpStaticJoin{}
-		} else if len(plan.MulticastConfig.IgmpStaticJoins) != 0 || (state.MulticastConfig != nil && len(state.MulticastConfig.IgmpStaticJoins) != 0) {
+		} else if len(plan.MulticastConfig.IgmpStaticJoins) != 0 || (state != nil && state.MulticastConfig != nil && len(state.MulticastConfig.IgmpStaticJoins) != 0) {
 			IgmpStaticJoinsToUse := plan.MulticastConfig.IgmpStaticJoins
 			if len(plan.MulticastConfig.IgmpStaticJoins) == 0 {
 				IgmpStaticJoinsToUse = state.MulticastConfig.IgmpStaticJoins
@@ -4820,13 +5491,13 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			}
 		}
 		// property: name=igmp_version, type=STRING macro=copy_from_plan_or_state
-		if state.MulticastConfig != nil {
+		if state != nil && state.MulticastConfig != nil {
 			body.MulticastConfig.IgmpVersion = ValueStringPointerFromPlanOrState(plan.MulticastConfig.IgmpVersion, state.MulticastConfig.IgmpVersion)
 		} else {
 			body.MulticastConfig.IgmpVersion = StringValueOrNil(plan.MulticastConfig.IgmpVersion)
 		}
 		// property: name=multicast_enabled, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.MulticastConfig != nil {
+		if state != nil && state.MulticastConfig != nil {
 			body.MulticastConfig.MulticastEnabled = ValueBoolPointerFromPlanOrState(plan.MulticastConfig.MulticastEnabled, state.MulticastConfig.MulticastEnabled)
 		} else {
 			body.MulticastConfig.MulticastEnabled = BoolValueOrNil(plan.MulticastConfig.MulticastEnabled)
@@ -4851,9 +5522,9 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		body.NatAddressV6 = StringValueOrNil(plan.NatAddressV6)
 	}
 	// property: name=nat_pools, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.NatPools == nil && (state == nil || state.NatPools == nil) {
+	if plan.NatPools == nil && (!(state != nil) || state.NatPools == nil) {
 		body.NatPools = nil
-	} else if len(plan.NatPools) == 0 && (state == nil || len(state.NatPools) == 0) {
+	} else if len(plan.NatPools) == 0 && (!(state != nil) || len(state.NatPools) == 0) {
 		body.NatPools = []sdwan_schema.NatPool{}
 	} else if len(plan.NatPools) != 0 || (state != nil && len(state.NatPools) != 0) {
 		NatPoolsToUse := plan.NatPools
@@ -4939,13 +5610,13 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		// copy_from_plan_or_state: body=body.PortChannelConfig prefix=rsModel state=state.PortChannelConfig plan=plan.PortChannelConfig properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.PortChannelConfig prefix=rsModel state=state.PortChannelConfig plan=plan.PortChannelConfig")
 		// property: name=lacp_enabled, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.PortChannelConfig != nil {
+		if state != nil && state.PortChannelConfig != nil {
 			body.PortChannelConfig.LacpEnabled = ValueBoolPointerFromPlanOrState(plan.PortChannelConfig.LacpEnabled, state.PortChannelConfig.LacpEnabled)
 		} else {
 			body.PortChannelConfig.LacpEnabled = BoolValueOrNil(plan.PortChannelConfig.LacpEnabled)
 		}
 		// property: name=transmission_mode, type=STRING macro=copy_from_plan_or_state
-		if state.PortChannelConfig != nil {
+		if state != nil && state.PortChannelConfig != nil {
 			body.PortChannelConfig.TransmissionMode = ValueStringPointerFromPlanOrState(plan.PortChannelConfig.TransmissionMode, state.PortChannelConfig.TransmissionMode)
 		} else {
 			body.PortChannelConfig.TransmissionMode = StringValueOrNil(plan.PortChannelConfig.TransmissionMode)
@@ -4965,37 +5636,37 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		// copy_from_plan_or_state: body=body.PppoeConfig prefix=rsModel state=state.PppoeConfig plan=plan.PppoeConfig properties=6
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.PppoeConfig prefix=rsModel state=state.PppoeConfig plan=plan.PppoeConfig")
 		// property: name=host_uniq, type=STRING macro=copy_from_plan_or_state
-		if state.PppoeConfig != nil {
+		if state != nil && state.PppoeConfig != nil {
 			body.PppoeConfig.HostUniq = ValueStringPointerFromPlanOrState(plan.PppoeConfig.HostUniq, state.PppoeConfig.HostUniq)
 		} else {
 			body.PppoeConfig.HostUniq = StringValueOrNil(plan.PppoeConfig.HostUniq)
 		}
 		// property: name=ip_address_type, type=STRING macro=copy_from_plan_or_state
-		if state.PppoeConfig != nil {
+		if state != nil && state.PppoeConfig != nil {
 			body.PppoeConfig.IpAddressType = ValueStringPointerFromPlanOrState(plan.PppoeConfig.IpAddressType, state.PppoeConfig.IpAddressType)
 		} else {
 			body.PppoeConfig.IpAddressType = StringValueOrNil(plan.PppoeConfig.IpAddressType)
 		}
 		// property: name=password, type=STRING macro=copy_from_plan_or_state
-		if state.PppoeConfig != nil {
+		if state != nil && state.PppoeConfig != nil {
 			body.PppoeConfig.Password = ValueStringPointerFromPlanOrState(plan.PppoeConfig.Password, state.PppoeConfig.Password)
 		} else {
 			body.PppoeConfig.Password = StringValueOrNil(plan.PppoeConfig.Password)
 		}
 		// property: name=reconnection_delay, type=INTEGER macro=copy_from_plan_or_state
-		if state.PppoeConfig != nil {
+		if state != nil && state.PppoeConfig != nil {
 			body.PppoeConfig.ReconnectionDelay = ValueInt64PointerFromPlanOrState(plan.PppoeConfig.ReconnectionDelay, state.PppoeConfig.ReconnectionDelay)
 		} else {
 			body.PppoeConfig.ReconnectionDelay = Int64ValueOrNil(plan.PppoeConfig.ReconnectionDelay)
 		}
 		// property: name=service_name, type=STRING macro=copy_from_plan_or_state
-		if state.PppoeConfig != nil {
+		if state != nil && state.PppoeConfig != nil {
 			body.PppoeConfig.ServiceName = ValueStringPointerFromPlanOrState(plan.PppoeConfig.ServiceName, state.PppoeConfig.ServiceName)
 		} else {
 			body.PppoeConfig.ServiceName = StringValueOrNil(plan.PppoeConfig.ServiceName)
 		}
 		// property: name=username, type=STRING macro=copy_from_plan_or_state
-		if state.PppoeConfig != nil {
+		if state != nil && state.PppoeConfig != nil {
 			body.PppoeConfig.Username = ValueStringPointerFromPlanOrState(plan.PppoeConfig.Username, state.PppoeConfig.Username)
 		} else {
 			body.PppoeConfig.Username = StringValueOrNil(plan.PppoeConfig.Username)
@@ -5008,9 +5679,9 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		body.Scope = StringValueOrNil(plan.Scope)
 	}
 	// property: name=secondary_ip_configs, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.SecondaryIpConfigs == nil && (state == nil || state.SecondaryIpConfigs == nil) {
+	if plan.SecondaryIpConfigs == nil && (!(state != nil) || state.SecondaryIpConfigs == nil) {
 		body.SecondaryIpConfigs = nil
-	} else if len(plan.SecondaryIpConfigs) == 0 && (state == nil || len(state.SecondaryIpConfigs) == 0) {
+	} else if len(plan.SecondaryIpConfigs) == 0 && (!(state != nil) || len(state.SecondaryIpConfigs) == 0) {
 		body.SecondaryIpConfigs = []sdwan_schema.SecondaryIPConfig{}
 	} else if len(plan.SecondaryIpConfigs) != 0 || (state != nil && len(state.SecondaryIpConfigs) != 0) {
 		SecondaryIpConfigsToUse := plan.SecondaryIpConfigs
@@ -5045,25 +5716,25 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			// copy_from_plan_or_state: body=body.ServiceLinkConfig.GreConfig prefix=rsModel state=state.ServiceLinkConfig.GreConfig plan=plan.ServiceLinkConfig.GreConfig properties=4
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.ServiceLinkConfig.GreConfig prefix=rsModel state=state.ServiceLinkConfig.GreConfig plan=plan.ServiceLinkConfig.GreConfig")
 			// property: name=csum, type=BOOLEAN macro=copy_from_plan_or_state
-			if state.ServiceLinkConfig.GreConfig != nil {
+			if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.GreConfig != nil {
 				body.ServiceLinkConfig.GreConfig.Csum = ValueBoolPointerFromPlanOrState(plan.ServiceLinkConfig.GreConfig.Csum, state.ServiceLinkConfig.GreConfig.Csum)
 			} else {
 				body.ServiceLinkConfig.GreConfig.Csum = BoolValueOrNil(plan.ServiceLinkConfig.GreConfig.Csum)
 			}
 			// property: name=keepalive_enable, type=BOOLEAN macro=copy_from_plan_or_state
-			if state.ServiceLinkConfig.GreConfig != nil {
+			if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.GreConfig != nil {
 				body.ServiceLinkConfig.GreConfig.KeepaliveEnable = ValueBoolPointerFromPlanOrState(plan.ServiceLinkConfig.GreConfig.KeepaliveEnable, state.ServiceLinkConfig.GreConfig.KeepaliveEnable)
 			} else {
 				body.ServiceLinkConfig.GreConfig.KeepaliveEnable = BoolValueOrNil(plan.ServiceLinkConfig.GreConfig.KeepaliveEnable)
 			}
 			// property: name=keepalive_fail_count, type=INTEGER macro=copy_from_plan_or_state
-			if state.ServiceLinkConfig.GreConfig != nil {
+			if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.GreConfig != nil {
 				body.ServiceLinkConfig.GreConfig.KeepaliveFailCount = ValueInt64PointerFromPlanOrState(plan.ServiceLinkConfig.GreConfig.KeepaliveFailCount, state.ServiceLinkConfig.GreConfig.KeepaliveFailCount)
 			} else {
 				body.ServiceLinkConfig.GreConfig.KeepaliveFailCount = Int64ValueOrNil(plan.ServiceLinkConfig.GreConfig.KeepaliveFailCount)
 			}
 			// property: name=keepalive_interval, type=INTEGER macro=copy_from_plan_or_state
-			if state.ServiceLinkConfig.GreConfig != nil {
+			if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.GreConfig != nil {
 				body.ServiceLinkConfig.GreConfig.KeepaliveInterval = ValueInt64PointerFromPlanOrState(plan.ServiceLinkConfig.GreConfig.KeepaliveInterval, state.ServiceLinkConfig.GreConfig.KeepaliveInterval)
 			} else {
 				body.ServiceLinkConfig.GreConfig.KeepaliveInterval = Int64ValueOrNil(plan.ServiceLinkConfig.GreConfig.KeepaliveInterval)
@@ -5081,22 +5752,22 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 				body.ServiceLinkConfig.IpsecConfig.Authentication = nil
 			} else {
 				body.ServiceLinkConfig.IpsecConfig.Authentication = &sdwan_schema.IPSECAuthenticationV1{}
-				// copy_from_plan_or_state: body=body.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel state=state.ServiceLinkConfig.IpsecConfig.Authentication plan=plan.ServiceLinkConfig.IpsecConfig.Authentication properties=22
+				// copy_from_plan_or_state: body=body.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel state=state.ServiceLinkConfig.IpsecConfig.Authentication plan=plan.ServiceLinkConfig.IpsecConfig.Authentication properties=23
 				tflog.Debug(ctx, "copy_from_plan_or_state body=body.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel state=state.ServiceLinkConfig.IpsecConfig.Authentication plan=plan.ServiceLinkConfig.IpsecConfig.Authentication")
 				// property: name=certificate, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.Certificate = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.Certificate, state.ServiceLinkConfig.IpsecConfig.Authentication.Certificate)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.Certificate = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.Certificate)
 				}
 				// property: name=certificate_profile_id, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.CertificateProfileId = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.CertificateProfileId, state.ServiceLinkConfig.IpsecConfig.Authentication.CertificateProfileId)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.CertificateProfileId = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.CertificateProfileId)
 				}
 				// property: name=comment, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.Comment = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.Comment, state.ServiceLinkConfig.IpsecConfig.Authentication.Comment)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.Comment = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.Comment)
@@ -5109,160 +5780,216 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 					// copy_from_plan_or_state: body=body.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params prefix=rsModel state=state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params plan=plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params properties=5
 					tflog.Debug(ctx, "copy_from_plan_or_state body=body.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params prefix=rsModel state=state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params plan=plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params")
 					// property: name=xauth_id, type=STRING macro=copy_from_plan_or_state
-					if state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
 						body.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthId = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthId, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthId)
 					} else {
 						body.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthId = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthId)
 					}
 					// property: name=xauth_secret, type=STRING macro=copy_from_plan_or_state
-					if state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
 						body.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret)
 					} else {
 						body.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret)
 					}
 					// property: name=xauth_secret_encrypted, type=STRING macro=copy_from_plan_or_state
-					if state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
 						body.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted)
 					} else {
 						body.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted)
 					}
 					// property: name=xauth_secret_hash, type=STRING macro=copy_from_plan_or_state
-					if state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
 						body.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash)
 					} else {
 						body.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash)
 					}
 					// property: name=xauth_type, type=STRING macro=copy_from_plan_or_state
-					if state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
 						body.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthType = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthType, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthType)
 					} else {
 						body.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthType = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthType)
 					}
 				}
 				// property: name=local_ca_certificate, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.LocalCaCertificate = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.LocalCaCertificate, state.ServiceLinkConfig.IpsecConfig.Authentication.LocalCaCertificate)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.LocalCaCertificate = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.LocalCaCertificate)
 				}
 				// property: name=local_id, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.LocalId = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.LocalId, state.ServiceLinkConfig.IpsecConfig.Authentication.LocalId)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.LocalId = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.LocalId)
 				}
 				// property: name=local_id_custom, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.LocalIdCustom = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.LocalIdCustom, state.ServiceLinkConfig.IpsecConfig.Authentication.LocalIdCustom)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.LocalIdCustom = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.LocalIdCustom)
 				}
 				// property: name=local_pa_certificate_id, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.LocalPaCertificateId = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.LocalPaCertificateId, state.ServiceLinkConfig.IpsecConfig.Authentication.LocalPaCertificateId)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.LocalPaCertificateId = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.LocalPaCertificateId)
 				}
 				// property: name=pa_master_key_id, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.PaMasterKeyId = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PaMasterKeyId, state.ServiceLinkConfig.IpsecConfig.Authentication.PaMasterKeyId)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.PaMasterKeyId = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PaMasterKeyId)
 				}
 				// property: name=passphrase, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase, state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase)
 				}
 				// property: name=passphrase_encrypted, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted, state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted)
 				}
 				// property: name=peer_id_check, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck, state.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck)
 				}
 				// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch = ValueBoolPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch, state.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch = BoolValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch)
 				}
+				// property: name=ppk_config, type=REFERENCE macro=copy_from_plan_or_state
+				if plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig == nil {
+					body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig = nil
+				} else {
+					body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig = &sdwan_schema.PPKConfig{}
+					// copy_from_plan_or_state: body=body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig prefix=rsModel state=state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig plan=plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig properties=8
+					tflog.Debug(ctx, "copy_from_plan_or_state body=body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig prefix=rsModel state=state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig plan=plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig")
+					// property: name=enabled, type=BOOLEAN macro=copy_from_plan_or_state
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled = ValueBoolPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled)
+					} else {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled = BoolValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled)
+					}
+					// property: name=key_enabled, type=BOOLEAN macro=copy_from_plan_or_state
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled = ValueBoolPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled)
+					} else {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled = BoolValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled)
+					}
+					// property: name=mode, type=STRING macro=copy_from_plan_or_state
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode)
+					} else {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode)
+					}
+					// property: name=ppk_key_id, type=STRING macro=copy_from_plan_or_state
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId)
+					} else {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId)
+					}
+					// property: name=ppk_secret, type=STRING macro=copy_from_plan_or_state
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret)
+					} else {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret)
+					}
+					// property: name=ppk_secret_configured, type=BOOLEAN macro=copy_from_plan_or_state
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured = ValueBoolPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured)
+					} else {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured = BoolValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured)
+					}
+					// property: name=ppk_secret_encrypted, type=STRING macro=copy_from_plan_or_state
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted)
+					} else {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted)
+					}
+					// property: name=ppk_secret_hash, type=STRING macro=copy_from_plan_or_state
+					if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil && state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash)
+					} else {
+						body.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash)
+					}
+				}
 				// property: name=private_key, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey, state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey)
 				}
 				// property: name=private_key_encrypted, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted, state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted)
 				}
 				// property: name=remote_ca_certificate, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.RemoteCaCertificate = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.RemoteCaCertificate, state.ServiceLinkConfig.IpsecConfig.Authentication.RemoteCaCertificate)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.RemoteCaCertificate = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.RemoteCaCertificate)
 				}
 				// property: name=remote_id, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.RemoteId = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.RemoteId, state.ServiceLinkConfig.IpsecConfig.Authentication.RemoteId)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.RemoteId = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.RemoteId)
 				}
 				// property: name=secret, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.Secret = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.Secret, state.ServiceLinkConfig.IpsecConfig.Authentication.Secret)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.Secret = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.Secret)
 				}
 				// property: name=secret_encrypted, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted)
 				}
 				// property: name=secret_hash, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash)
 				}
 				// property: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.StrictValidationPeerExtendedKeyUse = ValueBoolPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.StrictValidationPeerExtendedKeyUse, state.ServiceLinkConfig.IpsecConfig.Authentication.StrictValidationPeerExtendedKeyUse)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.StrictValidationPeerExtendedKeyUse = BoolValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.StrictValidationPeerExtendedKeyUse)
 				}
 				// property: name=type, type=STRING macro=copy_from_plan_or_state
-				if state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+				if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil && state.ServiceLinkConfig.IpsecConfig.Authentication != nil {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.Type = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.Authentication.Type, state.ServiceLinkConfig.IpsecConfig.Authentication.Type)
 				} else {
 					body.ServiceLinkConfig.IpsecConfig.Authentication.Type = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.Authentication.Type)
 				}
 			}
 			// property: name=ipsec_profile_id, type=STRING macro=copy_from_plan_or_state
-			if state.ServiceLinkConfig.IpsecConfig != nil {
+			if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.IpsecConfig != nil {
 				body.ServiceLinkConfig.IpsecConfig.IpsecProfileId = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.IpsecConfig.IpsecProfileId, state.ServiceLinkConfig.IpsecConfig.IpsecProfileId)
 			} else {
 				body.ServiceLinkConfig.IpsecConfig.IpsecProfileId = StringValueOrNil(plan.ServiceLinkConfig.IpsecConfig.IpsecProfileId)
 			}
 		}
 		// property: name=last_parent, type=STRING macro=copy_from_plan_or_state
-		if state.ServiceLinkConfig != nil {
+		if state != nil && state.ServiceLinkConfig != nil {
 			body.ServiceLinkConfig.LastParent = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.LastParent, state.ServiceLinkConfig.LastParent)
 		} else {
 			body.ServiceLinkConfig.LastParent = StringValueOrNil(plan.ServiceLinkConfig.LastParent)
 		}
 		// property: name=parent, type=STRING macro=copy_from_plan_or_state
-		if state.ServiceLinkConfig != nil {
+		if state != nil && state.ServiceLinkConfig != nil {
 			body.ServiceLinkConfig.Parent = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.Parent, state.ServiceLinkConfig.Parent)
 		} else {
 			body.ServiceLinkConfig.Parent = StringValueOrNil(plan.ServiceLinkConfig.Parent)
@@ -5272,19 +5999,13 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			body.ServiceLinkConfig.PassiveMode = nil
 		} else {
 			body.ServiceLinkConfig.PassiveMode = &sdwan_schema.PassiveMode{}
-			// copy_from_plan_or_state: body=body.ServiceLinkConfig.PassiveMode prefix=rsModel state=state.ServiceLinkConfig.PassiveMode plan=plan.ServiceLinkConfig.PassiveMode properties=2
+			// copy_from_plan_or_state: body=body.ServiceLinkConfig.PassiveMode prefix=rsModel state=state.ServiceLinkConfig.PassiveMode plan=plan.ServiceLinkConfig.PassiveMode properties=1
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.ServiceLinkConfig.PassiveMode prefix=rsModel state=state.ServiceLinkConfig.PassiveMode plan=plan.ServiceLinkConfig.PassiveMode")
 			// property: name=enable, type=BOOLEAN macro=copy_from_plan_or_state
-			if state.ServiceLinkConfig.PassiveMode != nil {
+			if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.PassiveMode != nil {
 				body.ServiceLinkConfig.PassiveMode.Enable = ValueBoolPointerFromPlanOrState(plan.ServiceLinkConfig.PassiveMode.Enable, state.ServiceLinkConfig.PassiveMode.Enable)
 			} else {
 				body.ServiceLinkConfig.PassiveMode.Enable = BoolValueOrNil(plan.ServiceLinkConfig.PassiveMode.Enable)
-			}
-			// property: name=peer_ip_dynamic, type=BOOLEAN macro=copy_from_plan_or_state
-			if state.ServiceLinkConfig.PassiveMode != nil {
-				body.ServiceLinkConfig.PassiveMode.PeerIpDynamic = ValueBoolPointerFromPlanOrState(plan.ServiceLinkConfig.PassiveMode.PeerIpDynamic, state.ServiceLinkConfig.PassiveMode.PeerIpDynamic)
-			} else {
-				body.ServiceLinkConfig.PassiveMode.PeerIpDynamic = BoolValueOrNil(plan.ServiceLinkConfig.PassiveMode.PeerIpDynamic)
 			}
 		}
 		// property: name=peer, type=REFERENCE macro=copy_from_plan_or_state
@@ -5295,22 +6016,27 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			// copy_from_plan_or_state: body=body.ServiceLinkConfig.Peer prefix=rsModel state=state.ServiceLinkConfig.Peer plan=plan.ServiceLinkConfig.Peer properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.ServiceLinkConfig.Peer prefix=rsModel state=state.ServiceLinkConfig.Peer plan=plan.ServiceLinkConfig.Peer")
 			// property: name=hostname, type=STRING macro=copy_from_plan_or_state
-			if state.ServiceLinkConfig.Peer != nil {
+			if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.Peer != nil {
 				body.ServiceLinkConfig.Peer.Hostname = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.Peer.Hostname, state.ServiceLinkConfig.Peer.Hostname)
 			} else {
 				body.ServiceLinkConfig.Peer.Hostname = StringValueOrNil(plan.ServiceLinkConfig.Peer.Hostname)
 			}
 			// property: name=ip_addresses, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-			body.ServiceLinkConfig.Peer.IpAddresses = ListStringValueOrNil(ctx, plan.ServiceLinkConfig.Peer.IpAddresses)
+			if state != nil && state.ServiceLinkConfig != nil && state.ServiceLinkConfig.Peer != nil && plan.ServiceLinkConfig.Peer.IpAddresses.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.ServiceLinkConfig.Peer.IpAddresses = ListStringValueOrNil(ctx, state.ServiceLinkConfig.Peer.IpAddresses)
+			} else {
+				body.ServiceLinkConfig.Peer.IpAddresses = ListStringValueOrNil(ctx, plan.ServiceLinkConfig.Peer.IpAddresses)
+			}
 		}
 		// property: name=service_endpoint_id, type=STRING macro=copy_from_plan_or_state
-		if state.ServiceLinkConfig != nil {
+		if state != nil && state.ServiceLinkConfig != nil {
 			body.ServiceLinkConfig.ServiceEndpointId = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.ServiceEndpointId, state.ServiceLinkConfig.ServiceEndpointId)
 		} else {
 			body.ServiceLinkConfig.ServiceEndpointId = StringValueOrNil(plan.ServiceLinkConfig.ServiceEndpointId)
 		}
 		// property: name=type, type=STRING macro=copy_from_plan_or_state
-		if state.ServiceLinkConfig != nil {
+		if state != nil && state.ServiceLinkConfig != nil {
 			body.ServiceLinkConfig.Type = ValueStringPointerFromPlanOrState(plan.ServiceLinkConfig.Type, state.ServiceLinkConfig.Type)
 		} else {
 			body.ServiceLinkConfig.Type = StringValueOrNil(plan.ServiceLinkConfig.Type)
@@ -5323,11 +6049,16 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		body.SgiApplyStaticTag = BoolValueOrNil(plan.SgiApplyStaticTag)
 	}
 	// property: name=site_wan_interface_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.SiteWanInterfaceIds = ListStringValueOrNil(ctx, plan.SiteWanInterfaceIds)
+	if state != nil && plan.SiteWanInterfaceIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.SiteWanInterfaceIds = ListStringValueOrNil(ctx, state.SiteWanInterfaceIds)
+	} else {
+		body.SiteWanInterfaceIds = ListStringValueOrNil(ctx, plan.SiteWanInterfaceIds)
+	}
 	// property: name=static_arp_configs, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.StaticArpConfigs == nil && (state == nil || state.StaticArpConfigs == nil) {
+	if plan.StaticArpConfigs == nil && (!(state != nil) || state.StaticArpConfigs == nil) {
 		body.StaticArpConfigs = nil
-	} else if len(plan.StaticArpConfigs) == 0 && (state == nil || len(state.StaticArpConfigs) == 0) {
+	} else if len(plan.StaticArpConfigs) == 0 && (!(state != nil) || len(state.StaticArpConfigs) == 0) {
 		body.StaticArpConfigs = []sdwan_schema.StaticARPConfig{}
 	} else if len(plan.StaticArpConfigs) != 0 || (state != nil && len(state.StaticArpConfigs) != 0) {
 		StaticArpConfigsToUse := plan.StaticArpConfigs
@@ -5352,10 +6083,16 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		body.SubInterface = nil
 	} else {
 		body.SubInterface = &sdwan_schema.SubInterface{}
-		// copy_from_plan_or_state: body=body.SubInterface prefix=rsModel state=state.SubInterface plan=plan.SubInterface properties=1
+		// copy_from_plan_or_state: body=body.SubInterface prefix=rsModel state=state.SubInterface plan=plan.SubInterface properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.SubInterface prefix=rsModel state=state.SubInterface plan=plan.SubInterface")
+		// property: name=native_vlan, type=BOOLEAN macro=copy_from_plan_or_state
+		if state != nil && state.SubInterface != nil {
+			body.SubInterface.NativeVlan = ValueBoolPointerFromPlanOrState(plan.SubInterface.NativeVlan, state.SubInterface.NativeVlan)
+		} else {
+			body.SubInterface.NativeVlan = BoolValueOrNil(plan.SubInterface.NativeVlan)
+		}
 		// property: name=vlan_id, type=INTEGER macro=copy_from_plan_or_state
-		if state.SubInterface != nil {
+		if state != nil && state.SubInterface != nil {
 			body.SubInterface.VlanId = ValueInt64PointerFromPlanOrState(plan.SubInterface.VlanId, state.SubInterface.VlanId)
 		} else {
 			body.SubInterface.VlanId = Int64ValueOrNil(plan.SubInterface.VlanId)
@@ -5369,31 +6106,31 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		// copy_from_plan_or_state: body=body.SwitchPortConfig prefix=rsModel state=state.SwitchPortConfig plan=plan.SwitchPortConfig properties=12
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.SwitchPortConfig prefix=rsModel state=state.SwitchPortConfig plan=plan.SwitchPortConfig")
 		// property: name=access_vlan_id, type=INTEGER macro=copy_from_plan_or_state
-		if state.SwitchPortConfig != nil {
+		if state != nil && state.SwitchPortConfig != nil {
 			body.SwitchPortConfig.AccessVlanId = ValueInt64PointerFromPlanOrState(plan.SwitchPortConfig.AccessVlanId, state.SwitchPortConfig.AccessVlanId)
 		} else {
 			body.SwitchPortConfig.AccessVlanId = Int64ValueOrNil(plan.SwitchPortConfig.AccessVlanId)
 		}
 		// property: name=bpdu_guard_enabled, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.SwitchPortConfig != nil {
+		if state != nil && state.SwitchPortConfig != nil {
 			body.SwitchPortConfig.BpduGuardEnabled = ValueBoolPointerFromPlanOrState(plan.SwitchPortConfig.BpduGuardEnabled, state.SwitchPortConfig.BpduGuardEnabled)
 		} else {
 			body.SwitchPortConfig.BpduGuardEnabled = BoolValueOrNil(plan.SwitchPortConfig.BpduGuardEnabled)
 		}
 		// property: name=forward_fast_enabled, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.SwitchPortConfig != nil {
+		if state != nil && state.SwitchPortConfig != nil {
 			body.SwitchPortConfig.ForwardFastEnabled = ValueBoolPointerFromPlanOrState(plan.SwitchPortConfig.ForwardFastEnabled, state.SwitchPortConfig.ForwardFastEnabled)
 		} else {
 			body.SwitchPortConfig.ForwardFastEnabled = BoolValueOrNil(plan.SwitchPortConfig.ForwardFastEnabled)
 		}
 		// property: name=native_vlan_id, type=INTEGER macro=copy_from_plan_or_state
-		if state.SwitchPortConfig != nil {
+		if state != nil && state.SwitchPortConfig != nil {
 			body.SwitchPortConfig.NativeVlanId = ValueInt64PointerFromPlanOrState(plan.SwitchPortConfig.NativeVlanId, state.SwitchPortConfig.NativeVlanId)
 		} else {
 			body.SwitchPortConfig.NativeVlanId = Int64ValueOrNil(plan.SwitchPortConfig.NativeVlanId)
 		}
 		// property: name=root_guard_enabled, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.SwitchPortConfig != nil {
+		if state != nil && state.SwitchPortConfig != nil {
 			body.SwitchPortConfig.RootGuardEnabled = ValueBoolPointerFromPlanOrState(plan.SwitchPortConfig.RootGuardEnabled, state.SwitchPortConfig.RootGuardEnabled)
 		} else {
 			body.SwitchPortConfig.RootGuardEnabled = BoolValueOrNil(plan.SwitchPortConfig.RootGuardEnabled)
@@ -5406,59 +6143,69 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			// copy_from_plan_or_state: body=body.SwitchPortConfig.StormControlConfig prefix=rsModel state=state.SwitchPortConfig.StormControlConfig plan=plan.SwitchPortConfig.StormControlConfig properties=3
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.SwitchPortConfig.StormControlConfig prefix=rsModel state=state.SwitchPortConfig.StormControlConfig plan=plan.SwitchPortConfig.StormControlConfig")
 			// property: name=broadcast_threshold, type=INTEGER macro=copy_from_plan_or_state
-			if state.SwitchPortConfig.StormControlConfig != nil {
+			if state != nil && state.SwitchPortConfig != nil && state.SwitchPortConfig.StormControlConfig != nil {
 				body.SwitchPortConfig.StormControlConfig.BroadcastThreshold = ValueInt64PointerFromPlanOrState(plan.SwitchPortConfig.StormControlConfig.BroadcastThreshold, state.SwitchPortConfig.StormControlConfig.BroadcastThreshold)
 			} else {
 				body.SwitchPortConfig.StormControlConfig.BroadcastThreshold = Int64ValueOrNil(plan.SwitchPortConfig.StormControlConfig.BroadcastThreshold)
 			}
 			// property: name=multicast_threshold, type=INTEGER macro=copy_from_plan_or_state
-			if state.SwitchPortConfig.StormControlConfig != nil {
+			if state != nil && state.SwitchPortConfig != nil && state.SwitchPortConfig.StormControlConfig != nil {
 				body.SwitchPortConfig.StormControlConfig.MulticastThreshold = ValueInt64PointerFromPlanOrState(plan.SwitchPortConfig.StormControlConfig.MulticastThreshold, state.SwitchPortConfig.StormControlConfig.MulticastThreshold)
 			} else {
 				body.SwitchPortConfig.StormControlConfig.MulticastThreshold = Int64ValueOrNil(plan.SwitchPortConfig.StormControlConfig.MulticastThreshold)
 			}
 			// property: name=unicast_threshold, type=INTEGER macro=copy_from_plan_or_state
-			if state.SwitchPortConfig.StormControlConfig != nil {
+			if state != nil && state.SwitchPortConfig != nil && state.SwitchPortConfig.StormControlConfig != nil {
 				body.SwitchPortConfig.StormControlConfig.UnicastThreshold = ValueInt64PointerFromPlanOrState(plan.SwitchPortConfig.StormControlConfig.UnicastThreshold, state.SwitchPortConfig.StormControlConfig.UnicastThreshold)
 			} else {
 				body.SwitchPortConfig.StormControlConfig.UnicastThreshold = Int64ValueOrNil(plan.SwitchPortConfig.StormControlConfig.UnicastThreshold)
 			}
 		}
 		// property: name=stp_port_cost, type=INTEGER macro=copy_from_plan_or_state
-		if state.SwitchPortConfig != nil {
+		if state != nil && state.SwitchPortConfig != nil {
 			body.SwitchPortConfig.StpPortCost = ValueInt64PointerFromPlanOrState(plan.SwitchPortConfig.StpPortCost, state.SwitchPortConfig.StpPortCost)
 		} else {
 			body.SwitchPortConfig.StpPortCost = Int64ValueOrNil(plan.SwitchPortConfig.StpPortCost)
 		}
 		// property: name=stp_port_enabled, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.SwitchPortConfig != nil {
+		if state != nil && state.SwitchPortConfig != nil {
 			body.SwitchPortConfig.StpPortEnabled = ValueBoolPointerFromPlanOrState(plan.SwitchPortConfig.StpPortEnabled, state.SwitchPortConfig.StpPortEnabled)
 		} else {
 			body.SwitchPortConfig.StpPortEnabled = BoolValueOrNil(plan.SwitchPortConfig.StpPortEnabled)
 		}
 		// property: name=stp_port_priority, type=INTEGER macro=copy_from_plan_or_state
-		if state.SwitchPortConfig != nil {
+		if state != nil && state.SwitchPortConfig != nil {
 			body.SwitchPortConfig.StpPortPriority = ValueInt64PointerFromPlanOrState(plan.SwitchPortConfig.StpPortPriority, state.SwitchPortConfig.StpPortPriority)
 		} else {
 			body.SwitchPortConfig.StpPortPriority = Int64ValueOrNil(plan.SwitchPortConfig.StpPortPriority)
 		}
 		// property: name=trunk_vlans, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.SwitchPortConfig.TrunkVlans = ListStringValueOrNil(ctx, plan.SwitchPortConfig.TrunkVlans)
+		if state != nil && state.SwitchPortConfig != nil && plan.SwitchPortConfig.TrunkVlans.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.SwitchPortConfig.TrunkVlans = ListStringValueOrNil(ctx, state.SwitchPortConfig.TrunkVlans)
+		} else {
+			body.SwitchPortConfig.TrunkVlans = ListStringValueOrNil(ctx, plan.SwitchPortConfig.TrunkVlans)
+		}
 		// property: name=vlan_mode, type=STRING macro=copy_from_plan_or_state
-		if state.SwitchPortConfig != nil {
+		if state != nil && state.SwitchPortConfig != nil {
 			body.SwitchPortConfig.VlanMode = ValueStringPointerFromPlanOrState(plan.SwitchPortConfig.VlanMode, state.SwitchPortConfig.VlanMode)
 		} else {
 			body.SwitchPortConfig.VlanMode = StringValueOrNil(plan.SwitchPortConfig.VlanMode)
 		}
 		// property: name=voice_vlan_id, type=INTEGER macro=copy_from_plan_or_state
-		if state.SwitchPortConfig != nil {
+		if state != nil && state.SwitchPortConfig != nil {
 			body.SwitchPortConfig.VoiceVlanId = ValueInt64PointerFromPlanOrState(plan.SwitchPortConfig.VoiceVlanId, state.SwitchPortConfig.VoiceVlanId)
 		} else {
 			body.SwitchPortConfig.VoiceVlanId = Int64ValueOrNil(plan.SwitchPortConfig.VoiceVlanId)
 		}
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=type, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.Type = ValueStringPointerFromPlanOrState(plan.Type, state.Type)
@@ -5479,19 +6226,19 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		// copy_from_plan_or_state: body=body.VlanConfig prefix=rsModel state=state.VlanConfig plan=plan.VlanConfig properties=3
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.VlanConfig prefix=rsModel state=state.VlanConfig plan=plan.VlanConfig")
 		// property: name=mstp_instance, type=INTEGER macro=copy_from_plan_or_state
-		if state.VlanConfig != nil {
+		if state != nil && state.VlanConfig != nil {
 			body.VlanConfig.MstpInstance = ValueInt64PointerFromPlanOrState(plan.VlanConfig.MstpInstance, state.VlanConfig.MstpInstance)
 		} else {
 			body.VlanConfig.MstpInstance = Int64ValueOrNil(plan.VlanConfig.MstpInstance)
 		}
 		// property: name=vlan_id, type=INTEGER macro=copy_from_plan_or_state
-		if state.VlanConfig != nil {
+		if state != nil && state.VlanConfig != nil {
 			body.VlanConfig.VlanId = ValueInt64PointerFromPlanOrState(plan.VlanConfig.VlanId, state.VlanConfig.VlanId)
 		} else {
 			body.VlanConfig.VlanId = Int64ValueOrNil(plan.VlanConfig.VlanId)
 		}
 		// property: name=voice_enabled, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.VlanConfig != nil {
+		if state != nil && state.VlanConfig != nil {
 			body.VlanConfig.VoiceEnabled = ValueBoolPointerFromPlanOrState(plan.VlanConfig.VoiceEnabled, state.VlanConfig.VoiceEnabled)
 		} else {
 			body.VlanConfig.VoiceEnabled = BoolValueOrNil(plan.VlanConfig.VoiceEnabled)
@@ -5555,6 +6302,12 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 	if json_err != nil {
 		resp.Diagnostics.AddError("error in json unmarshal to InterfaceScreenV4N21 in update", json_err.Error())
 		return false
+	}
+
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
 	}
 
 	// Store the answer to state. schema=InterfaceScreenV4N21
@@ -5623,7 +6376,7 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		state.CellularConfig = nil
 	} else {
 		state.CellularConfig = &rsModelCellularInterfaceConfig{}
-		// copy_to_state: state=state.CellularConfig prefix=rsModel ans=ans.CellularConfig properties=5
+		// copy_to_state: state=state.CellularConfig prefix=rsModel ans=ans.CellularConfig properties=6
 		tflog.Debug(ctx, "copy_to_state state=state.CellularConfig prefix=rsModel ans=ans.CellularConfig")
 		// property: name=apn_config, type=REFERENCE macro=copy_to_state
 		if ans.CellularConfig.ApnConfig == nil {
@@ -5639,22 +6392,34 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			// property: name=clear_password, type=BOOLEAN macro=copy_to_state
 			state.CellularConfig.ApnConfig.ClearPassword = types.BoolPointerValue(ans.CellularConfig.ApnConfig.ClearPassword)
 			// property: name=password, type=STRING macro=copy_to_state
-			state.CellularConfig.ApnConfig.Password = types.StringPointerValue(plan.CellularConfig.ApnConfig.Password.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.CellularConfig.ApnConfig.PasswordInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.CellularConfig.ApnConfig.Password = types.StringNull()
+			if plan.CellularConfig != nil && plan.CellularConfig.ApnConfig != nil {
+				state.CellularConfig.ApnConfig.Password = types.StringPointerValue(plan.CellularConfig.ApnConfig.Password.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.CellularConfig.ApnConfig.Password.IsNull() {
-				encryptedPassword, _ := Encrypt([]byte(state.CellularConfig.ApnConfig.Password.String()))
-				resp.Private.SetKey(ctx, state.CellularConfig.ApnConfig.PasswordInternalKeyName.String(), []byte(encryptedPassword))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedPassword, _ := Encrypt([]byte(state.CellularConfig.ApnConfig.Password.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedPasswordJson, _ := json.Marshal(encryptedPassword)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.CellularConfig.ApnConfig.PasswordInternalKeyName.String(), encryptedPasswordJson)...)
 			}
 			// property: name=password_encrypted, type=STRING macro=copy_to_state
-			state.CellularConfig.ApnConfig.PasswordEncrypted = types.StringPointerValue(plan.CellularConfig.ApnConfig.PasswordEncrypted.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.CellularConfig.ApnConfig.PasswordEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.CellularConfig.ApnConfig.PasswordEncrypted = types.StringNull()
+			if plan.CellularConfig != nil && plan.CellularConfig.ApnConfig != nil {
+				state.CellularConfig.ApnConfig.PasswordEncrypted = types.StringPointerValue(plan.CellularConfig.ApnConfig.PasswordEncrypted.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.CellularConfig.ApnConfig.PasswordEncrypted.IsNull() {
-				encryptedPasswordEncrypted, _ := Encrypt([]byte(state.CellularConfig.ApnConfig.PasswordEncrypted.String()))
-				resp.Private.SetKey(ctx, state.CellularConfig.ApnConfig.PasswordEncryptedInternalKeyName.String(), []byte(encryptedPasswordEncrypted))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedPasswordEncrypted, _ := Encrypt([]byte(state.CellularConfig.ApnConfig.PasswordEncrypted.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedPasswordEncryptedJson, _ := json.Marshal(encryptedPasswordEncrypted)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.CellularConfig.ApnConfig.PasswordEncryptedInternalKeyName.String(), encryptedPasswordEncryptedJson)...)
 			}
 			// property: name=user_name, type=STRING macro=copy_to_state
 			state.CellularConfig.ApnConfig.UserName = types.StringPointerValue(ans.CellularConfig.ApnConfig.UserName)
@@ -5663,6 +6428,8 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		state.CellularConfig.ApnprofileId = types.StringPointerValue(ans.CellularConfig.ApnprofileId)
 		// property: name=auto_apn, type=BOOLEAN macro=copy_to_state
 		state.CellularConfig.AutoApn = types.BoolPointerValue(ans.CellularConfig.AutoApn)
+		// property: name=ip_address_type, type=STRING macro=copy_to_state
+		state.CellularConfig.IpAddressType = types.StringPointerValue(ans.CellularConfig.IpAddressType)
 		// property: name=parent_module_id, type=STRING macro=copy_to_state
 		state.CellularConfig.ParentModuleId = types.StringPointerValue(ans.CellularConfig.ParentModuleId)
 		// property: name=parent_sim_slot_number, type=INTEGER macro=copy_to_state
@@ -5733,7 +6500,7 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		state.Ipv4Config = nil
 	} else {
 		state.Ipv4Config = &rsModelIpv4Config{}
-		// copy_to_state: state=state.Ipv4Config prefix=rsModel ans=ans.Ipv4Config properties=6
+		// copy_to_state: state=state.Ipv4Config prefix=rsModel ans=ans.Ipv4Config properties=5
 		tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config prefix=rsModel ans=ans.Ipv4Config")
 		// property: name=dhcp_config, type=REFERENCE macro=copy_to_state
 		if ans.Ipv4Config.DhcpConfig == nil {
@@ -5762,20 +6529,6 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			varSearch, errSearch := types.ListValueFrom(ctx, types.StringType, ans.Ipv4Config.DnsV4Config.Search)
 			state.Ipv4Config.DnsV4Config.Search = varSearch
 			resp.Diagnostics.Append(errSearch.Errors()...)
-		}
-		// property: name=pppoe_config, type=REFERENCE macro=copy_to_state
-		if ans.Ipv4Config.PppoeConfig == nil {
-			state.Ipv4Config.PppoeConfig = nil
-		} else {
-			state.Ipv4Config.PppoeConfig = &rsModelIpv4Pppoe{}
-			// copy_to_state: state=state.Ipv4Config.PppoeConfig prefix=rsModel ans=ans.Ipv4Config.PppoeConfig properties=3
-			tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.PppoeConfig prefix=rsModel ans=ans.Ipv4Config.PppoeConfig")
-			// property: name=chap_passwd, type=STRING macro=copy_to_state
-			state.Ipv4Config.PppoeConfig.ChapPasswd = types.StringPointerValue(ans.Ipv4Config.PppoeConfig.ChapPasswd)
-			// property: name=chap_user, type=STRING macro=copy_to_state
-			state.Ipv4Config.PppoeConfig.ChapUser = types.StringPointerValue(ans.Ipv4Config.PppoeConfig.ChapUser)
-			// property: name=set_route, type=BOOLEAN macro=copy_to_state
-			state.Ipv4Config.PppoeConfig.SetRoute = types.BoolPointerValue(ans.Ipv4Config.PppoeConfig.SetRoute)
 		}
 		// property: name=routes, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.Ipv4Config.Routes == nil {
@@ -5896,7 +6649,7 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 	if ans.MulticastConfig == nil {
 		state.MulticastConfig = nil
 	} else {
-		state.MulticastConfig = &rsModelMulticastInterfaceConfig{}
+		state.MulticastConfig = &rsModelMulticastInterfaceConfigV4N12{}
 		// copy_to_state: state=state.MulticastConfig prefix=rsModel ans=ans.MulticastConfig properties=4
 		tflog.Debug(ctx, "copy_to_state state=state.MulticastConfig prefix=rsModel ans=ans.MulticastConfig")
 		// property: name=dr_priority, type=INTEGER macro=copy_to_state
@@ -6004,13 +6757,19 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		// property: name=ip_address_type, type=STRING macro=copy_to_state
 		state.PppoeConfig.IpAddressType = types.StringPointerValue(ans.PppoeConfig.IpAddressType)
 		// property: name=password, type=STRING macro=copy_to_state
-		state.PppoeConfig.Password = types.StringPointerValue(plan.PppoeConfig.Password.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.PppoeConfig.PasswordInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.PppoeConfig.Password = types.StringNull()
+		if plan.PppoeConfig != nil {
+			state.PppoeConfig.Password = types.StringPointerValue(plan.PppoeConfig.Password.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.PppoeConfig.Password.IsNull() {
-			encryptedPassword, _ := Encrypt([]byte(state.PppoeConfig.Password.String()))
-			resp.Private.SetKey(ctx, state.PppoeConfig.PasswordInternalKeyName.String(), []byte(encryptedPassword))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedPassword, _ := Encrypt([]byte(state.PppoeConfig.Password.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedPasswordJson, _ := json.Marshal(encryptedPassword)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.PppoeConfig.PasswordInternalKeyName.String(), encryptedPasswordJson)...)
 		}
 		// property: name=reconnection_delay, type=INTEGER macro=copy_to_state
 		state.PppoeConfig.ReconnectionDelay = types.Int64PointerValue(ans.PppoeConfig.ReconnectionDelay)
@@ -6074,7 +6833,7 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 				state.ServiceLinkConfig.IpsecConfig.Authentication = nil
 			} else {
 				state.ServiceLinkConfig.IpsecConfig.Authentication = &rsModelIPSECAuthenticationV1{}
-				// copy_to_state: state=state.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication properties=22
+				// copy_to_state: state=state.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication properties=23
 				tflog.Debug(ctx, "copy_to_state state=state.ServiceLinkConfig.IpsecConfig.Authentication prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication")
 				// property: name=certificate, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.Certificate = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.Certificate)
@@ -6092,31 +6851,49 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 					// property: name=xauth_id, type=STRING macro=copy_to_state
 					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthId = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthId)
 					// property: name=xauth_secret, type=STRING macro=copy_to_state
-					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret.ValueStringPointer())
 					// this property is sensitive and will be stored in the state's internal key name
 					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret = types.StringNull()
+					if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret.ValueStringPointer())
+					}
 					// store value if needed
 					if !state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret.IsNull() {
-						encryptedXauthSecret, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret.String()))
-						resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretInternalKeyName.String(), []byte(encryptedXauthSecret))
+						// ValueString, not String: String() returns the value quoted, which drifts on read
+						encryptedXauthSecret, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecret.ValueString()))
+						// private state only accepts valid JSON, so store the ciphertext as a JSON string
+						encryptedXauthSecretJson, _ := json.Marshal(encryptedXauthSecret)
+						resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretInternalKeyName.String(), encryptedXauthSecretJson)...)
 					}
 					// property: name=xauth_secret_encrypted, type=STRING macro=copy_to_state
-					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted.ValueStringPointer())
 					// this property is sensitive and will be stored in the state's internal key name
 					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringNull()
+					if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted.ValueStringPointer())
+					}
 					// store value if needed
 					if !state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted.IsNull() {
-						encryptedXauthSecretEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted.String()))
-						resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName.String(), []byte(encryptedXauthSecretEncrypted))
+						// ValueString, not String: String() returns the value quoted, which drifts on read
+						encryptedXauthSecretEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncrypted.ValueString()))
+						// private state only accepts valid JSON, so store the ciphertext as a JSON string
+						encryptedXauthSecretEncryptedJson, _ := json.Marshal(encryptedXauthSecretEncrypted)
+						resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretEncryptedInternalKeyName.String(), encryptedXauthSecretEncryptedJson)...)
 					}
 					// property: name=xauth_secret_hash, type=STRING macro=copy_to_state
-					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash.ValueStringPointer())
 					// this property is sensitive and will be stored in the state's internal key name
 					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHashInternalKeyName = types.StringValue(GenerateRandomString(16))
+					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash = types.StringNull()
+					if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash.ValueStringPointer())
+					}
 					// store value if needed
 					if !state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash.IsNull() {
-						encryptedXauthSecretHash, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash.String()))
-						resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHashInternalKeyName.String(), []byte(encryptedXauthSecretHash))
+						// ValueString, not String: String() returns the value quoted, which drifts on read
+						encryptedXauthSecretHash, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHash.ValueString()))
+						// private state only accepts valid JSON, so store the ciphertext as a JSON string
+						encryptedXauthSecretHashJson, _ := json.Marshal(encryptedXauthSecretHash)
+						resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthSecretHashInternalKeyName.String(), encryptedXauthSecretHashJson)...)
 					}
 					// property: name=xauth_type, type=STRING macro=copy_to_state
 					state.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthType = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.Ikev1Params.XauthType)
@@ -6132,47 +6909,180 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 				// property: name=pa_master_key_id, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.PaMasterKeyId = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PaMasterKeyId)
 				// property: name=passphrase, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase)
+				// this property is sensitive and will be stored in the state's internal key name
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase.ValueStringPointer())
+				}
+				// store value if needed
+				if !state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase.IsNull() {
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedPassphrase, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Passphrase.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedPassphraseJson, _ := json.Marshal(encryptedPassphrase)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseInternalKeyName.String(), encryptedPassphraseJson)...)
+				}
 				// property: name=passphrase_encrypted, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted)
+				// this property is sensitive and will be stored in the state's internal key name
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted.ValueStringPointer())
+				}
+				// store value if needed
+				if !state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted.IsNull() {
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedPassphraseEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncrypted.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedPassphraseEncryptedJson, _ := json.Marshal(encryptedPassphraseEncrypted)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PassphraseEncryptedInternalKeyName.String(), encryptedPassphraseEncryptedJson)...)
+				}
 				// property: name=peer_id_check, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PeerIdCheck)
 				// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PermitPeerIdMismatch)
+				// property: name=ppk_config, type=REFERENCE macro=copy_to_state
+				if ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig == nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig = nil
+				} else {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig = &rsModelPPKConfig{}
+					// copy_to_state: state=state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig properties=8
+					tflog.Debug(ctx, "copy_to_state state=state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig prefix=rsModel ans=ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig")
+					// property: name=enabled, type=BOOLEAN macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Enabled)
+					// property: name=key_enabled, type=BOOLEAN macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.KeyEnabled)
+					// property: name=mode, type=STRING macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.Mode)
+					// property: name=ppk_key_id, type=STRING macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkKeyId)
+					// property: name=ppk_secret, type=STRING macro=copy_to_state
+					// this property is sensitive and will be stored in the state's internal key name
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret = types.StringNull()
+					if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret.ValueStringPointer())
+					}
+					// store value if needed
+					if !state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret.IsNull() {
+						// ValueString, not String: String() returns the value quoted, which drifts on read
+						encryptedPpkSecret, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecret.ValueString()))
+						// private state only accepts valid JSON, so store the ciphertext as a JSON string
+						encryptedPpkSecretJson, _ := json.Marshal(encryptedPpkSecret)
+						resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretInternalKeyName.String(), encryptedPpkSecretJson)...)
+					}
+					// property: name=ppk_secret_configured, type=BOOLEAN macro=copy_to_state
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretConfigured)
+					// property: name=ppk_secret_encrypted, type=STRING macro=copy_to_state
+					// this property is sensitive and will be stored in the state's internal key name
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted = types.StringNull()
+					if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted.ValueStringPointer())
+					}
+					// store value if needed
+					if !state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted.IsNull() {
+						// ValueString, not String: String() returns the value quoted, which drifts on read
+						encryptedPpkSecretEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncrypted.ValueString()))
+						// private state only accepts valid JSON, so store the ciphertext as a JSON string
+						encryptedPpkSecretEncryptedJson, _ := json.Marshal(encryptedPpkSecretEncrypted)
+						resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretEncryptedInternalKeyName.String(), encryptedPpkSecretEncryptedJson)...)
+					}
+					// property: name=ppk_secret_hash, type=STRING macro=copy_to_state
+					// this property is sensitive and will be stored in the state's internal key name
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHashInternalKeyName = types.StringValue(GenerateRandomString(16))
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash = types.StringNull()
+					if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig != nil {
+						state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash.ValueStringPointer())
+					}
+					// store value if needed
+					if !state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash.IsNull() {
+						// ValueString, not String: String() returns the value quoted, which drifts on read
+						encryptedPpkSecretHash, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHash.ValueString()))
+						// private state only accepts valid JSON, so store the ciphertext as a JSON string
+						encryptedPpkSecretHashJson, _ := json.Marshal(encryptedPpkSecretHash)
+						resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PpkConfig.PpkSecretHashInternalKeyName.String(), encryptedPpkSecretHashJson)...)
+					}
+				}
 				// property: name=private_key, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey)
+				// this property is sensitive and will be stored in the state's internal key name
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey.ValueStringPointer())
+				}
+				// store value if needed
+				if !state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey.IsNull() {
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedPrivateKey, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKey.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedPrivateKeyJson, _ := json.Marshal(encryptedPrivateKey)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyInternalKeyName.String(), encryptedPrivateKeyJson)...)
+				}
 				// property: name=private_key_encrypted, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted)
+				// this property is sensitive and will be stored in the state's internal key name
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted.ValueStringPointer())
+				}
+				// store value if needed
+				if !state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted.IsNull() {
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedPrivateKeyEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncrypted.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedPrivateKeyEncryptedJson, _ := json.Marshal(encryptedPrivateKeyEncrypted)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.PrivateKeyEncryptedInternalKeyName.String(), encryptedPrivateKeyEncryptedJson)...)
+				}
 				// property: name=remote_ca_certificate, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.RemoteCaCertificate = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.RemoteCaCertificate)
 				// property: name=remote_id, type=STRING macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.RemoteId = types.StringPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.RemoteId)
 				// property: name=secret, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.Secret = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Secret.ValueStringPointer())
 				// this property is sensitive and will be stored in the state's internal key name
 				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.Secret = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.Secret = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.Secret.ValueStringPointer())
+				}
 				// store value if needed
 				if !state.ServiceLinkConfig.IpsecConfig.Authentication.Secret.IsNull() {
-					encryptedSecret, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Secret.String()))
-					resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretInternalKeyName.String(), []byte(encryptedSecret))
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedSecret, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.Secret.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedSecretJson, _ := json.Marshal(encryptedSecret)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretInternalKeyName.String(), encryptedSecretJson)...)
 				}
 				// property: name=secret_encrypted, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted.ValueStringPointer())
 				// this property is sensitive and will be stored in the state's internal key name
 				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted.ValueStringPointer())
+				}
 				// store value if needed
 				if !state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted.IsNull() {
-					encryptedSecretEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted.String()))
-					resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncryptedInternalKeyName.String(), []byte(encryptedSecretEncrypted))
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedSecretEncrypted, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncrypted.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedSecretEncryptedJson, _ := json.Marshal(encryptedSecretEncrypted)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretEncryptedInternalKeyName.String(), encryptedSecretEncryptedJson)...)
 				}
 				// property: name=secret_hash, type=STRING macro=copy_to_state
-				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash.ValueStringPointer())
 				// this property is sensitive and will be stored in the state's internal key name
 				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHashInternalKeyName = types.StringValue(GenerateRandomString(16))
+				state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash = types.StringNull()
+				if plan.ServiceLinkConfig != nil && plan.ServiceLinkConfig.IpsecConfig != nil && plan.ServiceLinkConfig.IpsecConfig.Authentication != nil {
+					state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash = types.StringPointerValue(plan.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash.ValueStringPointer())
+				}
 				// store value if needed
 				if !state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash.IsNull() {
-					encryptedSecretHash, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash.String()))
-					resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHashInternalKeyName.String(), []byte(encryptedSecretHash))
+					// ValueString, not String: String() returns the value quoted, which drifts on read
+					encryptedSecretHash, _ := Encrypt([]byte(state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHash.ValueString()))
+					// private state only accepts valid JSON, so store the ciphertext as a JSON string
+					encryptedSecretHashJson, _ := json.Marshal(encryptedSecretHash)
+					resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ServiceLinkConfig.IpsecConfig.Authentication.SecretHashInternalKeyName.String(), encryptedSecretHashJson)...)
 				}
 				// property: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=copy_to_state
 				state.ServiceLinkConfig.IpsecConfig.Authentication.StrictValidationPeerExtendedKeyUse = types.BoolPointerValue(ans.ServiceLinkConfig.IpsecConfig.Authentication.StrictValidationPeerExtendedKeyUse)
@@ -6191,12 +7101,10 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 			state.ServiceLinkConfig.PassiveMode = nil
 		} else {
 			state.ServiceLinkConfig.PassiveMode = &rsModelPassiveMode{}
-			// copy_to_state: state=state.ServiceLinkConfig.PassiveMode prefix=rsModel ans=ans.ServiceLinkConfig.PassiveMode properties=2
+			// copy_to_state: state=state.ServiceLinkConfig.PassiveMode prefix=rsModel ans=ans.ServiceLinkConfig.PassiveMode properties=1
 			tflog.Debug(ctx, "copy_to_state state=state.ServiceLinkConfig.PassiveMode prefix=rsModel ans=ans.ServiceLinkConfig.PassiveMode")
 			// property: name=enable, type=BOOLEAN macro=copy_to_state
 			state.ServiceLinkConfig.PassiveMode.Enable = types.BoolPointerValue(ans.ServiceLinkConfig.PassiveMode.Enable)
-			// property: name=peer_ip_dynamic, type=BOOLEAN macro=copy_to_state
-			state.ServiceLinkConfig.PassiveMode.PeerIpDynamic = types.BoolPointerValue(ans.ServiceLinkConfig.PassiveMode.PeerIpDynamic)
 		}
 		// property: name=peer, type=REFERENCE macro=copy_to_state
 		if ans.ServiceLinkConfig.Peer == nil {
@@ -6246,8 +7154,10 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 		state.SubInterface = nil
 	} else {
 		state.SubInterface = &rsModelSubInterface{}
-		// copy_to_state: state=state.SubInterface prefix=rsModel ans=ans.SubInterface properties=1
+		// copy_to_state: state=state.SubInterface prefix=rsModel ans=ans.SubInterface properties=2
 		tflog.Debug(ctx, "copy_to_state state=state.SubInterface prefix=rsModel ans=ans.SubInterface")
+		// property: name=native_vlan, type=BOOLEAN macro=copy_to_state
+		state.SubInterface.NativeVlan = types.BoolPointerValue(ans.SubInterface.NativeVlan)
 		// property: name=vlan_id, type=INTEGER macro=copy_to_state
 		state.SubInterface.VlanId = types.Int64PointerValue(ans.SubInterface.VlanId)
 	}
@@ -6301,6 +7211,14 @@ func (r *elementShellInterfaceResource) doPut(ctx context.Context, plan *rsModel
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=type, type=STRING macro=copy_to_state
 	state.Type = types.StringPointerValue(ans.Type)
 	// property: name=used_for, type=STRING macro=copy_to_state
@@ -6409,9 +7327,13 @@ func (r *elementShellInterfaceResource) Create(ctx context.Context, req resource
 			if r.doPut(ctx, &plan, &state, &resp.State, put_resp) {
 				tflog.Info(ctx, "put on the shell interface succeeded, state will be updated by it")
 				resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+			} else {
+				// without the errors of doPut, Create ends with "Missing Resource State After Create" and no reason
+				resp.Diagnostics = put_resp.Diagnostics
 			}
 		} else {
 			tflog.Error(ctx, "failed to set the state from the response from sdwan")
+			resp.Diagnostics = r_resp.Diagnostics
 		}
 	} else {
 		tflog.Info(ctx, "trying to execute get on the element interface, as id was given")
@@ -6495,6 +7417,25 @@ func (r *elementShellInterfaceResource) Delete(ctx context.Context, req resource
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Physical ports belong to the shell and can't be deleted ("INTERFACE_CONFIG_CONFIGURATION_EXISTS"); a port that
+	// was adopted via x_parameters.id is handed back unconfigured instead.
+	if state.Type.ValueString() == "port" {
+		reset := state
+		reset.UsedFor = types.StringValue("none")
+		reset.Ipv4Config = &rsModelIpv4Config{Type: types.StringValue("dhcp")}
+		update_resp := &resource.UpdateResponse{
+			Diagnostics: resp.Diagnostics,
+			State:       resp.State,
+			Private:     resp.Private,
+		}
+		if r.doPut(ctx, &reset, &state, &resp.State, update_resp) {
+			resp.State.RemoveResource(ctx)
+		} else {
+			resp.Diagnostics.Append(update_resp.Diagnostics...)
+		}
 		return
 	}
 

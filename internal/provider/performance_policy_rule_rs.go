@@ -27,19 +27,20 @@ import (
 // | Schema Map Summary (size=goLangStructMap=6)
 // | Computed Resource Name=perfmgmtpolicysets_perfmgmtpolicyrules
 // +-----------------------------------------------------------------
+// | PerfMgmtPathFilterV2N3 HasID=false
 // | PerfMgmtHealthThresholds HasID=false
 // | PerfMgmtActionParameters HasID=false
 // | PerfMgmtActionV2N2 HasID=false
-// | PathFilter HasID=false
 // | ApplicationFilter HasID=false
-// | PerfMgmtPolicyRuleScreenV2N2 HasID=true
+// | PerfMgmtPolicyRuleScreenV2N3 HasID=true
 // +-----------------------------------------------------------------
 
 // Resource.
 var (
-	_ resource.Resource                = &performancePolicyRuleResource{}
-	_ resource.ResourceWithConfigure   = &performancePolicyRuleResource{}
-	_ resource.ResourceWithImportState = &performancePolicyRuleResource{}
+	_ resource.Resource                   = &performancePolicyRuleResource{}
+	_ resource.ResourceWithConfigure      = &performancePolicyRuleResource{}
+	_ resource.ResourceWithImportState    = &performancePolicyRuleResource{}
+	_ resource.ResourceWithValidateConfig = &performancePolicyRuleResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -60,6 +61,12 @@ type performancePolicyRuleResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *performancePolicyRuleResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"perfmgmtpolicyset_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *performancePolicyRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_performance_policy_rule"
@@ -68,292 +75,325 @@ func (r *performancePolicyRuleResource) Metadata(_ context.Context, req resource
 // Schema defines the schema for this data source.
 func (r *performancePolicyRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Performance Policy Rule.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
-			// rest all properties to be read from GET API Schema schema=PerfMgmtPolicyRuleScreenV2N2
+			// rest all properties to be read from GET API Schema schema=PerfMgmtPolicyRuleScreenV2N3
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=actions, type=ARRAY_REFERENCE macro=rss_schema
 			"actions": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Actions.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=action_type, type=STRING macro=rss_schema
 						"action_type": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Action type. Value: one of raise_alarm, move_flows, move_flows_forced, fec, visibility, app_acceleration, packet_duplication.",
 						},
 						// key name holder for attribute: name=action_type, type=STRING macro=rss_schema
 						// property: name=always_on, type=BOOLEAN macro=rss_schema
 						"always_on": rsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Always on.",
 						},
 						// key name holder for attribute: name=always_on, type=BOOLEAN macro=rss_schema
 						// property: name=app_perf, type=REFERENCE macro=rss_schema
 						"app_perf": rsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "App perf.",
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 								"bad_health_thresholds": rsschema.SingleNestedAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Bad health thresholds.",
 									Attributes: map[string]rsschema.Attribute{
 										// property: name=clear_below, type=INTEGER macro=rss_schema
 										"clear_below": rsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Clear below. Value: between 1 and 80.",
 										},
 										// key name holder for attribute: name=clear_below, type=INTEGER macro=rss_schema
 										// property: name=raise_above, type=INTEGER macro=rss_schema
 										"raise_above": rsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Raise above. Value: between 10 and 100.",
 										},
 										// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
 									},
 								},
-								// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
+								// key name holder for attribute: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 								// property: name=monitoring_approach, type=STRING macro=rss_schema
 								"monitoring_approach": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Monitoring approach. Value: one of aggressive, moderate, conservative.",
 								},
 								// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
+						// key name holder for attribute: name=app_perf, type=REFERENCE macro=rss_schema
 						// property: name=circuit_utilization_perf, type=REFERENCE macro=rss_schema
 						"circuit_utilization_perf": rsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Circuit utilization perf.",
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 								"bad_health_thresholds": rsschema.SingleNestedAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Bad health thresholds.",
 									Attributes: map[string]rsschema.Attribute{
 										// property: name=clear_below, type=INTEGER macro=rss_schema
 										"clear_below": rsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Clear below. Value: between 1 and 80.",
 										},
 										// key name holder for attribute: name=clear_below, type=INTEGER macro=rss_schema
 										// property: name=raise_above, type=INTEGER macro=rss_schema
 										"raise_above": rsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Raise above. Value: between 10 and 100.",
 										},
 										// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
 									},
 								},
-								// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
+								// key name holder for attribute: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 								// property: name=monitoring_approach, type=STRING macro=rss_schema
 								"monitoring_approach": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Monitoring approach. Value: one of aggressive, moderate, conservative.",
 								},
 								// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
+						// key name holder for attribute: name=circuit_utilization_perf, type=REFERENCE macro=rss_schema
 						// property: name=lqm_perf, type=REFERENCE macro=rss_schema
 						"lqm_perf": rsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Lqm perf.",
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 								"bad_health_thresholds": rsschema.SingleNestedAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Bad health thresholds.",
 									Attributes: map[string]rsschema.Attribute{
 										// property: name=clear_below, type=INTEGER macro=rss_schema
 										"clear_below": rsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Clear below. Value: between 1 and 80.",
 										},
 										// key name holder for attribute: name=clear_below, type=INTEGER macro=rss_schema
 										// property: name=raise_above, type=INTEGER macro=rss_schema
 										"raise_above": rsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Raise above. Value: between 10 and 100.",
 										},
 										// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
 									},
 								},
-								// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
+								// key name holder for attribute: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 								// property: name=monitoring_approach, type=STRING macro=rss_schema
 								"monitoring_approach": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Monitoring approach. Value: one of aggressive, moderate, conservative.",
 								},
 								// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
+						// key name holder for attribute: name=lqm_perf, type=REFERENCE macro=rss_schema
 						// property: name=probe_perf, type=REFERENCE macro=rss_schema
 						"probe_perf": rsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Probe perf.",
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 								"bad_health_thresholds": rsschema.SingleNestedAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Bad health thresholds.",
 									Attributes: map[string]rsschema.Attribute{
 										// property: name=clear_below, type=INTEGER macro=rss_schema
 										"clear_below": rsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Clear below. Value: between 1 and 80.",
 										},
 										// key name holder for attribute: name=clear_below, type=INTEGER macro=rss_schema
 										// property: name=raise_above, type=INTEGER macro=rss_schema
 										"raise_above": rsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Raise above. Value: between 10 and 100.",
 										},
 										// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
 									},
 								},
-								// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
+								// key name holder for attribute: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 								// property: name=monitoring_approach, type=STRING macro=rss_schema
 								"monitoring_approach": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Monitoring approach. Value: one of aggressive, moderate, conservative.",
 								},
 								// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
+						// key name holder for attribute: name=probe_perf, type=REFERENCE macro=rss_schema
 						// property: name=sys_perf, type=REFERENCE macro=rss_schema
 						"sys_perf": rsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Sys perf.",
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 								"bad_health_thresholds": rsschema.SingleNestedAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Bad health thresholds.",
 									Attributes: map[string]rsschema.Attribute{
 										// property: name=clear_below, type=INTEGER macro=rss_schema
 										"clear_below": rsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Clear below. Value: between 1 and 80.",
 										},
 										// key name holder for attribute: name=clear_below, type=INTEGER macro=rss_schema
 										// property: name=raise_above, type=INTEGER macro=rss_schema
 										"raise_above": rsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Raise above. Value: between 10 and 100.",
 										},
 										// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
 									},
 								},
-								// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
+								// key name holder for attribute: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 								// property: name=monitoring_approach, type=STRING macro=rss_schema
 								"monitoring_approach": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Monitoring approach. Value: one of aggressive, moderate, conservative.",
 								},
 								// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
+						// key name holder for attribute: name=sys_perf, type=REFERENCE macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
+			// key name holder for attribute: name=actions, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=app_filters, type=REFERENCE macro=rss_schema
 			"app_filters": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "App filters.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=app_transfer_types, type=ARRAY_PRIMITIVE macro=rss_schema
 					"app_transfer_types": rsschema.ListAttribute{
@@ -361,6 +401,8 @@ func (r *performancePolicyRuleResource) Schema(_ context.Context, _ resource.Sch
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "App transfer types. At most 4 items. Each item: one of rt-audio, rt-video, transactional, bulk.",
+						Validators:  ListMaxItems(4),
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=app_transfer_types, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -370,42 +412,48 @@ func (r *performancePolicyRuleResource) Schema(_ context.Context, _ resource.Sch
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "Application ids. At most 64 items.",
+						Validators:  ListMaxItems(64),
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=application_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=application_ids, type=ARRAY_PRIMITIVE macro=rss_schema
+			// key name holder for attribute: name=app_filters, type=REFERENCE macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=enabled, type=BOOLEAN macro=rss_schema
 			"enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Enabled.",
 			},
 			// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=network_context_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -414,43 +462,50 @@ func (r *performancePolicyRuleResource) Schema(_ context.Context, _ resource.Sch
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Network context ids.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=network_context_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=path_filters, type=ARRAY_REFERENCE macro=rss_schema
 			"path_filters": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Path filters. At most 32 items.",
+				Validators:  ListMaxItems(32),
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=label, type=STRING macro=rss_schema
 						"label": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Label.",
 						},
 						// key name holder for attribute: name=label, type=STRING macro=rss_schema
 						// property: name=path_type, type=STRING macro=rss_schema
 						"path_type": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Path type. Value: one of vpn, direct, servicelink, pa_vpn, all.",
 						},
 						// key name holder for attribute: name=path_type, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=path_type, type=STRING macro=rss_schema
+			// key name holder for attribute: name=path_filters, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=service_label_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 			"service_label_ids": rsschema.ListAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Service label ids. At most 32 items.",
+				Validators:  ListMaxItems(32),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=service_label_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -460,23 +515,27 @@ func (r *performancePolicyRuleResource) Schema(_ context.Context, _ resource.Sch
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=thresholdprofile_id, type=STRING macro=rss_schema
 			"thresholdprofile_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Thresholdprofile id.",
 			},
 			// key name holder for attribute: name=thresholdprofile_id, type=STRING macro=rss_schema
 			// property: name=type, type=STRING macro=rss_schema
 			"type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Type. Value: one of app_circuit_health, system_site_health.",
 			},
 			// key name holder for attribute: name=type, type=STRING macro=rss_schema
 		},
@@ -505,7 +564,7 @@ func (r *performancePolicyRuleResource) GetHttpStatusCode(request *sdwan_client.
 	}
 }
 
-func (r *performancePolicyRuleResource) doPost(ctx context.Context, plan *rsModelPerfMgmtPolicyRuleScreenV2N2, state *rsModelPerfMgmtPolicyRuleScreenV2N2, resp *resource.CreateResponse) bool {
+func (r *performancePolicyRuleResource) doPost(ctx context.Context, plan *rsModelPerfMgmtPolicyRuleScreenV2N3, state *rsModelPerfMgmtPolicyRuleScreenV2N3, resp *resource.CreateResponse) bool {
 	tflog.Info(ctx, "executing http post for prismasdwan_performance_policy_rule")
 	// Basic logging.
 	tflog.Info(ctx, "performing resource create", map[string]any{
@@ -517,7 +576,7 @@ func (r *performancePolicyRuleResource) doPost(ctx context.Context, plan *rsMode
 	create_request := &sdwan_client.SdwanClientRequestResponse{}
 	create_request.ResourceType = "prismasdwan_performance_policy_rule"
 	create_request.Method = "POST"
-	create_request.Path = "/sdwan/v2.2/api/perfmgmtpolicysets/{perfmgmtpolicyset_id}/perfmgmtpolicyrules"
+	create_request.Path = "/sdwan/v2.3/api/perfmgmtpolicysets/{perfmgmtpolicyset_id}/perfmgmtpolicyrules"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, plan.TfParameters)
@@ -527,7 +586,7 @@ func (r *performancePolicyRuleResource) doPost(ctx context.Context, plan *rsMode
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.PerfMgmtPolicyRuleScreenV2N2{}
+	var body = &sdwan_schema.PerfMgmtPolicyRuleScreenV2N3{}
 
 	// copy from plan to body
 	// copy_from_plan: body=body prefix=rsModel plan=plan properties=14
@@ -668,12 +727,12 @@ func (r *performancePolicyRuleResource) doPost(ctx context.Context, plan *rsMode
 	if plan.PathFilters == nil {
 		body.PathFilters = nil
 	} else if len(plan.PathFilters) == 0 {
-		body.PathFilters = []sdwan_schema.PathFilter{}
+		body.PathFilters = []sdwan_schema.PerfMgmtPathFilterV2N3{}
 	} else {
-		body.PathFilters = make([]sdwan_schema.PathFilter, 0, len(plan.PathFilters))
+		body.PathFilters = make([]sdwan_schema.PerfMgmtPathFilterV2N3, 0, len(plan.PathFilters))
 		for varLoopPathFiltersIndex, varLoopPathFilters := range plan.PathFilters {
 			// add a new item
-			body.PathFilters = append(body.PathFilters, sdwan_schema.PathFilter{})
+			body.PathFilters = append(body.PathFilters, sdwan_schema.PerfMgmtPathFilterV2N3{})
 			// copy_from_plan: body=body.PathFilters[varLoopPathFiltersIndex] prefix=rsModel plan=varLoopPathFilters properties=2
 			tflog.Debug(ctx, "copy_from_plan body=body.PathFilters[varLoopPathFiltersIndex] prefix=rsModel plan=varLoopPathFilters")
 			// property: name=label, type=STRING macro=copy_from_plan
@@ -694,7 +753,7 @@ func (r *performancePolicyRuleResource) doPost(ctx context.Context, plan *rsMode
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct PerfMgmtPolicyRuleScreenV2N2 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct PerfMgmtPolicyRuleScreenV2N3 to JSON:", err.Error())
 		return false
 	}
 
@@ -737,12 +796,12 @@ func (r *performancePolicyRuleResource) doPost(ctx context.Context, plan *rsMode
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.PerfMgmtPolicyRuleScreenV2N2
+	var ans sdwan_schema.PerfMgmtPolicyRuleScreenV2N3
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to PerfMgmtPolicyRuleScreenV2N2 in create", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to PerfMgmtPolicyRuleScreenV2N3 in create", json_err.Error())
 		return false
 	}
 
@@ -767,7 +826,7 @@ func (r *performancePolicyRuleResource) doPost(ctx context.Context, plan *rsMode
 	state.TfParameters = plan.TfParameters
 	tflog.Info(ctx, "created prismasdwan_performance_policy_rule with ID", map[string]any{"tfid": state.Tfid.ValueString()})
 
-	// Store the answer to state. schema=PerfMgmtPolicyRuleScreenV2N2
+	// Store the answer to state. schema=PerfMgmtPolicyRuleScreenV2N3
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=14
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -934,12 +993,12 @@ func (r *performancePolicyRuleResource) doPost(ctx context.Context, plan *rsMode
 	if ans.PathFilters == nil {
 		state.PathFilters = nil
 	} else if len(ans.PathFilters) == 0 {
-		state.PathFilters = []rsModelPathFilter{}
+		state.PathFilters = []rsModelPerfMgmtPathFilterV2N3{}
 	} else {
-		state.PathFilters = make([]rsModelPathFilter, 0, len(ans.PathFilters))
+		state.PathFilters = make([]rsModelPerfMgmtPathFilterV2N3, 0, len(ans.PathFilters))
 		for varLoopPathFiltersIndex, varLoopPathFilters := range ans.PathFilters {
 			// add a new item
-			state.PathFilters = append(state.PathFilters, rsModelPathFilter{})
+			state.PathFilters = append(state.PathFilters, rsModelPerfMgmtPathFilterV2N3{})
 			// copy_to_state: state=state.PathFilters[varLoopPathFiltersIndex] prefix=rsModel ans=varLoopPathFilters properties=2
 			tflog.Debug(ctx, "copy_to_state state=state.PathFilters[varLoopPathFiltersIndex] prefix=rsModel ans=varLoopPathFilters")
 			// property: name=label, type=STRING macro=copy_to_state
@@ -956,6 +1015,14 @@ func (r *performancePolicyRuleResource) doPost(ctx context.Context, plan *rsMode
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=thresholdprofile_id, type=STRING macro=copy_to_state
 	state.ThresholdprofileId = types.StringPointerValue(ans.ThresholdprofileId)
 	// property: name=type, type=STRING macro=copy_to_state
@@ -963,7 +1030,7 @@ func (r *performancePolicyRuleResource) doPost(ctx context.Context, plan *rsMode
 	return true
 }
 
-func (r *performancePolicyRuleResource) doGet(ctx context.Context, state *rsModelPerfMgmtPolicyRuleScreenV2N2, savestate *rsModelPerfMgmtPolicyRuleScreenV2N2, State *tfsdk.State, resp *resource.ReadResponse) bool {
+func (r *performancePolicyRuleResource) doGet(ctx context.Context, state *rsModelPerfMgmtPolicyRuleScreenV2N3, savestate *rsModelPerfMgmtPolicyRuleScreenV2N3, State *tfsdk.State, resp *resource.ReadResponse) bool {
 	// Basic logging.
 	tfid := savestate.Tfid.ValueString()
 	tflog.Info(ctx, "performing resource read", map[string]any{
@@ -985,7 +1052,7 @@ func (r *performancePolicyRuleResource) doGet(ctx context.Context, state *rsMode
 	read_request := &sdwan_client.SdwanClientRequestResponse{}
 	read_request.ResourceType = "prismasdwan_performance_policy_rule"
 	read_request.Method = "GET"
-	read_request.Path = "/sdwan/v2.2/api/perfmgmtpolicysets/{perfmgmtpolicyset_id}/perfmgmtpolicyrules/{perfmgmtpolicyrule_id}"
+	read_request.Path = "/sdwan/v2.3/api/perfmgmtpolicysets/{perfmgmtpolicyset_id}/perfmgmtpolicyrules/{perfmgmtpolicyrule_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, savestate.TfParameters)
@@ -1027,21 +1094,37 @@ func (r *performancePolicyRuleResource) doGet(ctx context.Context, state *rsMode
 	tflog.Debug(ctx, "http json override: set response_body_string::_schema")
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
-	// Store the answer to state. schema=PerfMgmtPolicyRuleScreenV2N2
+	// Store the answer to state. schema=PerfMgmtPolicyRuleScreenV2N3
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
 	// start copying attributes
-	var ans sdwan_schema.PerfMgmtPolicyRuleScreenV2N2
+	var ans sdwan_schema.PerfMgmtPolicyRuleScreenV2N3
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to PerfMgmtPolicyRuleScreenV2N2 in read", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to PerfMgmtPolicyRuleScreenV2N3 in read", json_err.Error())
 		return false
 	}
 	// lets copy all items into state
@@ -1211,12 +1294,12 @@ func (r *performancePolicyRuleResource) doGet(ctx context.Context, state *rsMode
 	if ans.PathFilters == nil {
 		state.PathFilters = nil
 	} else if len(ans.PathFilters) == 0 {
-		state.PathFilters = []rsModelPathFilter{}
+		state.PathFilters = []rsModelPerfMgmtPathFilterV2N3{}
 	} else {
-		state.PathFilters = make([]rsModelPathFilter, 0, len(ans.PathFilters))
+		state.PathFilters = make([]rsModelPerfMgmtPathFilterV2N3, 0, len(ans.PathFilters))
 		for varLoopPathFiltersIndex, varLoopPathFilters := range ans.PathFilters {
 			// add a new item
-			state.PathFilters = append(state.PathFilters, rsModelPathFilter{})
+			state.PathFilters = append(state.PathFilters, rsModelPerfMgmtPathFilterV2N3{})
 			// copy_to_state: state=state.PathFilters[varLoopPathFiltersIndex] prefix=rsModel ans=varLoopPathFilters properties=2
 			tflog.Debug(ctx, "copy_to_state state=state.PathFilters[varLoopPathFiltersIndex] prefix=rsModel ans=varLoopPathFilters")
 			// property: name=label, type=STRING macro=copy_to_state
@@ -1233,6 +1316,14 @@ func (r *performancePolicyRuleResource) doGet(ctx context.Context, state *rsMode
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=thresholdprofile_id, type=STRING macro=copy_to_state
 	state.ThresholdprofileId = types.StringPointerValue(ans.ThresholdprofileId)
 	// property: name=type, type=STRING macro=copy_to_state
@@ -1240,7 +1331,7 @@ func (r *performancePolicyRuleResource) doGet(ctx context.Context, state *rsMode
 	return true
 }
 
-func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModelPerfMgmtPolicyRuleScreenV2N2, state *rsModelPerfMgmtPolicyRuleScreenV2N2, State *tfsdk.State, resp *resource.UpdateResponse) bool {
+func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModelPerfMgmtPolicyRuleScreenV2N3, state *rsModelPerfMgmtPolicyRuleScreenV2N3, State *tfsdk.State, resp *resource.UpdateResponse) bool {
 	state_tfid := state.Tfid.ValueString()
 	plan_tfid := plan.Tfid.ValueString()
 	// Basic logging.
@@ -1268,7 +1359,7 @@ func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModel
 	put_request := &sdwan_client.SdwanClientRequestResponse{}
 	put_request.ResourceType = "prismasdwan_performance_policy_rule"
 	put_request.Method = "PUT"
-	put_request.Path = "/sdwan/v2.2/api/perfmgmtpolicysets/{perfmgmtpolicyset_id}/perfmgmtpolicyrules/{perfmgmtpolicyrule_id}"
+	put_request.Path = "/sdwan/v2.3/api/perfmgmtpolicysets/{perfmgmtpolicyset_id}/perfmgmtpolicyrules/{perfmgmtpolicyrule_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -1287,7 +1378,7 @@ func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModel
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.PerfMgmtPolicyRuleScreenV2N2{}
+	var body = &sdwan_schema.PerfMgmtPolicyRuleScreenV2N3{}
 
 	// now we create the JSON request from the state/plan created by TF
 	// below copy code generated from macro copy_from_plan_or_state
@@ -1306,9 +1397,9 @@ func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModel
 		body.Schema = Int64ValueOrNil(plan.Schema)
 	}
 	// property: name=actions, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.Actions == nil && (state == nil || state.Actions == nil) {
+	if plan.Actions == nil && (!(state != nil) || state.Actions == nil) {
 		body.Actions = nil
-	} else if len(plan.Actions) == 0 && (state == nil || len(state.Actions) == 0) {
+	} else if len(plan.Actions) == 0 && (!(state != nil) || len(state.Actions) == 0) {
 		body.Actions = []sdwan_schema.PerfMgmtActionV2N2{}
 	} else if len(plan.Actions) != 0 || (state != nil && len(state.Actions) != 0) {
 		ActionsToUse := plan.Actions
@@ -1426,9 +1517,19 @@ func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModel
 		// copy_from_plan_or_state: body=body.AppFilters prefix=rsModel state=state.AppFilters plan=plan.AppFilters properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.AppFilters prefix=rsModel state=state.AppFilters plan=plan.AppFilters")
 		// property: name=app_transfer_types, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.AppFilters.AppTransferTypes = ListStringValueOrNil(ctx, plan.AppFilters.AppTransferTypes)
+		if state != nil && state.AppFilters != nil && plan.AppFilters.AppTransferTypes.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.AppFilters.AppTransferTypes = ListStringValueOrNil(ctx, state.AppFilters.AppTransferTypes)
+		} else {
+			body.AppFilters.AppTransferTypes = ListStringValueOrNil(ctx, plan.AppFilters.AppTransferTypes)
+		}
 		// property: name=application_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.AppFilters.ApplicationIds = ListStringValueOrNil(ctx, plan.AppFilters.ApplicationIds)
+		if state != nil && state.AppFilters != nil && plan.AppFilters.ApplicationIds.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.AppFilters.ApplicationIds = ListStringValueOrNil(ctx, state.AppFilters.ApplicationIds)
+		} else {
+			body.AppFilters.ApplicationIds = ListStringValueOrNil(ctx, plan.AppFilters.ApplicationIds)
+		}
 	}
 	// property: name=description, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
@@ -1455,21 +1556,26 @@ func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModel
 		body.Name = StringValueOrNil(plan.Name)
 	}
 	// property: name=network_context_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.NetworkContextIds = ListStringValueOrNil(ctx, plan.NetworkContextIds)
+	if state != nil && plan.NetworkContextIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.NetworkContextIds = ListStringValueOrNil(ctx, state.NetworkContextIds)
+	} else {
+		body.NetworkContextIds = ListStringValueOrNil(ctx, plan.NetworkContextIds)
+	}
 	// property: name=path_filters, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.PathFilters == nil && (state == nil || state.PathFilters == nil) {
+	if plan.PathFilters == nil && (!(state != nil) || state.PathFilters == nil) {
 		body.PathFilters = nil
-	} else if len(plan.PathFilters) == 0 && (state == nil || len(state.PathFilters) == 0) {
-		body.PathFilters = []sdwan_schema.PathFilter{}
+	} else if len(plan.PathFilters) == 0 && (!(state != nil) || len(state.PathFilters) == 0) {
+		body.PathFilters = []sdwan_schema.PerfMgmtPathFilterV2N3{}
 	} else if len(plan.PathFilters) != 0 || (state != nil && len(state.PathFilters) != 0) {
 		PathFiltersToUse := plan.PathFilters
 		if len(plan.PathFilters) == 0 {
 			PathFiltersToUse = state.PathFilters
 		}
-		body.PathFilters = make([]sdwan_schema.PathFilter, 0, len(PathFiltersToUse))
+		body.PathFilters = make([]sdwan_schema.PerfMgmtPathFilterV2N3, 0, len(PathFiltersToUse))
 		for varLoopPathFiltersIndex, varLoopPathFilters := range PathFiltersToUse {
 			// add a new item
-			body.PathFilters = append(body.PathFilters, sdwan_schema.PathFilter{})
+			body.PathFilters = append(body.PathFilters, sdwan_schema.PerfMgmtPathFilterV2N3{})
 			// since we have chosen to stick with either the plan or state, we need to simply copy child properties
 			// copy_from_plan: body=body.PathFilters[varLoopPathFiltersIndex] prefix=rsModel plan=varLoopPathFilters properties=2
 			tflog.Debug(ctx, "copy_from_plan body=body.PathFilters[varLoopPathFiltersIndex] prefix=rsModel plan=varLoopPathFilters")
@@ -1480,9 +1586,19 @@ func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModel
 		}
 	}
 	// property: name=service_label_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.ServiceLabelIds = ListStringValueOrNil(ctx, plan.ServiceLabelIds)
+	if state != nil && plan.ServiceLabelIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.ServiceLabelIds = ListStringValueOrNil(ctx, state.ServiceLabelIds)
+	} else {
+		body.ServiceLabelIds = ListStringValueOrNil(ctx, plan.ServiceLabelIds)
+	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=thresholdprofile_id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.ThresholdprofileId = ValueStringPointerFromPlanOrState(plan.ThresholdprofileId, state.ThresholdprofileId)
@@ -1499,7 +1615,7 @@ func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModel
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct PerfMgmtPolicyRuleScreenV2N2 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct PerfMgmtPolicyRuleScreenV2N3 to JSON:", err.Error())
 		return false
 	}
 
@@ -1535,16 +1651,22 @@ func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModel
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.PerfMgmtPolicyRuleScreenV2N2
+	var ans sdwan_schema.PerfMgmtPolicyRuleScreenV2N3
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to PerfMgmtPolicyRuleScreenV2N2 in update", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to PerfMgmtPolicyRuleScreenV2N3 in update", json_err.Error())
 		return false
 	}
 
-	// Store the answer to state. schema=PerfMgmtPolicyRuleScreenV2N2
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
+	// Store the answer to state. schema=PerfMgmtPolicyRuleScreenV2N3
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=14
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -1711,12 +1833,12 @@ func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModel
 	if ans.PathFilters == nil {
 		state.PathFilters = nil
 	} else if len(ans.PathFilters) == 0 {
-		state.PathFilters = []rsModelPathFilter{}
+		state.PathFilters = []rsModelPerfMgmtPathFilterV2N3{}
 	} else {
-		state.PathFilters = make([]rsModelPathFilter, 0, len(ans.PathFilters))
+		state.PathFilters = make([]rsModelPerfMgmtPathFilterV2N3, 0, len(ans.PathFilters))
 		for varLoopPathFiltersIndex, varLoopPathFilters := range ans.PathFilters {
 			// add a new item
-			state.PathFilters = append(state.PathFilters, rsModelPathFilter{})
+			state.PathFilters = append(state.PathFilters, rsModelPerfMgmtPathFilterV2N3{})
 			// copy_to_state: state=state.PathFilters[varLoopPathFiltersIndex] prefix=rsModel ans=varLoopPathFilters properties=2
 			tflog.Debug(ctx, "copy_to_state state=state.PathFilters[varLoopPathFiltersIndex] prefix=rsModel ans=varLoopPathFilters")
 			// property: name=label, type=STRING macro=copy_to_state
@@ -1733,6 +1855,14 @@ func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModel
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=thresholdprofile_id, type=STRING macro=copy_to_state
 	state.ThresholdprofileId = types.StringPointerValue(ans.ThresholdprofileId)
 	// property: name=type, type=STRING macro=copy_to_state
@@ -1740,7 +1870,7 @@ func (r *performancePolicyRuleResource) doPut(ctx context.Context, plan *rsModel
 	return true
 }
 
-func (r *performancePolicyRuleResource) doDelete(ctx context.Context, state *rsModelPerfMgmtPolicyRuleScreenV2N2, resp *resource.DeleteResponse) bool {
+func (r *performancePolicyRuleResource) doDelete(ctx context.Context, state *rsModelPerfMgmtPolicyRuleScreenV2N3, resp *resource.DeleteResponse) bool {
 	// read object id
 	tfid := state.Tfid.ValueString()
 	// Basic logging.
@@ -1761,7 +1891,7 @@ func (r *performancePolicyRuleResource) doDelete(ctx context.Context, state *rsM
 	delete_request := &sdwan_client.SdwanClientRequestResponse{}
 	delete_request.ResourceType = "prismasdwan_performance_policy_rule"
 	delete_request.Method = "DELETE"
-	delete_request.Path = "/sdwan/v2.2/api/perfmgmtpolicysets/{perfmgmtpolicyset_id}/perfmgmtpolicyrules/{perfmgmtpolicyrule_id}"
+	delete_request.Path = "/sdwan/v2.3/api/perfmgmtpolicysets/{perfmgmtpolicyset_id}/perfmgmtpolicyrules/{perfmgmtpolicyrule_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
@@ -1795,14 +1925,14 @@ func (r *performancePolicyRuleResource) doDelete(ctx context.Context, state *rsM
 // Path Parameters are encoded into TfID itself
 func (r *performancePolicyRuleResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "executing resource create for prismasdwan_performance_policy_rule")
-	var plan rsModelPerfMgmtPolicyRuleScreenV2N2
+	var plan rsModelPerfMgmtPolicyRuleScreenV2N3
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// make post call
-	var state rsModelPerfMgmtPolicyRuleScreenV2N2
+	var state rsModelPerfMgmtPolicyRuleScreenV2N3
 	if r.doPost(ctx, &plan, &state, resp) {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	}
@@ -1814,7 +1944,7 @@ func (r *performancePolicyRuleResource) Create(ctx context.Context, req resource
 func (r *performancePolicyRuleResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 	tflog.Info(ctx, "executing resource read for prismasdwan_performance_policy_rule")
-	var savestate, state rsModelPerfMgmtPolicyRuleScreenV2N2
+	var savestate, state rsModelPerfMgmtPolicyRuleScreenV2N3
 	resp.Diagnostics.Append(req.State.Get(ctx, &savestate)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -1833,7 +1963,7 @@ func (r *performancePolicyRuleResource) Read(ctx context.Context, req resource.R
 func (r *performancePolicyRuleResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
 	tflog.Info(ctx, "executing resource update for prismasdwan_performance_policy_rule")
-	var plan, state rsModelPerfMgmtPolicyRuleScreenV2N2
+	var plan, state rsModelPerfMgmtPolicyRuleScreenV2N3
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -1857,7 +1987,7 @@ func (r *performancePolicyRuleResource) Update(ctx context.Context, req resource
 func (r *performancePolicyRuleResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 
 	tflog.Info(ctx, "executing resource delete for prismasdwan_performance_policy_rule")
-	var state rsModelPerfMgmtPolicyRuleScreenV2N2
+	var state rsModelPerfMgmtPolicyRuleScreenV2N3
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {

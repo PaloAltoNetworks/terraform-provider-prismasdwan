@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	sdwan "github.com/paloaltonetworks/terraform-provider-prismasdwan/sdk"
@@ -20,17 +21,19 @@ import (
 )
 
 // +-----------------------------------------------------------------
-// | Schema Map Summary (size=goLangStructMap=8)
+// | Schema Map Summary (size=goLangStructMap=10)
 // | Computed Resource Name=ipsecprofiles
 // +-----------------------------------------------------------------
+// | PPKConfig HasID=false
 // | IKEV1Params HasID=false
 // | IPSECAuthenticationV1 HasID=false
+// | PQCKEMConfig HasID=false
 // | Proposals HasID=false
 // | IKEGroup HasID=false
 // | Lifesize HasID=false
 // | ResponderSaseProposals HasID=false
 // | ESPGroup HasID=false
-// | IPSECProfileScreenV2N2 HasID=true
+// | IPSECProfileScreenV2N3 HasID=true
 // +-----------------------------------------------------------------
 
 // Data source.
@@ -62,7 +65,7 @@ type dsModelWithFilterIpsecProfile struct {
 	TfParameters types.Map                        `tfsdk:"x_parameters"` // Generic Map for Path Ids
 	Etag         types.Int64                      `tfsdk:"x_etag"`       // propertyName=_etag type=INTEGER
 	Schema       types.Int64                      `tfsdk:"x_schema"`     // propertyName=_schema type=INTEGER
-	Items        []*dsModelIPSECProfileScreenV2N2 `tfsdk:"items"`
+	Items        []*dsModelIPSECProfileScreenV2N3 `tfsdk:"items"`
 }
 
 // Metadata returns the data source type name.
@@ -73,13 +76,14 @@ func (d *ipsecProfileDataSource) Metadata(_ context.Context, req datasource.Meta
 // Schema defines the schema for this data source.
 func (d *ipsecProfileDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Retrieves a list of Prisma SD-WAN Ipsec Profile items.",
 		Attributes: map[string]dsschema.Attribute{
 			"filters": dsschema.MapAttribute{
 				Required:    true,
 				Computed:    false,
 				Optional:    false,
 				ElementType: types.StringType,
+				Description: "Path parameters used to locate the items to retrieve.",
 			},
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": dsschema.MapAttribute{
@@ -87,592 +91,945 @@ func (d *ipsecProfileDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Additional path parameters for the data source, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": dsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Entity tag returned by the API, managed automatically by the provider.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": dsschema.Int64Attribute{
-				Required: false,
-				Computed: true,
-				Optional: true,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Description: "Schema version returned by the API, managed automatically by the provider.",
 			},
 			"items": dsschema.ListNestedAttribute{
-				Computed: true,
+				Computed:    true,
+				Description: "The list of items returned by the data source.",
 				NestedObject: dsschema.NestedAttributeObject{
 					Attributes: map[string]dsschema.Attribute{
-						// rest all properties to be read from GET API Schema schema=IPSECProfileScreenV2N2
+						// rest all properties to be read from GET API Schema schema=IPSECProfileScreenV2N3
 						// property: name=_etag, type=INTEGER macro=rss_schema
 						"x_etag": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 						// property: name=_schema, type=INTEGER macro=rss_schema
 						"x_schema": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 						// property: name=authentication, type=REFERENCE macro=rss_schema
 						"authentication": dsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Authentication.",
 							Attributes: map[string]dsschema.Attribute{
 								// property: name=certificate, type=STRING macro=rss_schema
 								"certificate": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Certificate.",
 								},
 								// key name holder for attribute: name=certificate, type=STRING macro=rss_schema
 								// property: name=certificate_profile_id, type=STRING macro=rss_schema
 								"certificate_profile_id": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Certificate profile id.",
 								},
 								// key name holder for attribute: name=certificate_profile_id, type=STRING macro=rss_schema
 								// property: name=comment, type=STRING macro=rss_schema
 								"comment": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Comment.",
 								},
 								// key name holder for attribute: name=comment, type=STRING macro=rss_schema
 								// property: name=ikev1_params, type=REFERENCE macro=rss_schema
 								"ikev1_params": dsschema.SingleNestedAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Ikev1 params.",
 									Attributes: map[string]dsschema.Attribute{
 										// property: name=xauth_id, type=STRING macro=rss_schema
 										"xauth_id": dsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Xauth id.",
 										},
 										// key name holder for attribute: name=xauth_id, type=STRING macro=rss_schema
 										// property: name=xauth_secret, type=STRING macro=rss_schema
 										"xauth_secret": dsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: true,
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   true,
+											Description: "Xauth secret. Value: length 4 to 128 characters.",
 										},
 										// key name holder for attribute: name=xauth_secret, type=STRING macro=rss_schema
 										// property: name=xauth_secret_encrypted, type=STRING macro=rss_schema
 										"xauth_secret_encrypted": dsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: true,
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   true,
+											Description: "Xauth secret encrypted.",
 										},
 										// key name holder for attribute: name=xauth_secret_encrypted, type=STRING macro=rss_schema
 										// property: name=xauth_secret_hash, type=STRING macro=rss_schema
 										"xauth_secret_hash": dsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: true,
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   true,
+											Description: "Xauth secret hash.",
 										},
 										// key name holder for attribute: name=xauth_secret_hash, type=STRING macro=rss_schema
 										// property: name=xauth_type, type=STRING macro=rss_schema
 										"xauth_type": dsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Xauth type. Value: one of none, secret.",
 										},
 										// key name holder for attribute: name=xauth_type, type=STRING macro=rss_schema
 									},
 								},
-								// key name holder for attribute: name=xauth_type, type=STRING macro=rss_schema
+								// key name holder for attribute: name=ikev1_params, type=REFERENCE macro=rss_schema
 								// property: name=local_ca_certificate, type=STRING macro=rss_schema
 								"local_ca_certificate": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Local ca certificate.",
 								},
 								// key name holder for attribute: name=local_ca_certificate, type=STRING macro=rss_schema
 								// property: name=local_id, type=STRING macro=rss_schema
 								"local_id": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Local id. Value: one of local_ip, dn, hostname, custom, none.",
 								},
 								// key name holder for attribute: name=local_id, type=STRING macro=rss_schema
 								// property: name=local_id_custom, type=STRING macro=rss_schema
 								"local_id_custom": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Local id custom. Value: length 2 to 255 characters.",
 								},
 								// key name holder for attribute: name=local_id_custom, type=STRING macro=rss_schema
 								// property: name=local_pa_certificate_id, type=STRING macro=rss_schema
 								"local_pa_certificate_id": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Local pa certificate id.",
 								},
 								// key name holder for attribute: name=local_pa_certificate_id, type=STRING macro=rss_schema
 								// property: name=pa_master_key_id, type=STRING macro=rss_schema
 								"pa_master_key_id": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Pa master key id.",
 								},
 								// key name holder for attribute: name=pa_master_key_id, type=STRING macro=rss_schema
 								// property: name=passphrase, type=STRING macro=rss_schema
 								"passphrase": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   true,
+									Description: "Passphrase.",
 								},
 								// key name holder for attribute: name=passphrase, type=STRING macro=rss_schema
 								// property: name=passphrase_encrypted, type=STRING macro=rss_schema
 								"passphrase_encrypted": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   true,
+									Description: "Passphrase encrypted.",
 								},
 								// key name holder for attribute: name=passphrase_encrypted, type=STRING macro=rss_schema
 								// property: name=peer_id_check, type=STRING macro=rss_schema
 								"peer_id_check": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Peer id check. Value: one of Exact, Wildcard.",
 								},
 								// key name holder for attribute: name=peer_id_check, type=STRING macro=rss_schema
 								// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=rss_schema
 								"permit_peer_id_mismatch": dsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Permit peer id mismatch.",
 								},
 								// key name holder for attribute: name=permit_peer_id_mismatch, type=BOOLEAN macro=rss_schema
+								// property: name=ppk_config, type=REFERENCE macro=rss_schema
+								"ppk_config": dsschema.SingleNestedAttribute{
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Ppk config.",
+									Attributes: map[string]dsschema.Attribute{
+										// property: name=enabled, type=BOOLEAN macro=rss_schema
+										"enabled": dsschema.BoolAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Enabled.",
+										},
+										// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
+										// property: name=key_enabled, type=BOOLEAN macro=rss_schema
+										"key_enabled": dsschema.BoolAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Key enabled.",
+										},
+										// key name holder for attribute: name=key_enabled, type=BOOLEAN macro=rss_schema
+										// property: name=mode, type=STRING macro=rss_schema
+										"mode": dsschema.StringAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Mode. Value: one of preferred, mandatory.",
+										},
+										// key name holder for attribute: name=mode, type=STRING macro=rss_schema
+										// property: name=ppk_key_id, type=STRING macro=rss_schema
+										"ppk_key_id": dsschema.StringAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Ppk key id.",
+										},
+										// key name holder for attribute: name=ppk_key_id, type=STRING macro=rss_schema
+										// property: name=ppk_secret, type=STRING macro=rss_schema
+										"ppk_secret": dsschema.StringAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   true,
+											Description: "Ppk secret.",
+										},
+										// key name holder for attribute: name=ppk_secret, type=STRING macro=rss_schema
+										// property: name=ppk_secret_configured, type=BOOLEAN macro=rss_schema
+										"ppk_secret_configured": dsschema.BoolAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   true,
+											Description: "Ppk secret configured.",
+										},
+										// key name holder for attribute: name=ppk_secret_configured, type=BOOLEAN macro=rss_schema
+										// property: name=ppk_secret_encrypted, type=STRING macro=rss_schema
+										"ppk_secret_encrypted": dsschema.StringAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   true,
+											Description: "Ppk secret encrypted.",
+										},
+										// key name holder for attribute: name=ppk_secret_encrypted, type=STRING macro=rss_schema
+										// property: name=ppk_secret_hash, type=STRING macro=rss_schema
+										"ppk_secret_hash": dsschema.StringAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   true,
+											Description: "Ppk secret hash.",
+										},
+										// key name holder for attribute: name=ppk_secret_hash, type=STRING macro=rss_schema
+									},
+								},
+								// key name holder for attribute: name=ppk_config, type=REFERENCE macro=rss_schema
 								// property: name=private_key, type=STRING macro=rss_schema
 								"private_key": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   true,
+									Description: "Private key.",
 								},
 								// key name holder for attribute: name=private_key, type=STRING macro=rss_schema
 								// property: name=private_key_encrypted, type=STRING macro=rss_schema
 								"private_key_encrypted": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   true,
+									Description: "Private key encrypted.",
 								},
 								// key name holder for attribute: name=private_key_encrypted, type=STRING macro=rss_schema
 								// property: name=remote_ca_certificate, type=STRING macro=rss_schema
 								"remote_ca_certificate": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Remote ca certificate.",
 								},
 								// key name holder for attribute: name=remote_ca_certificate, type=STRING macro=rss_schema
 								// property: name=remote_id, type=STRING macro=rss_schema
 								"remote_id": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Remote id. Value: length 2 to 255 characters.",
 								},
 								// key name holder for attribute: name=remote_id, type=STRING macro=rss_schema
 								// property: name=secret, type=STRING macro=rss_schema
 								"secret": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: true,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   true,
+									Description: "Secret.",
 								},
 								// key name holder for attribute: name=secret, type=STRING macro=rss_schema
 								// property: name=secret_encrypted, type=STRING macro=rss_schema
 								"secret_encrypted": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: true,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   true,
+									Description: "Secret encrypted.",
 								},
 								// key name holder for attribute: name=secret_encrypted, type=STRING macro=rss_schema
 								// property: name=secret_hash, type=STRING macro=rss_schema
 								"secret_hash": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: true,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   true,
+									Description: "Secret hash.",
 								},
 								// key name holder for attribute: name=secret_hash, type=STRING macro=rss_schema
 								// property: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=rss_schema
 								"strict_validation_peer_extended_key_use": dsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Strict validation peer extended key use.",
 								},
 								// key name holder for attribute: name=strict_validation_peer_extended_key_use, type=BOOLEAN macro=rss_schema
 								// property: name=type, type=STRING macro=rss_schema
 								"type": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Type. Value: one of none, psk, x509.",
 								},
 								// key name holder for attribute: name=type, type=STRING macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=type, type=STRING macro=rss_schema
+						// key name holder for attribute: name=authentication, type=REFERENCE macro=rss_schema
 						// property: name=description, type=STRING macro=rss_schema
 						"description": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Description. Value: at most 256 characters.",
 						},
 						// key name holder for attribute: name=description, type=STRING macro=rss_schema
 						// property: name=dpd_delay, type=INTEGER macro=rss_schema
 						"dpd_delay": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Dpd delay. Value: between 1 and 60.",
 						},
 						// key name holder for attribute: name=dpd_delay, type=INTEGER macro=rss_schema
 						// property: name=dpd_enable, type=BOOLEAN macro=rss_schema
 						"dpd_enable": dsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Dpd enable.",
 						},
 						// key name holder for attribute: name=dpd_enable, type=BOOLEAN macro=rss_schema
 						// property: name=dpd_timeout, type=INTEGER macro=rss_schema
 						"dpd_timeout": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Dpd timeout. Value: between 2 and 300.",
 						},
 						// key name holder for attribute: name=dpd_timeout, type=INTEGER macro=rss_schema
 						// property: name=esp_group, type=REFERENCE macro=rss_schema
 						"esp_group": dsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Esp group.",
 							Attributes: map[string]dsschema.Attribute{
 								// property: name=force_encapsulation, type=BOOLEAN macro=rss_schema
 								"force_encapsulation": dsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Force encapsulation.",
 								},
 								// key name holder for attribute: name=force_encapsulation, type=BOOLEAN macro=rss_schema
 								// property: name=lifesize, type=REFERENCE macro=rss_schema
 								"lifesize": dsschema.SingleNestedAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Lifesize.",
 									Attributes: map[string]dsschema.Attribute{
 										// property: name=units, type=STRING macro=rss_schema
 										"units": dsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Units.",
 										},
 										// key name holder for attribute: name=units, type=STRING macro=rss_schema
 										// property: name=value, type=INTEGER macro=rss_schema
 										"value": dsschema.Int64Attribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Value.",
 										},
 										// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
 									},
 								},
-								// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+								// key name holder for attribute: name=lifesize, type=REFERENCE macro=rss_schema
 								// property: name=lifetime, type=INTEGER macro=rss_schema
 								"lifetime": dsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Lifetime. Value: between 1 and 72.",
 								},
 								// key name holder for attribute: name=lifetime, type=INTEGER macro=rss_schema
 								// property: name=lifetime_units, type=STRING macro=rss_schema
 								"lifetime_units": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Lifetime units.",
 								},
 								// key name holder for attribute: name=lifetime_units, type=STRING macro=rss_schema
 								// property: name=mode, type=STRING macro=rss_schema
 								"mode": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Mode. Value: one of tunnel, transport.",
 								},
 								// key name holder for attribute: name=mode, type=STRING macro=rss_schema
+								// property: name=pqc_kem_config, type=REFERENCE macro=rss_schema
+								"pqc_kem_config": dsschema.SingleNestedAttribute{
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Pqc kem config.",
+									Attributes: map[string]dsschema.Attribute{
+										// property: name=block_vulnerable_cipher, type=BOOLEAN macro=rss_schema
+										"block_vulnerable_cipher": dsschema.BoolAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Block vulnerable cipher.",
+										},
+										// key name holder for attribute: name=block_vulnerable_cipher, type=BOOLEAN macro=rss_schema
+										// property: name=enabled, type=BOOLEAN macro=rss_schema
+										"enabled": dsschema.BoolAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Enabled.",
+										},
+										// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
+										// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_1_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_1 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_2_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_2 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_3_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_3 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_4_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_4 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_5_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_5 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_6_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_6 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_7_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_7 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+									},
+								},
+								// key name holder for attribute: name=pqc_kem_config, type=REFERENCE macro=rss_schema
 								// property: name=proposals, type=ARRAY_REFERENCE macro=rss_schema
 								"proposals": dsschema.ListNestedAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Proposals. At most 1 items. At least 1 items.",
 									NestedObject: dsschema.NestedAttributeObject{
 										Attributes: map[string]dsschema.Attribute{
 											// property: name=dh_groups, type=STRING macro=rss_schema
 											"dh_groups": dsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Dh groups. Value: one of modp768, ecp384bp, modp6144, modp3072, modp2048s224, none, ecp512bp, ecp521, ecp192, ecp256, ecp384, ecp224, modp1024s160, modp4096, modp1536, ecp224bp, modp1024, curve25519, modp8192, modp2048, ecp256bp, modp2048s256.",
 											},
 											// key name holder for attribute: name=dh_groups, type=STRING macro=rss_schema
 											// property: name=encryption, type=STRING macro=rss_schema
 											"encryption": dsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Encryption. Value: one of aes256gcm16, aes256, aes128ccm128, aes128ccm16, twofish192, aes128, aes192, aes192gcm64, camellia256, aes256gcm96, aes192gcm128, aes256ctr, camellia192, aes192gmac, aes128gcm96, blowfish256, aes192ccm128, 3des, aes256ccm64, aes192ccm96, aes192ccm64, aes128ccm96, twofish256, camellia128, blowfish128, serpent256, blowfish192, aes128ctr, twofish128, aes192gcm96, aes128ccm64, aes128gmac, serpent128, aes256gcm64, aes256ccm96, aes192ctr, aes128gcm128, serpent192, aes256gmac, aes128gcm64, aes256ccm128, none, aes128gcm16, aes256gcm128.",
 											},
 											// key name holder for attribute: name=encryption, type=STRING macro=rss_schema
 											// property: name=hash, type=STRING macro=rss_schema
 											"hash": dsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Hash. Value: one of sha256, md5, sha384, aesxcbc, aes128gmac, none, sha1, aes192gmac, sha512, sha256_96, aes256gmac.",
 											},
 											// key name holder for attribute: name=hash, type=STRING macro=rss_schema
 											// property: name=prf, type=STRING macro=rss_schema
 											"prf": dsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Prf. Value: one of md5, sha1, sha256, sha384, sha512, sha256_96, aesxcbc, aes128gmac, aes192gmac, aes256gmac, none.",
 											},
 											// key name holder for attribute: name=prf, type=STRING macro=rss_schema
 										},
 									},
 								},
-								// key name holder for attribute: name=prf, type=STRING macro=rss_schema
+								// key name holder for attribute: name=proposals, type=ARRAY_REFERENCE macro=rss_schema
 								// property: name=responder_sase_proposals, type=REFERENCE macro=rss_schema
 								"responder_sase_proposals": dsschema.SingleNestedAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Responder sase proposals.",
 									Attributes: map[string]dsschema.Attribute{
 										// property: name=dh_group, type=ARRAY_PRIMITIVE macro=rss_schema
 										"dh_group": dsschema.ListAttribute{
 											Required:    false,
-											Computed:    false,
-											Optional:    true,
+											Computed:    true,
+											Optional:    false,
 											Sensitive:   false,
+											Description: "Dh group. Each item: one of none, modp768, modp1024, modp1536, modp2048, modp3072, modp4096, modp6144, modp8192, modp1024s160, modp2048s224, modp2048s256, ecp192, ecp224, ecp256, ecp384, ecp521, ecp224bp, ecp256bp, ecp384bp, ecp512bp, curve25519.",
 											ElementType: types.StringType,
 										},
 										// key name holder for attribute: name=dh_group, type=ARRAY_PRIMITIVE macro=rss_schema
 										// property: name=encryption, type=ARRAY_PRIMITIVE macro=rss_schema
 										"encryption": dsschema.ListAttribute{
 											Required:    false,
-											Computed:    false,
-											Optional:    true,
+											Computed:    true,
+											Optional:    false,
 											Sensitive:   false,
+											Description: "Encryption. Each item: one of none, aes128, aes192, aes256, aes128ctr, aes192ctr, aes256ctr, aes128ccm16, aes128ccm64, aes192ccm64, aes256ccm64, aes128ccm96, aes192ccm96, aes256ccm96, aes128ccm128, aes192ccm128, aes256ccm128, aes128gcm16, aes128gcm64, aes192gcm64, aes256gcm16, aes256gcm64, aes128gcm96, aes192gcm96, aes256gcm96, aes128gcm128, aes192gcm128, aes256gcm128, aes128gmac, aes192gmac, aes256gmac, 3des, blowfish128, blowfish192, blowfish256, camellia128, camellia192, camellia256, serpent128, serpent192, serpent256, twofish128, twofish192, twofish256.",
 											ElementType: types.StringType,
 										},
 										// key name holder for attribute: name=encryption, type=ARRAY_PRIMITIVE macro=rss_schema
 										// property: name=hash, type=ARRAY_PRIMITIVE macro=rss_schema
 										"hash": dsschema.ListAttribute{
 											Required:    false,
-											Computed:    false,
-											Optional:    true,
+											Computed:    true,
+											Optional:    false,
 											Sensitive:   false,
+											Description: "Hash. Each item: one of md5, sha1, sha256, sha384, sha512, sha256_96, aesxcbc, aes128gmac, aes192gmac, aes256gmac, none.",
 											ElementType: types.StringType,
 										},
 										// key name holder for attribute: name=hash, type=ARRAY_PRIMITIVE macro=rss_schema
 									},
 								},
-								// key name holder for attribute: name=hash, type=ARRAY_PRIMITIVE macro=rss_schema
+								// key name holder for attribute: name=responder_sase_proposals, type=REFERENCE macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=hash, type=ARRAY_PRIMITIVE macro=rss_schema
+						// key name holder for attribute: name=esp_group, type=REFERENCE macro=rss_schema
 						// property: name=id, type=STRING macro=rss_schema
 						"id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=id, type=STRING macro=rss_schema
 						// property: name=ike_group, type=REFERENCE macro=rss_schema
 						"ike_group": dsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Ike group.",
 							Attributes: map[string]dsschema.Attribute{
 								// property: name=aggressive, type=BOOLEAN macro=rss_schema
 								"aggressive": dsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Aggressive.",
 								},
 								// key name holder for attribute: name=aggressive, type=BOOLEAN macro=rss_schema
 								// property: name=authentication_multiple, type=INTEGER macro=rss_schema
 								"authentication_multiple": dsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Authentication multiple.",
 								},
 								// key name holder for attribute: name=authentication_multiple, type=INTEGER macro=rss_schema
 								// property: name=key_exchange, type=STRING macro=rss_schema
 								"key_exchange": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Key exchange. Value: one of ikev1, ikev2.",
 								},
 								// key name holder for attribute: name=key_exchange, type=STRING macro=rss_schema
 								// property: name=lifetime, type=INTEGER macro=rss_schema
 								"lifetime": dsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Lifetime. Value: between 1 and 72.",
 								},
 								// key name holder for attribute: name=lifetime, type=INTEGER macro=rss_schema
 								// property: name=lifetime_units, type=STRING macro=rss_schema
 								"lifetime_units": dsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Lifetime units.",
 								},
 								// key name holder for attribute: name=lifetime_units, type=STRING macro=rss_schema
 								// property: name=port, type=INTEGER macro=rss_schema
 								"port": dsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Port. Value: between 1 and 65535.",
 								},
 								// key name holder for attribute: name=port, type=INTEGER macro=rss_schema
+								// property: name=pqc_kem_config, type=REFERENCE macro=rss_schema
+								"pqc_kem_config": dsschema.SingleNestedAttribute{
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Pqc kem config.",
+									Attributes: map[string]dsschema.Attribute{
+										// property: name=block_vulnerable_cipher, type=BOOLEAN macro=rss_schema
+										"block_vulnerable_cipher": dsschema.BoolAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Block vulnerable cipher.",
+										},
+										// key name holder for attribute: name=block_vulnerable_cipher, type=BOOLEAN macro=rss_schema
+										// property: name=enabled, type=BOOLEAN macro=rss_schema
+										"enabled": dsschema.BoolAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Enabled.",
+										},
+										// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
+										// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_1_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_1 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_2_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_2 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_3_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_3 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_4_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_4 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_5_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_5 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_6_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_6 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+										"round_7_algorithms": dsschema.ListAttribute{
+											Required:    false,
+											Computed:    true,
+											Optional:    false,
+											Sensitive:   false,
+											Description: "Round_7 Algorithms.",
+											ElementType: types.StringType,
+										},
+										// key name holder for attribute: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=rss_schema
+									},
+								},
+								// key name holder for attribute: name=pqc_kem_config, type=REFERENCE macro=rss_schema
 								// property: name=proposals, type=ARRAY_REFERENCE macro=rss_schema
 								"proposals": dsschema.ListNestedAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Proposals. At most 1 items. At least 1 items.",
 									NestedObject: dsschema.NestedAttributeObject{
 										Attributes: map[string]dsschema.Attribute{
 											// property: name=dh_groups, type=STRING macro=rss_schema
 											"dh_groups": dsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Dh groups. Value: one of modp768, ecp384bp, modp6144, modp3072, modp2048s224, none, ecp512bp, ecp521, ecp192, ecp256, ecp384, ecp224, modp1024s160, modp4096, modp1536, ecp224bp, modp1024, curve25519, modp8192, modp2048, ecp256bp, modp2048s256.",
 											},
 											// key name holder for attribute: name=dh_groups, type=STRING macro=rss_schema
 											// property: name=encryption, type=STRING macro=rss_schema
 											"encryption": dsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Encryption. Value: one of aes256gcm16, aes256, aes128ccm128, aes128ccm16, twofish192, aes128, aes192, aes192gcm64, camellia256, aes256gcm96, aes192gcm128, aes256ctr, camellia192, aes192gmac, aes128gcm96, blowfish256, aes192ccm128, 3des, aes256ccm64, aes192ccm96, aes192ccm64, aes128ccm96, twofish256, camellia128, blowfish128, serpent256, blowfish192, aes128ctr, twofish128, aes192gcm96, aes128ccm64, aes128gmac, serpent128, aes256gcm64, aes256ccm96, aes192ctr, aes128gcm128, serpent192, aes256gmac, aes128gcm64, aes256ccm128, none, aes128gcm16, aes256gcm128.",
 											},
 											// key name holder for attribute: name=encryption, type=STRING macro=rss_schema
 											// property: name=hash, type=STRING macro=rss_schema
 											"hash": dsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Hash. Value: one of sha256, md5, sha384, aesxcbc, aes128gmac, none, sha1, aes192gmac, sha512, sha256_96, aes256gmac.",
 											},
 											// key name holder for attribute: name=hash, type=STRING macro=rss_schema
 											// property: name=prf, type=STRING macro=rss_schema
 											"prf": dsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Prf. Value: one of md5, sha1, sha256, sha384, sha512, sha256_96, aesxcbc, aes128gmac, aes192gmac, aes256gmac, none.",
 											},
 											// key name holder for attribute: name=prf, type=STRING macro=rss_schema
 										},
 									},
 								},
-								// key name holder for attribute: name=prf, type=STRING macro=rss_schema
+								// key name holder for attribute: name=proposals, type=ARRAY_REFERENCE macro=rss_schema
 								// property: name=reauth, type=BOOLEAN macro=rss_schema
 								"reauth": dsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    false,
+									Sensitive:   false,
+									Description: "Reauth.",
 								},
 								// key name holder for attribute: name=reauth, type=BOOLEAN macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=reauth, type=BOOLEAN macro=rss_schema
+						// key name holder for attribute: name=ike_group, type=REFERENCE macro=rss_schema
 						// property: name=name, type=STRING macro=rss_schema
 						"name": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Name. Value: at most 128 characters.",
 						},
 						// key name holder for attribute: name=name, type=STRING macro=rss_schema
 						// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 						"tags": dsschema.SetAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 						// property: name=used_for, type=STRING macro=rss_schema
 						"used_for": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Used for. Value: one of fabric_vpn.",
 						},
 						// key name holder for attribute: name=used_for, type=STRING macro=rss_schema
 					},
@@ -711,7 +1068,7 @@ func (d *ipsecProfileDataSource) Read(ctx context.Context, req datasource.ReadRe
 	svc := sdwan_client.NewClient(d.client)
 
 	// Prepare input for the API endpoint.
-	get_path := "/sdwan/v2.2/api/ipsecprofiles/{profile_id}"
+	get_path := "/sdwan/v2.3/api/ipsecprofiles/{profile_id}"
 	list_request := &sdwan_client.SdwanClientRequestResponse{}
 	list_request.Method = "GET"
 	list_request.Path = get_path[:strings.LastIndex(get_path, "/")]
@@ -722,17 +1079,25 @@ func (d *ipsecProfileDataSource) Read(ctx context.Context, req datasource.ReadRe
 
 	// Perform the operation.
 	svc.ExecuteSdwanRequest(ctx, list_request)
+	response_body_string := `{"items":[]}`
 	if list_request.ResponseErr != nil {
-		if IsObjectNotFound(*list_request.ResponseErr) {
-			resp.State.RemoveResource(ctx)
-		} else {
-			resp.Diagnostics.AddError("error reading prismasdwan_ipsec_profile", (*list_request.ResponseErr).Error())
+		// a 404 here means the list endpoint itself is missing, which must not look like "no matches"
+		{
+			resp.Diagnostics.AddError("error reading prismasdwan_ipsec_profile",
+				fmt.Sprintf("%s (GET %s)", (*list_request.ResponseErr).Error(), *list_request.FinalPath))
+			return
 		}
-		return
+	} else {
+		response_body_string = string(*list_request.ResponseBytes)
+		// some endpoints return the one object itself instead of {"items": [...]}: treat it as the only item
+		var body map[string]interface{}
+		if err := json.Unmarshal([]byte(response_body_string), &body); err == nil {
+			if _, isList := body["items"]; !isList && body["id"] != nil {
+				wrapped, _ := json.Marshal(map[string]interface{}{"items": []map[string]interface{}{body}})
+				response_body_string = string(wrapped)
+			}
+		}
 	}
-
-	// read json string from http response
-	response_body_string := string(*list_request.ResponseBytes)
 	tflog.Info(ctx, "lookup response from server", map[string]any{
 		"path": response_body_string,
 	})
@@ -745,7 +1110,9 @@ func (d *ipsecProfileDataSource) Read(ctx context.Context, req datasource.ReadRe
 		resp.Diagnostics.AddError("error in json unmarshal to generic map in lookup", json_err.Error())
 		return
 	}
-	// ensure its as array
+
+	// no match is an empty list, not null: items[0] and length(items) must work on a miss
+	state_with_filter.Items = []*dsModelIPSECProfileScreenV2N3{} // ensure its as array
 	for _, item := range response.Items {
 		// create json from item
 		item_json, item_err := json.Marshal(item)
@@ -782,19 +1149,19 @@ func (d *ipsecProfileDataSource) Read(ctx context.Context, req datasource.ReadRe
 		}
 
 		// Store the answer to state.
-		var state dsModelIPSECProfileScreenV2N2
+		var state dsModelIPSECProfileScreenV2N3
 
 		// start copying attributes
-		var ans sdwan_schema.IPSECProfileScreenV2N2
+		var ans sdwan_schema.IPSECProfileScreenV2N3
 		// copy from json response
 		json_err := json.Unmarshal(item_json, &ans)
 		// if found, exit
 		if json_err != nil {
-			resp.Diagnostics.AddError("error in json unmarshal to IPSECProfileScreenV2N2", json_err.Error())
+			resp.Diagnostics.AddError("error in json unmarshal to IPSECProfileScreenV2N3", json_err.Error())
 			return
 		}
 
-		// lets copy all items into state schema=IPSECProfileScreenV2N2
+		// lets copy all items into state schema=IPSECProfileScreenV2N3
 		// copy_to_state: state=state prefix=dsModel ans=ans properties=13
 		tflog.Debug(ctx, "copy_to_state state=state prefix=dsModel ans=ans")
 		// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -806,7 +1173,7 @@ func (d *ipsecProfileDataSource) Read(ctx context.Context, req datasource.ReadRe
 			state.Authentication = nil
 		} else {
 			state.Authentication = &dsModelIPSECAuthenticationV1{}
-			// copy_to_state: state=state.Authentication prefix=dsModel ans=ans.Authentication properties=22
+			// copy_to_state: state=state.Authentication prefix=dsModel ans=ans.Authentication properties=23
 			tflog.Debug(ctx, "copy_to_state state=state.Authentication prefix=dsModel ans=ans.Authentication")
 			// property: name=certificate, type=STRING macro=copy_to_state
 			state.Authentication.Certificate = types.StringPointerValue(ans.Authentication.Certificate)
@@ -850,6 +1217,30 @@ func (d *ipsecProfileDataSource) Read(ctx context.Context, req datasource.ReadRe
 			state.Authentication.PeerIdCheck = types.StringPointerValue(ans.Authentication.PeerIdCheck)
 			// property: name=permit_peer_id_mismatch, type=BOOLEAN macro=copy_to_state
 			state.Authentication.PermitPeerIdMismatch = types.BoolPointerValue(ans.Authentication.PermitPeerIdMismatch)
+			// property: name=ppk_config, type=REFERENCE macro=copy_to_state
+			if ans.Authentication.PpkConfig == nil {
+				state.Authentication.PpkConfig = nil
+			} else {
+				state.Authentication.PpkConfig = &dsModelPPKConfig{}
+				// copy_to_state: state=state.Authentication.PpkConfig prefix=dsModel ans=ans.Authentication.PpkConfig properties=8
+				tflog.Debug(ctx, "copy_to_state state=state.Authentication.PpkConfig prefix=dsModel ans=ans.Authentication.PpkConfig")
+				// property: name=enabled, type=BOOLEAN macro=copy_to_state
+				state.Authentication.PpkConfig.Enabled = types.BoolPointerValue(ans.Authentication.PpkConfig.Enabled)
+				// property: name=key_enabled, type=BOOLEAN macro=copy_to_state
+				state.Authentication.PpkConfig.KeyEnabled = types.BoolPointerValue(ans.Authentication.PpkConfig.KeyEnabled)
+				// property: name=mode, type=STRING macro=copy_to_state
+				state.Authentication.PpkConfig.Mode = types.StringPointerValue(ans.Authentication.PpkConfig.Mode)
+				// property: name=ppk_key_id, type=STRING macro=copy_to_state
+				state.Authentication.PpkConfig.PpkKeyId = types.StringPointerValue(ans.Authentication.PpkConfig.PpkKeyId)
+				// property: name=ppk_secret, type=STRING macro=copy_to_state
+				state.Authentication.PpkConfig.PpkSecret = types.StringPointerValue(ans.Authentication.PpkConfig.PpkSecret)
+				// property: name=ppk_secret_configured, type=BOOLEAN macro=copy_to_state
+				state.Authentication.PpkConfig.PpkSecretConfigured = types.BoolPointerValue(ans.Authentication.PpkConfig.PpkSecretConfigured)
+				// property: name=ppk_secret_encrypted, type=STRING macro=copy_to_state
+				state.Authentication.PpkConfig.PpkSecretEncrypted = types.StringPointerValue(ans.Authentication.PpkConfig.PpkSecretEncrypted)
+				// property: name=ppk_secret_hash, type=STRING macro=copy_to_state
+				state.Authentication.PpkConfig.PpkSecretHash = types.StringPointerValue(ans.Authentication.PpkConfig.PpkSecretHash)
+			}
 			// property: name=private_key, type=STRING macro=copy_to_state
 			state.Authentication.PrivateKey = types.StringPointerValue(ans.Authentication.PrivateKey)
 			// property: name=private_key_encrypted, type=STRING macro=copy_to_state
@@ -882,7 +1273,7 @@ func (d *ipsecProfileDataSource) Read(ctx context.Context, req datasource.ReadRe
 			state.EspGroup = nil
 		} else {
 			state.EspGroup = &dsModelESPGroup{}
-			// copy_to_state: state=state.EspGroup prefix=dsModel ans=ans.EspGroup properties=7
+			// copy_to_state: state=state.EspGroup prefix=dsModel ans=ans.EspGroup properties=8
 			tflog.Debug(ctx, "copy_to_state state=state.EspGroup prefix=dsModel ans=ans.EspGroup")
 			// property: name=force_encapsulation, type=BOOLEAN macro=copy_to_state
 			state.EspGroup.ForceEncapsulation = types.BoolPointerValue(ans.EspGroup.ForceEncapsulation)
@@ -904,6 +1295,46 @@ func (d *ipsecProfileDataSource) Read(ctx context.Context, req datasource.ReadRe
 			state.EspGroup.LifetimeUnits = types.StringPointerValue(ans.EspGroup.LifetimeUnits)
 			// property: name=mode, type=STRING macro=copy_to_state
 			state.EspGroup.Mode = types.StringPointerValue(ans.EspGroup.Mode)
+			// property: name=pqc_kem_config, type=REFERENCE macro=copy_to_state
+			if ans.EspGroup.PqcKemConfig == nil {
+				state.EspGroup.PqcKemConfig = nil
+			} else {
+				state.EspGroup.PqcKemConfig = &dsModelPQCKEMConfig{}
+				// copy_to_state: state=state.EspGroup.PqcKemConfig prefix=dsModel ans=ans.EspGroup.PqcKemConfig properties=9
+				tflog.Debug(ctx, "copy_to_state state=state.EspGroup.PqcKemConfig prefix=dsModel ans=ans.EspGroup.PqcKemConfig")
+				// property: name=block_vulnerable_cipher, type=BOOLEAN macro=copy_to_state
+				state.EspGroup.PqcKemConfig.BlockVulnerableCipher = types.BoolPointerValue(ans.EspGroup.PqcKemConfig.BlockVulnerableCipher)
+				// property: name=enabled, type=BOOLEAN macro=copy_to_state
+				state.EspGroup.PqcKemConfig.Enabled = types.BoolPointerValue(ans.EspGroup.PqcKemConfig.Enabled)
+				// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound1Algorithms, errRound1Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round1Algorithms)
+				state.EspGroup.PqcKemConfig.Round1Algorithms = varRound1Algorithms
+				resp.Diagnostics.Append(errRound1Algorithms.Errors()...)
+				// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound2Algorithms, errRound2Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round2Algorithms)
+				state.EspGroup.PqcKemConfig.Round2Algorithms = varRound2Algorithms
+				resp.Diagnostics.Append(errRound2Algorithms.Errors()...)
+				// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound3Algorithms, errRound3Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round3Algorithms)
+				state.EspGroup.PqcKemConfig.Round3Algorithms = varRound3Algorithms
+				resp.Diagnostics.Append(errRound3Algorithms.Errors()...)
+				// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound4Algorithms, errRound4Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round4Algorithms)
+				state.EspGroup.PqcKemConfig.Round4Algorithms = varRound4Algorithms
+				resp.Diagnostics.Append(errRound4Algorithms.Errors()...)
+				// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound5Algorithms, errRound5Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round5Algorithms)
+				state.EspGroup.PqcKemConfig.Round5Algorithms = varRound5Algorithms
+				resp.Diagnostics.Append(errRound5Algorithms.Errors()...)
+				// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound6Algorithms, errRound6Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round6Algorithms)
+				state.EspGroup.PqcKemConfig.Round6Algorithms = varRound6Algorithms
+				resp.Diagnostics.Append(errRound6Algorithms.Errors()...)
+				// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound7Algorithms, errRound7Algorithms := types.ListValueFrom(ctx, types.StringType, ans.EspGroup.PqcKemConfig.Round7Algorithms)
+				state.EspGroup.PqcKemConfig.Round7Algorithms = varRound7Algorithms
+				resp.Diagnostics.Append(errRound7Algorithms.Errors()...)
+			}
 			// property: name=proposals, type=ARRAY_REFERENCE macro=copy_to_state
 			if ans.EspGroup.Proposals == nil {
 				state.EspGroup.Proposals = nil
@@ -954,7 +1385,7 @@ func (d *ipsecProfileDataSource) Read(ctx context.Context, req datasource.ReadRe
 			state.IkeGroup = nil
 		} else {
 			state.IkeGroup = &dsModelIKEGroup{}
-			// copy_to_state: state=state.IkeGroup prefix=dsModel ans=ans.IkeGroup properties=8
+			// copy_to_state: state=state.IkeGroup prefix=dsModel ans=ans.IkeGroup properties=9
 			tflog.Debug(ctx, "copy_to_state state=state.IkeGroup prefix=dsModel ans=ans.IkeGroup")
 			// property: name=aggressive, type=BOOLEAN macro=copy_to_state
 			state.IkeGroup.Aggressive = types.BoolPointerValue(ans.IkeGroup.Aggressive)
@@ -968,6 +1399,46 @@ func (d *ipsecProfileDataSource) Read(ctx context.Context, req datasource.ReadRe
 			state.IkeGroup.LifetimeUnits = types.StringPointerValue(ans.IkeGroup.LifetimeUnits)
 			// property: name=port, type=INTEGER macro=copy_to_state
 			state.IkeGroup.Port = types.Int64PointerValue(ans.IkeGroup.Port)
+			// property: name=pqc_kem_config, type=REFERENCE macro=copy_to_state
+			if ans.IkeGroup.PqcKemConfig == nil {
+				state.IkeGroup.PqcKemConfig = nil
+			} else {
+				state.IkeGroup.PqcKemConfig = &dsModelPQCKEMConfig{}
+				// copy_to_state: state=state.IkeGroup.PqcKemConfig prefix=dsModel ans=ans.IkeGroup.PqcKemConfig properties=9
+				tflog.Debug(ctx, "copy_to_state state=state.IkeGroup.PqcKemConfig prefix=dsModel ans=ans.IkeGroup.PqcKemConfig")
+				// property: name=block_vulnerable_cipher, type=BOOLEAN macro=copy_to_state
+				state.IkeGroup.PqcKemConfig.BlockVulnerableCipher = types.BoolPointerValue(ans.IkeGroup.PqcKemConfig.BlockVulnerableCipher)
+				// property: name=enabled, type=BOOLEAN macro=copy_to_state
+				state.IkeGroup.PqcKemConfig.Enabled = types.BoolPointerValue(ans.IkeGroup.PqcKemConfig.Enabled)
+				// property: name=round_1_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound1Algorithms, errRound1Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round1Algorithms)
+				state.IkeGroup.PqcKemConfig.Round1Algorithms = varRound1Algorithms
+				resp.Diagnostics.Append(errRound1Algorithms.Errors()...)
+				// property: name=round_2_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound2Algorithms, errRound2Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round2Algorithms)
+				state.IkeGroup.PqcKemConfig.Round2Algorithms = varRound2Algorithms
+				resp.Diagnostics.Append(errRound2Algorithms.Errors()...)
+				// property: name=round_3_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound3Algorithms, errRound3Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round3Algorithms)
+				state.IkeGroup.PqcKemConfig.Round3Algorithms = varRound3Algorithms
+				resp.Diagnostics.Append(errRound3Algorithms.Errors()...)
+				// property: name=round_4_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound4Algorithms, errRound4Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round4Algorithms)
+				state.IkeGroup.PqcKemConfig.Round4Algorithms = varRound4Algorithms
+				resp.Diagnostics.Append(errRound4Algorithms.Errors()...)
+				// property: name=round_5_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound5Algorithms, errRound5Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round5Algorithms)
+				state.IkeGroup.PqcKemConfig.Round5Algorithms = varRound5Algorithms
+				resp.Diagnostics.Append(errRound5Algorithms.Errors()...)
+				// property: name=round_6_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound6Algorithms, errRound6Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round6Algorithms)
+				state.IkeGroup.PqcKemConfig.Round6Algorithms = varRound6Algorithms
+				resp.Diagnostics.Append(errRound6Algorithms.Errors()...)
+				// property: name=round_7_algorithms, type=ARRAY_PRIMITIVE macro=copy_to_state
+				varRound7Algorithms, errRound7Algorithms := types.ListValueFrom(ctx, types.StringType, ans.IkeGroup.PqcKemConfig.Round7Algorithms)
+				state.IkeGroup.PqcKemConfig.Round7Algorithms = varRound7Algorithms
+				resp.Diagnostics.Append(errRound7Algorithms.Errors()...)
+			}
 			// property: name=proposals, type=ARRAY_REFERENCE macro=copy_to_state
 			if ans.IkeGroup.Proposals == nil {
 				state.IkeGroup.Proposals = nil
@@ -999,6 +1470,10 @@ func (d *ipsecProfileDataSource) Read(ctx context.Context, req datasource.ReadRe
 		varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 		state.Tags = varTags
 		resp.Diagnostics.Append(errTags.Errors()...)
+		// api does not accept empty list as missing value
+		if len(ans.Tags) == 0 {
+			state.Tags = types.SetNull(types.StringType)
+		}
 		// property: name=used_for, type=STRING macro=copy_to_state
 		state.UsedFor = types.StringPointerValue(ans.UsedFor)
 

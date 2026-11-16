@@ -27,17 +27,18 @@ import (
 // | Schema Map Summary (size=goLangStructMap=4)
 // | Computed Resource Name=sites_elements_routing_routemaps
 // +-----------------------------------------------------------------
+// | RoutingRouteMapEntryMatchClauseV2N4 HasID=false
 // | RoutingRouteMapEntrySetClause HasID=false
-// | RoutingRouteMapEntryMatchClause HasID=false
-// | RoutingRouteMapEntryV2N3 HasID=false
-// | RoutingRouteMapScreenV2N3 HasID=true
+// | RoutingRouteMapEntryV2N4 HasID=false
+// | RoutingRouteMapScreenV2N4 HasID=true
 // +-----------------------------------------------------------------
 
 // Resource.
 var (
-	_ resource.Resource                = &elementRoutingRoutemapResource{}
-	_ resource.ResourceWithConfigure   = &elementRoutingRoutemapResource{}
-	_ resource.ResourceWithImportState = &elementRoutingRoutemapResource{}
+	_ resource.Resource                   = &elementRoutingRoutemapResource{}
+	_ resource.ResourceWithConfigure      = &elementRoutingRoutemapResource{}
+	_ resource.ResourceWithImportState    = &elementRoutingRoutemapResource{}
+	_ resource.ResourceWithValidateConfig = &elementRoutingRoutemapResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -58,6 +59,12 @@ type elementRoutingRoutemapResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *elementRoutingRoutemapResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id", "element_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *elementRoutingRoutemapResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_element_routing_routemap"
@@ -66,269 +73,311 @@ func (r *elementRoutingRoutemapResource) Metadata(_ context.Context, req resourc
 // Schema defines the schema for this data source.
 func (r *elementRoutingRoutemapResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Element Routing Routemap.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
-			// rest all properties to be read from GET API Schema schema=RoutingRouteMapScreenV2N3
+			// rest all properties to be read from GET API Schema schema=RoutingRouteMapScreenV2N4
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": rsschema.MapAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=auto_generated, type=BOOLEAN macro=rss_schema
 			"auto_generated": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Auto generated. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=auto_generated, type=BOOLEAN macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 1024 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=route_map_entries, type=ARRAY_REFERENCE macro=rss_schema
 			"route_map_entries": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Route map entries.",
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=continue_entry, type=STRING macro=rss_schema
 						"continue_entry": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Continue entry. Value: matching `^(0|[1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$`.",
 						},
 						// key name holder for attribute: name=continue_entry, type=STRING macro=rss_schema
 						// property: name=match, type=REFERENCE macro=rss_schema
 						"match": rsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Match.",
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=as_path_id, type=STRING macro=rss_schema
 								"as_path_id": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "As path id. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=as_path_id, type=STRING macro=rss_schema
 								// property: name=community_list_id, type=STRING macro=rss_schema
 								"community_list_id": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Community list id. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=community_list_id, type=STRING macro=rss_schema
 								// property: name=ip_next_hop_id, type=STRING macro=rss_schema
 								"ip_next_hop_id": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Ip next hop id. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=ip_next_hop_id, type=STRING macro=rss_schema
 								// property: name=ip_prefix_list_id, type=STRING macro=rss_schema
 								"ip_prefix_list_id": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Ip prefix list id. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=ip_prefix_list_id, type=STRING macro=rss_schema
 								// property: name=metric, type=INTEGER macro=rss_schema
 								"metric": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Metric. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=metric, type=INTEGER macro=rss_schema
+								// property: name=service_binding_id, type=STRING macro=rss_schema
+								"service_binding_id": rsschema.StringAttribute{
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Service binding id. Filled in by the server when it is not set.",
+								},
+								// key name holder for attribute: name=service_binding_id, type=STRING macro=rss_schema
 								// property: name=tag, type=INTEGER macro=rss_schema
 								"tag": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Tag. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=tag, type=INTEGER macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=tag, type=INTEGER macro=rss_schema
+						// key name holder for attribute: name=match, type=REFERENCE macro=rss_schema
 						// property: name=order, type=INTEGER macro=rss_schema
 						"order": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Order. Value: between 1 and 65535.",
 						},
 						// key name holder for attribute: name=order, type=INTEGER macro=rss_schema
 						// property: name=permit, type=BOOLEAN macro=rss_schema
 						"permit": rsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Permit.",
 						},
 						// key name holder for attribute: name=permit, type=BOOLEAN macro=rss_schema
 						// property: name=set, type=REFERENCE macro=rss_schema
 						"set": rsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Set.",
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=additive_community, type=BOOLEAN macro=rss_schema
 								"additive_community": rsschema.BoolAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Additive community. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=additive_community, type=BOOLEAN macro=rss_schema
 								// property: name=as_path_prepend, type=STRING macro=rss_schema
 								"as_path_prepend": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "As path prepend. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=as_path_prepend, type=STRING macro=rss_schema
 								// property: name=community, type=STRING macro=rss_schema
 								"community": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Community. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=community, type=STRING macro=rss_schema
 								// property: name=ip_next_hop, type=STRING macro=rss_schema
 								"ip_next_hop": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Ip next hop. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=ip_next_hop, type=STRING macro=rss_schema
 								// property: name=ip_v6_next_hop, type=STRING macro=rss_schema
 								"ip_v6_next_hop": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Ip v6 next hop. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=ip_v6_next_hop, type=STRING macro=rss_schema
 								// property: name=local_preference, type=INTEGER macro=rss_schema
 								"local_preference": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Local preference. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=local_preference, type=INTEGER macro=rss_schema
 								// property: name=metric, type=INTEGER macro=rss_schema
 								"metric": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Metric. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=metric, type=INTEGER macro=rss_schema
 								// property: name=tag, type=INTEGER macro=rss_schema
 								"tag": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Tag. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=tag, type=INTEGER macro=rss_schema
 								// property: name=type, type=STRING macro=rss_schema
 								"type": rsschema.StringAttribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Type. Value: one of type-1, type-2. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=type, type=STRING macro=rss_schema
 								// property: name=weight, type=INTEGER macro=rss_schema
 								"weight": rsschema.Int64Attribute{
-									Required:  false,
-									Computed:  false,
-									Optional:  true,
-									Sensitive: false,
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Weight. Filled in by the server when it is not set.",
 								},
 								// key name holder for attribute: name=weight, type=INTEGER macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=weight, type=INTEGER macro=rss_schema
+						// key name holder for attribute: name=set, type=REFERENCE macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=weight, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=route_map_entries, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			"tags": rsschema.SetAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 1024 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=used_for, type=STRING macro=rss_schema
 			"used_for": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Used for. Value: one of bgp, ospf. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=used_for, type=STRING macro=rss_schema
 		},
@@ -357,7 +406,7 @@ func (r *elementRoutingRoutemapResource) GetHttpStatusCode(request *sdwan_client
 	}
 }
 
-func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsModelRoutingRouteMapScreenV2N3, state *rsModelRoutingRouteMapScreenV2N3, resp *resource.CreateResponse) bool {
+func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsModelRoutingRouteMapScreenV2N4, state *rsModelRoutingRouteMapScreenV2N4, resp *resource.CreateResponse) bool {
 	tflog.Info(ctx, "executing http post for prismasdwan_element_routing_routemap")
 	// Basic logging.
 	tflog.Info(ctx, "performing resource create", map[string]any{
@@ -369,7 +418,7 @@ func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsMod
 	create_request := &sdwan_client.SdwanClientRequestResponse{}
 	create_request.ResourceType = "prismasdwan_element_routing_routemap"
 	create_request.Method = "POST"
-	create_request.Path = "/sdwan/v2.3/api/sites/{site_id}/elements/{element_id}/routing_routemaps"
+	create_request.Path = "/sdwan/v2.4/api/sites/{site_id}/elements/{element_id}/routing_routemaps"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, plan.TfParameters)
@@ -379,7 +428,7 @@ func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsMod
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.RoutingRouteMapScreenV2N3{}
+	var body = &sdwan_schema.RoutingRouteMapScreenV2N4{}
 
 	// copy from plan to body
 	// copy_from_plan: body=body prefix=rsModel plan=plan properties=9
@@ -400,20 +449,20 @@ func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsMod
 	if plan.RouteMapEntries == nil {
 		body.RouteMapEntries = nil
 	} else if len(plan.RouteMapEntries) == 0 {
-		body.RouteMapEntries = []sdwan_schema.RoutingRouteMapEntryV2N3{}
+		body.RouteMapEntries = []sdwan_schema.RoutingRouteMapEntryV2N4{}
 	} else {
-		body.RouteMapEntries = make([]sdwan_schema.RoutingRouteMapEntryV2N3, 0, len(plan.RouteMapEntries))
+		body.RouteMapEntries = make([]sdwan_schema.RoutingRouteMapEntryV2N4, 0, len(plan.RouteMapEntries))
 		for varLoopRouteMapEntriesIndex, varLoopRouteMapEntries := range plan.RouteMapEntries {
 			// add a new item
-			body.RouteMapEntries = append(body.RouteMapEntries, sdwan_schema.RoutingRouteMapEntryV2N3{})
+			body.RouteMapEntries = append(body.RouteMapEntries, sdwan_schema.RoutingRouteMapEntryV2N4{})
 			// copy_from_plan: body=body.RouteMapEntries[varLoopRouteMapEntriesIndex] prefix=rsModel plan=varLoopRouteMapEntries properties=5
 			tflog.Debug(ctx, "copy_from_plan body=body.RouteMapEntries[varLoopRouteMapEntriesIndex] prefix=rsModel plan=varLoopRouteMapEntries")
 			// property: name=continue_entry, type=STRING macro=copy_from_plan
 			body.RouteMapEntries[varLoopRouteMapEntriesIndex].ContinueEntry = StringValueOrNil(varLoopRouteMapEntries.ContinueEntry)
 			// property: name=match, type=REFERENCE macro=copy_from_plan
 			if varLoopRouteMapEntries.Match != nil {
-				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = &sdwan_schema.RoutingRouteMapEntryMatchClause{}
-				// copy_from_plan: body=body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel plan=varLoopRouteMapEntries.Match properties=6
+				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = &sdwan_schema.RoutingRouteMapEntryMatchClauseV2N4{}
+				// copy_from_plan: body=body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel plan=varLoopRouteMapEntries.Match properties=7
 				tflog.Debug(ctx, "copy_from_plan body=body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel plan=varLoopRouteMapEntries.Match")
 				// property: name=as_path_id, type=STRING macro=copy_from_plan
 				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.AsPathId = StringValueOrNil(varLoopRouteMapEntries.Match.AsPathId)
@@ -425,6 +474,8 @@ func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsMod
 				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.IpPrefixListId = StringValueOrNil(varLoopRouteMapEntries.Match.IpPrefixListId)
 				// property: name=metric, type=INTEGER macro=copy_from_plan
 				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.Metric = Int64ValueOrNil(varLoopRouteMapEntries.Match.Metric)
+				// property: name=service_binding_id, type=STRING macro=copy_from_plan
+				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.ServiceBindingId = StringValueOrNil(varLoopRouteMapEntries.Match.ServiceBindingId)
 				// property: name=tag, type=INTEGER macro=copy_from_plan
 				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.Tag = Int64ValueOrNil(varLoopRouteMapEntries.Match.Tag)
 			}
@@ -468,7 +519,7 @@ func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsMod
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct RoutingRouteMapScreenV2N3 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct RoutingRouteMapScreenV2N4 to JSON:", err.Error())
 		return false
 	}
 
@@ -511,12 +562,12 @@ func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsMod
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.RoutingRouteMapScreenV2N3
+	var ans sdwan_schema.RoutingRouteMapScreenV2N4
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to RoutingRouteMapScreenV2N3 in create", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to RoutingRouteMapScreenV2N4 in create", json_err.Error())
 		return false
 	}
 
@@ -541,7 +592,7 @@ func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsMod
 	state.TfParameters = plan.TfParameters
 	tflog.Info(ctx, "created prismasdwan_element_routing_routemap with ID", map[string]any{"tfid": state.Tfid.ValueString()})
 
-	// Store the answer to state. schema=RoutingRouteMapScreenV2N3
+	// Store the answer to state. schema=RoutingRouteMapScreenV2N4
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=9
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -560,12 +611,12 @@ func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsMod
 	if ans.RouteMapEntries == nil {
 		state.RouteMapEntries = nil
 	} else if len(ans.RouteMapEntries) == 0 {
-		state.RouteMapEntries = []rsModelRoutingRouteMapEntryV2N3{}
+		state.RouteMapEntries = []rsModelRoutingRouteMapEntryV2N4{}
 	} else {
-		state.RouteMapEntries = make([]rsModelRoutingRouteMapEntryV2N3, 0, len(ans.RouteMapEntries))
+		state.RouteMapEntries = make([]rsModelRoutingRouteMapEntryV2N4, 0, len(ans.RouteMapEntries))
 		for varLoopRouteMapEntriesIndex, varLoopRouteMapEntries := range ans.RouteMapEntries {
 			// add a new item
-			state.RouteMapEntries = append(state.RouteMapEntries, rsModelRoutingRouteMapEntryV2N3{})
+			state.RouteMapEntries = append(state.RouteMapEntries, rsModelRoutingRouteMapEntryV2N4{})
 			// copy_to_state: state=state.RouteMapEntries[varLoopRouteMapEntriesIndex] prefix=rsModel ans=varLoopRouteMapEntries properties=5
 			tflog.Debug(ctx, "copy_to_state state=state.RouteMapEntries[varLoopRouteMapEntriesIndex] prefix=rsModel ans=varLoopRouteMapEntries")
 			// property: name=continue_entry, type=STRING macro=copy_to_state
@@ -574,8 +625,8 @@ func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsMod
 			if varLoopRouteMapEntries.Match == nil {
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = nil
 			} else {
-				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = &rsModelRoutingRouteMapEntryMatchClause{}
-				// copy_to_state: state=state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel ans=varLoopRouteMapEntries.Match properties=6
+				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = &rsModelRoutingRouteMapEntryMatchClauseV2N4{}
+				// copy_to_state: state=state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel ans=varLoopRouteMapEntries.Match properties=7
 				tflog.Debug(ctx, "copy_to_state state=state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel ans=varLoopRouteMapEntries.Match")
 				// property: name=as_path_id, type=STRING macro=copy_to_state
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.AsPathId = types.StringPointerValue(varLoopRouteMapEntries.Match.AsPathId)
@@ -587,6 +638,8 @@ func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsMod
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.IpPrefixListId = types.StringPointerValue(varLoopRouteMapEntries.Match.IpPrefixListId)
 				// property: name=metric, type=INTEGER macro=copy_to_state
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.Metric = types.Int64PointerValue(varLoopRouteMapEntries.Match.Metric)
+				// property: name=service_binding_id, type=STRING macro=copy_to_state
+				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.ServiceBindingId = types.StringPointerValue(varLoopRouteMapEntries.Match.ServiceBindingId)
 				// property: name=tag, type=INTEGER macro=copy_to_state
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.Tag = types.Int64PointerValue(varLoopRouteMapEntries.Match.Tag)
 			}
@@ -628,12 +681,20 @@ func (r *elementRoutingRoutemapResource) doPost(ctx context.Context, plan *rsMod
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=used_for, type=STRING macro=copy_to_state
 	state.UsedFor = types.StringPointerValue(ans.UsedFor)
 	return true
 }
 
-func (r *elementRoutingRoutemapResource) doGet(ctx context.Context, state *rsModelRoutingRouteMapScreenV2N3, savestate *rsModelRoutingRouteMapScreenV2N3, State *tfsdk.State, resp *resource.ReadResponse) bool {
+func (r *elementRoutingRoutemapResource) doGet(ctx context.Context, state *rsModelRoutingRouteMapScreenV2N4, savestate *rsModelRoutingRouteMapScreenV2N4, State *tfsdk.State, resp *resource.ReadResponse) bool {
 	// Basic logging.
 	tfid := savestate.Tfid.ValueString()
 	tflog.Info(ctx, "performing resource read", map[string]any{
@@ -697,21 +758,37 @@ func (r *elementRoutingRoutemapResource) doGet(ctx context.Context, state *rsMod
 	tflog.Debug(ctx, "http json override: set response_body_string::_schema")
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
-	// Store the answer to state. schema=RoutingRouteMapScreenV2N3
+	// Store the answer to state. schema=RoutingRouteMapScreenV2N4
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
 	// start copying attributes
-	var ans sdwan_schema.RoutingRouteMapScreenV2N3
+	var ans sdwan_schema.RoutingRouteMapScreenV2N4
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to RoutingRouteMapScreenV2N3 in read", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to RoutingRouteMapScreenV2N4 in read", json_err.Error())
 		return false
 	}
 	// lets copy all items into state
@@ -733,12 +810,12 @@ func (r *elementRoutingRoutemapResource) doGet(ctx context.Context, state *rsMod
 	if ans.RouteMapEntries == nil {
 		state.RouteMapEntries = nil
 	} else if len(ans.RouteMapEntries) == 0 {
-		state.RouteMapEntries = []rsModelRoutingRouteMapEntryV2N3{}
+		state.RouteMapEntries = []rsModelRoutingRouteMapEntryV2N4{}
 	} else {
-		state.RouteMapEntries = make([]rsModelRoutingRouteMapEntryV2N3, 0, len(ans.RouteMapEntries))
+		state.RouteMapEntries = make([]rsModelRoutingRouteMapEntryV2N4, 0, len(ans.RouteMapEntries))
 		for varLoopRouteMapEntriesIndex, varLoopRouteMapEntries := range ans.RouteMapEntries {
 			// add a new item
-			state.RouteMapEntries = append(state.RouteMapEntries, rsModelRoutingRouteMapEntryV2N3{})
+			state.RouteMapEntries = append(state.RouteMapEntries, rsModelRoutingRouteMapEntryV2N4{})
 			// copy_to_state: state=state.RouteMapEntries[varLoopRouteMapEntriesIndex] prefix=rsModel ans=varLoopRouteMapEntries properties=5
 			tflog.Debug(ctx, "copy_to_state state=state.RouteMapEntries[varLoopRouteMapEntriesIndex] prefix=rsModel ans=varLoopRouteMapEntries")
 			// property: name=continue_entry, type=STRING macro=copy_to_state
@@ -747,8 +824,8 @@ func (r *elementRoutingRoutemapResource) doGet(ctx context.Context, state *rsMod
 			if varLoopRouteMapEntries.Match == nil {
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = nil
 			} else {
-				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = &rsModelRoutingRouteMapEntryMatchClause{}
-				// copy_to_state: state=state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel ans=varLoopRouteMapEntries.Match properties=6
+				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = &rsModelRoutingRouteMapEntryMatchClauseV2N4{}
+				// copy_to_state: state=state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel ans=varLoopRouteMapEntries.Match properties=7
 				tflog.Debug(ctx, "copy_to_state state=state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel ans=varLoopRouteMapEntries.Match")
 				// property: name=as_path_id, type=STRING macro=copy_to_state
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.AsPathId = types.StringPointerValue(varLoopRouteMapEntries.Match.AsPathId)
@@ -760,6 +837,8 @@ func (r *elementRoutingRoutemapResource) doGet(ctx context.Context, state *rsMod
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.IpPrefixListId = types.StringPointerValue(varLoopRouteMapEntries.Match.IpPrefixListId)
 				// property: name=metric, type=INTEGER macro=copy_to_state
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.Metric = types.Int64PointerValue(varLoopRouteMapEntries.Match.Metric)
+				// property: name=service_binding_id, type=STRING macro=copy_to_state
+				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.ServiceBindingId = types.StringPointerValue(varLoopRouteMapEntries.Match.ServiceBindingId)
 				// property: name=tag, type=INTEGER macro=copy_to_state
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.Tag = types.Int64PointerValue(varLoopRouteMapEntries.Match.Tag)
 			}
@@ -801,12 +880,20 @@ func (r *elementRoutingRoutemapResource) doGet(ctx context.Context, state *rsMod
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=used_for, type=STRING macro=copy_to_state
 	state.UsedFor = types.StringPointerValue(ans.UsedFor)
 	return true
 }
 
-func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsModelRoutingRouteMapScreenV2N3, state *rsModelRoutingRouteMapScreenV2N3, State *tfsdk.State, resp *resource.UpdateResponse) bool {
+func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsModelRoutingRouteMapScreenV2N4, state *rsModelRoutingRouteMapScreenV2N4, State *tfsdk.State, resp *resource.UpdateResponse) bool {
 	state_tfid := state.Tfid.ValueString()
 	plan_tfid := plan.Tfid.ValueString()
 	// Basic logging.
@@ -853,7 +940,7 @@ func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsMode
 	svc := sdwan_client.NewClient(r.client)
 
 	// prepare request from state
-	var body = &sdwan_schema.RoutingRouteMapScreenV2N3{}
+	var body = &sdwan_schema.RoutingRouteMapScreenV2N4{}
 
 	// now we create the JSON request from the state/plan created by TF
 	// below copy code generated from macro copy_from_plan_or_state
@@ -896,19 +983,19 @@ func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsMode
 		body.Name = StringValueOrNil(plan.Name)
 	}
 	// property: name=route_map_entries, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.RouteMapEntries == nil && (state == nil || state.RouteMapEntries == nil) {
+	if plan.RouteMapEntries == nil && (!(state != nil) || state.RouteMapEntries == nil) {
 		body.RouteMapEntries = nil
-	} else if len(plan.RouteMapEntries) == 0 && (state == nil || len(state.RouteMapEntries) == 0) {
-		body.RouteMapEntries = []sdwan_schema.RoutingRouteMapEntryV2N3{}
+	} else if len(plan.RouteMapEntries) == 0 && (!(state != nil) || len(state.RouteMapEntries) == 0) {
+		body.RouteMapEntries = []sdwan_schema.RoutingRouteMapEntryV2N4{}
 	} else if len(plan.RouteMapEntries) != 0 || (state != nil && len(state.RouteMapEntries) != 0) {
 		RouteMapEntriesToUse := plan.RouteMapEntries
 		if len(plan.RouteMapEntries) == 0 {
 			RouteMapEntriesToUse = state.RouteMapEntries
 		}
-		body.RouteMapEntries = make([]sdwan_schema.RoutingRouteMapEntryV2N3, 0, len(RouteMapEntriesToUse))
+		body.RouteMapEntries = make([]sdwan_schema.RoutingRouteMapEntryV2N4, 0, len(RouteMapEntriesToUse))
 		for varLoopRouteMapEntriesIndex, varLoopRouteMapEntries := range RouteMapEntriesToUse {
 			// add a new item
-			body.RouteMapEntries = append(body.RouteMapEntries, sdwan_schema.RoutingRouteMapEntryV2N3{})
+			body.RouteMapEntries = append(body.RouteMapEntries, sdwan_schema.RoutingRouteMapEntryV2N4{})
 			// since we have chosen to stick with either the plan or state, we need to simply copy child properties
 			// copy_from_plan: body=body.RouteMapEntries[varLoopRouteMapEntriesIndex] prefix=rsModel plan=varLoopRouteMapEntries properties=5
 			tflog.Debug(ctx, "copy_from_plan body=body.RouteMapEntries[varLoopRouteMapEntriesIndex] prefix=rsModel plan=varLoopRouteMapEntries")
@@ -916,8 +1003,8 @@ func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsMode
 			body.RouteMapEntries[varLoopRouteMapEntriesIndex].ContinueEntry = StringValueOrNil(varLoopRouteMapEntries.ContinueEntry)
 			// property: name=match, type=REFERENCE macro=copy_from_plan
 			if varLoopRouteMapEntries.Match != nil {
-				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = &sdwan_schema.RoutingRouteMapEntryMatchClause{}
-				// copy_from_plan: body=body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel plan=varLoopRouteMapEntries.Match properties=6
+				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = &sdwan_schema.RoutingRouteMapEntryMatchClauseV2N4{}
+				// copy_from_plan: body=body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel plan=varLoopRouteMapEntries.Match properties=7
 				tflog.Debug(ctx, "copy_from_plan body=body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel plan=varLoopRouteMapEntries.Match")
 				// property: name=as_path_id, type=STRING macro=copy_from_plan
 				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.AsPathId = StringValueOrNil(varLoopRouteMapEntries.Match.AsPathId)
@@ -929,6 +1016,8 @@ func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsMode
 				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.IpPrefixListId = StringValueOrNil(varLoopRouteMapEntries.Match.IpPrefixListId)
 				// property: name=metric, type=INTEGER macro=copy_from_plan
 				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.Metric = Int64ValueOrNil(varLoopRouteMapEntries.Match.Metric)
+				// property: name=service_binding_id, type=STRING macro=copy_from_plan
+				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.ServiceBindingId = StringValueOrNil(varLoopRouteMapEntries.Match.ServiceBindingId)
 				// property: name=tag, type=INTEGER macro=copy_from_plan
 				body.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.Tag = Int64ValueOrNil(varLoopRouteMapEntries.Match.Tag)
 			}
@@ -965,7 +1054,12 @@ func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsMode
 		}
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=used_for, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.UsedFor = ValueStringPointerFromPlanOrState(plan.UsedFor, state.UsedFor)
@@ -976,7 +1070,7 @@ func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsMode
 	// convert body to map
 	json_body, err := json.Marshal(body)
 	if err != nil {
-		resp.Diagnostics.AddError("error marshaling struct RoutingRouteMapScreenV2N3 to JSON:", err.Error())
+		resp.Diagnostics.AddError("error marshaling struct RoutingRouteMapScreenV2N4 to JSON:", err.Error())
 		return false
 	}
 
@@ -1012,16 +1106,22 @@ func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsMode
 	response_body_string, _ = sjson.Set(response_body_string, "_schema", 0)
 
 	// start copying attributes
-	var ans sdwan_schema.RoutingRouteMapScreenV2N3
+	var ans sdwan_schema.RoutingRouteMapScreenV2N4
 	// copy from json response
 	json_err := json.Unmarshal([]byte(response_body_string), &ans)
 	// if found, exit
 	if json_err != nil {
-		resp.Diagnostics.AddError("error in json unmarshal to RoutingRouteMapScreenV2N3 in update", json_err.Error())
+		resp.Diagnostics.AddError("error in json unmarshal to RoutingRouteMapScreenV2N4 in update", json_err.Error())
 		return false
 	}
 
-	// Store the answer to state. schema=RoutingRouteMapScreenV2N3
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
+	// Store the answer to state. schema=RoutingRouteMapScreenV2N4
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=9
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
 	// property: name=_etag, type=INTEGER macro=copy_to_state
@@ -1040,12 +1140,12 @@ func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsMode
 	if ans.RouteMapEntries == nil {
 		state.RouteMapEntries = nil
 	} else if len(ans.RouteMapEntries) == 0 {
-		state.RouteMapEntries = []rsModelRoutingRouteMapEntryV2N3{}
+		state.RouteMapEntries = []rsModelRoutingRouteMapEntryV2N4{}
 	} else {
-		state.RouteMapEntries = make([]rsModelRoutingRouteMapEntryV2N3, 0, len(ans.RouteMapEntries))
+		state.RouteMapEntries = make([]rsModelRoutingRouteMapEntryV2N4, 0, len(ans.RouteMapEntries))
 		for varLoopRouteMapEntriesIndex, varLoopRouteMapEntries := range ans.RouteMapEntries {
 			// add a new item
-			state.RouteMapEntries = append(state.RouteMapEntries, rsModelRoutingRouteMapEntryV2N3{})
+			state.RouteMapEntries = append(state.RouteMapEntries, rsModelRoutingRouteMapEntryV2N4{})
 			// copy_to_state: state=state.RouteMapEntries[varLoopRouteMapEntriesIndex] prefix=rsModel ans=varLoopRouteMapEntries properties=5
 			tflog.Debug(ctx, "copy_to_state state=state.RouteMapEntries[varLoopRouteMapEntriesIndex] prefix=rsModel ans=varLoopRouteMapEntries")
 			// property: name=continue_entry, type=STRING macro=copy_to_state
@@ -1054,8 +1154,8 @@ func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsMode
 			if varLoopRouteMapEntries.Match == nil {
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = nil
 			} else {
-				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = &rsModelRoutingRouteMapEntryMatchClause{}
-				// copy_to_state: state=state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel ans=varLoopRouteMapEntries.Match properties=6
+				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match = &rsModelRoutingRouteMapEntryMatchClauseV2N4{}
+				// copy_to_state: state=state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel ans=varLoopRouteMapEntries.Match properties=7
 				tflog.Debug(ctx, "copy_to_state state=state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match prefix=rsModel ans=varLoopRouteMapEntries.Match")
 				// property: name=as_path_id, type=STRING macro=copy_to_state
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.AsPathId = types.StringPointerValue(varLoopRouteMapEntries.Match.AsPathId)
@@ -1067,6 +1167,8 @@ func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsMode
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.IpPrefixListId = types.StringPointerValue(varLoopRouteMapEntries.Match.IpPrefixListId)
 				// property: name=metric, type=INTEGER macro=copy_to_state
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.Metric = types.Int64PointerValue(varLoopRouteMapEntries.Match.Metric)
+				// property: name=service_binding_id, type=STRING macro=copy_to_state
+				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.ServiceBindingId = types.StringPointerValue(varLoopRouteMapEntries.Match.ServiceBindingId)
 				// property: name=tag, type=INTEGER macro=copy_to_state
 				state.RouteMapEntries[varLoopRouteMapEntriesIndex].Match.Tag = types.Int64PointerValue(varLoopRouteMapEntries.Match.Tag)
 			}
@@ -1108,12 +1210,20 @@ func (r *elementRoutingRoutemapResource) doPut(ctx context.Context, plan *rsMode
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=used_for, type=STRING macro=copy_to_state
 	state.UsedFor = types.StringPointerValue(ans.UsedFor)
 	return true
 }
 
-func (r *elementRoutingRoutemapResource) doDelete(ctx context.Context, state *rsModelRoutingRouteMapScreenV2N3, resp *resource.DeleteResponse) bool {
+func (r *elementRoutingRoutemapResource) doDelete(ctx context.Context, state *rsModelRoutingRouteMapScreenV2N4, resp *resource.DeleteResponse) bool {
 	// read object id
 	tfid := state.Tfid.ValueString()
 	// Basic logging.
@@ -1168,14 +1278,14 @@ func (r *elementRoutingRoutemapResource) doDelete(ctx context.Context, state *rs
 // Path Parameters are encoded into TfID itself
 func (r *elementRoutingRoutemapResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	tflog.Info(ctx, "executing resource create for prismasdwan_element_routing_routemap")
-	var plan rsModelRoutingRouteMapScreenV2N3
+	var plan rsModelRoutingRouteMapScreenV2N4
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// make post call
-	var state rsModelRoutingRouteMapScreenV2N3
+	var state rsModelRoutingRouteMapScreenV2N4
 	if r.doPost(ctx, &plan, &state, resp) {
 		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	}
@@ -1187,7 +1297,7 @@ func (r *elementRoutingRoutemapResource) Create(ctx context.Context, req resourc
 func (r *elementRoutingRoutemapResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 
 	tflog.Info(ctx, "executing resource read for prismasdwan_element_routing_routemap")
-	var savestate, state rsModelRoutingRouteMapScreenV2N3
+	var savestate, state rsModelRoutingRouteMapScreenV2N4
 	resp.Diagnostics.Append(req.State.Get(ctx, &savestate)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -1206,7 +1316,7 @@ func (r *elementRoutingRoutemapResource) Read(ctx context.Context, req resource.
 func (r *elementRoutingRoutemapResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 
 	tflog.Info(ctx, "executing resource update for prismasdwan_element_routing_routemap")
-	var plan, state rsModelRoutingRouteMapScreenV2N3
+	var plan, state rsModelRoutingRouteMapScreenV2N4
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -1230,7 +1340,7 @@ func (r *elementRoutingRoutemapResource) Update(ctx context.Context, req resourc
 func (r *elementRoutingRoutemapResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 
 	tflog.Info(ctx, "executing resource delete for prismasdwan_element_routing_routemap")
-	var state rsModelRoutingRouteMapScreenV2N3
+	var state rsModelRoutingRouteMapScreenV2N4
 	// copy state from TF
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {

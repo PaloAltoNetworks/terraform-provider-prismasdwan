@@ -6,6 +6,7 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	sdwan "github.com/paloaltonetworks/terraform-provider-prismasdwan/sdk"
@@ -26,7 +27,7 @@ import (
 // | OspfGlobalConfig HasID=false
 // | InterfaceOspfConfig HasID=false
 // | Area HasID=false
-// | OspfConfigScreen HasID=true
+// | OspfConfigScreenV2N1 HasID=true
 // +-----------------------------------------------------------------
 
 // Data source.
@@ -54,11 +55,11 @@ type elementOspfConfigDataSource struct {
 }
 
 type dsModelWithFilterElementOspfConfig struct {
-	Filters      types.Map                  `tfsdk:"filters"`
-	TfParameters types.Map                  `tfsdk:"x_parameters"` // Generic Map for Path Ids
-	Etag         types.Int64                `tfsdk:"x_etag"`       // propertyName=_etag type=INTEGER
-	Schema       types.Int64                `tfsdk:"x_schema"`     // propertyName=_schema type=INTEGER
-	Items        []*dsModelOspfConfigScreen `tfsdk:"items"`
+	Filters      types.Map                      `tfsdk:"filters"`
+	TfParameters types.Map                      `tfsdk:"x_parameters"` // Generic Map for Path Ids
+	Etag         types.Int64                    `tfsdk:"x_etag"`       // propertyName=_etag type=INTEGER
+	Schema       types.Int64                    `tfsdk:"x_schema"`     // propertyName=_schema type=INTEGER
+	Items        []*dsModelOspfConfigScreenV2N1 `tfsdk:"items"`
 }
 
 // Metadata returns the data source type name.
@@ -69,13 +70,14 @@ func (d *elementOspfConfigDataSource) Metadata(_ context.Context, req datasource
 // Schema defines the schema for this data source.
 func (d *elementOspfConfigDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = dsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Retrieves a list of Prisma SD-WAN Element Ospf Config items.",
 		Attributes: map[string]dsschema.Attribute{
 			"filters": dsschema.MapAttribute{
 				Required:    true,
 				Computed:    false,
 				Optional:    false,
 				ElementType: types.StringType,
+				Description: "Path parameters used to locate the items to retrieve.",
 			},
 			// generic x_parameters is added to accomodate path parameters
 			"x_parameters": dsschema.MapAttribute{
@@ -83,259 +85,309 @@ func (d *elementOspfConfigDataSource) Schema(_ context.Context, _ datasource.Sch
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Additional path parameters for the data source, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": dsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Entity tag returned by the API, managed automatically by the provider.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": dsschema.Int64Attribute{
-				Required: false,
-				Computed: true,
-				Optional: true,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Description: "Schema version returned by the API, managed automatically by the provider.",
 			},
 			"items": dsschema.ListNestedAttribute{
-				Computed: true,
+				Computed:    true,
+				Description: "The list of items returned by the data source.",
 				NestedObject: dsschema.NestedAttributeObject{
 					Attributes: map[string]dsschema.Attribute{
-						// rest all properties to be read from GET API Schema schema=OspfConfigScreen
+						// rest all properties to be read from GET API Schema schema=OspfConfigScreenV2N1
 						// property: name=_etag, type=INTEGER macro=rss_schema
 						"x_etag": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 						// property: name=_schema, type=INTEGER macro=rss_schema
 						"x_schema": dsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
+						// property: name=advertise_fabric_default_route, type=BOOLEAN macro=rss_schema
+						"advertise_fabric_default_route": dsschema.BoolAttribute{
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Advertise fabric default route. Filled in by the server when it is not set.",
+						},
+						// key name holder for attribute: name=advertise_fabric_default_route, type=BOOLEAN macro=rss_schema
 						// property: name=areas, type=ARRAY_REFERENCE macro=rss_schema
 						"areas": dsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Areas.",
 							NestedObject: dsschema.NestedAttributeObject{
 								Attributes: map[string]dsschema.Attribute{
 									// property: name=area_id, type=INTEGER macro=rss_schema
 									"area_id": dsschema.Int64Attribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    false,
+										Sensitive:   false,
+										Description: "Area id.",
 									},
 									// key name holder for attribute: name=area_id, type=INTEGER macro=rss_schema
 									// property: name=area_type, type=STRING macro=rss_schema
 									"area_type": dsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    false,
+										Sensitive:   false,
+										Description: "Area type. Value: one of normal, stub, nssa.",
 									},
 									// key name holder for attribute: name=area_type, type=STRING macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=area_type, type=STRING macro=rss_schema
+						// key name holder for attribute: name=areas, type=ARRAY_REFERENCE macro=rss_schema
+						// property: name=cost_for_default_route, type=INTEGER macro=rss_schema
+						"cost_for_default_route": dsschema.Int64Attribute{
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Cost for default route. Value: between 0 and 16777214.",
+						},
+						// key name holder for attribute: name=cost_for_default_route, type=INTEGER macro=rss_schema
 						// property: name=description, type=STRING macro=rss_schema
 						"description": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Description. Value: at most 1024 characters.",
 						},
 						// key name holder for attribute: name=description, type=STRING macro=rss_schema
 						// property: name=id, type=STRING macro=rss_schema
 						"id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=id, type=STRING macro=rss_schema
 						// property: name=interfaces, type=ARRAY_REFERENCE macro=rss_schema
 						"interfaces": dsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Interfaces.",
 							NestedObject: dsschema.NestedAttributeObject{
 								Attributes: map[string]dsschema.Attribute{
 									// property: name=area_id, type=INTEGER macro=rss_schema
 									"area_id": dsschema.Int64Attribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    false,
+										Sensitive:   false,
+										Description: "Area id.",
 									},
 									// key name holder for attribute: name=area_id, type=INTEGER macro=rss_schema
 									// property: name=interface_id, type=STRING macro=rss_schema
 									"interface_id": dsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    false,
+										Sensitive:   false,
+										Description: "Interface id.",
 									},
 									// key name holder for attribute: name=interface_id, type=STRING macro=rss_schema
 									// property: name=ospf_config_override, type=REFERENCE macro=rss_schema
 									"ospf_config_override": dsschema.SingleNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    true,
+										Optional:    false,
+										Sensitive:   false,
+										Description: "Ospf config override.",
 										Attributes: map[string]dsschema.Attribute{
 											// property: name=cost, type=INTEGER macro=rss_schema
 											"cost": dsschema.Int64Attribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Cost.",
 											},
 											// key name holder for attribute: name=cost, type=INTEGER macro=rss_schema
 											// property: name=dead_interval, type=INTEGER macro=rss_schema
 											"dead_interval": dsschema.Int64Attribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Dead interval.",
 											},
 											// key name holder for attribute: name=dead_interval, type=INTEGER macro=rss_schema
 											// property: name=hello_interval, type=INTEGER macro=rss_schema
 											"hello_interval": dsschema.Int64Attribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Hello interval.",
 											},
 											// key name holder for attribute: name=hello_interval, type=INTEGER macro=rss_schema
 											// property: name=md5_key_id, type=INTEGER macro=rss_schema
 											"md5_key_id": dsschema.Int64Attribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Md5 key id.",
 											},
 											// key name holder for attribute: name=md5_key_id, type=INTEGER macro=rss_schema
 											// property: name=md5_secret, type=STRING macro=rss_schema
 											"md5_secret": dsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: true,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   true,
+												Description: "Md5 secret.",
 											},
 											// key name holder for attribute: name=md5_secret, type=STRING macro=rss_schema
 											// property: name=retransmit_interval, type=INTEGER macro=rss_schema
 											"retransmit_interval": dsschema.Int64Attribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Retransmit interval.",
 											},
 											// key name holder for attribute: name=retransmit_interval, type=INTEGER macro=rss_schema
 											// property: name=transmit_delay, type=INTEGER macro=rss_schema
 											"transmit_delay": dsschema.Int64Attribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    true,
+												Optional:    false,
+												Sensitive:   false,
+												Description: "Transmit delay.",
 											},
 											// key name holder for attribute: name=transmit_delay, type=INTEGER macro=rss_schema
 										},
 									},
-									// key name holder for attribute: name=transmit_delay, type=INTEGER macro=rss_schema
+									// key name holder for attribute: name=ospf_config_override, type=REFERENCE macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=transmit_delay, type=INTEGER macro=rss_schema
+						// key name holder for attribute: name=interfaces, type=ARRAY_REFERENCE macro=rss_schema
 						// property: name=name, type=STRING macro=rss_schema
 						"name": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Name. Value: at most 128 characters.",
 						},
 						// key name holder for attribute: name=name, type=STRING macro=rss_schema
 						// property: name=prefix_adv_route_map_id, type=STRING macro=rss_schema
 						"prefix_adv_route_map_id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Prefix adv route map id.",
 						},
 						// key name holder for attribute: name=prefix_adv_route_map_id, type=STRING macro=rss_schema
 						// property: name=prefix_adv_type_to_lan, type=STRING macro=rss_schema
 						"prefix_adv_type_to_lan": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Prefix adv type to lan.",
 						},
 						// key name holder for attribute: name=prefix_adv_type_to_lan, type=STRING macro=rss_schema
 						// property: name=redistribute_bgp, type=BOOLEAN macro=rss_schema
 						"redistribute_bgp": dsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Redistribute bgp. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=redistribute_bgp, type=BOOLEAN macro=rss_schema
 						// property: name=redistribute_route_map_id, type=STRING macro=rss_schema
 						"redistribute_route_map_id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Redistribute route map id.",
 						},
 						// key name holder for attribute: name=redistribute_route_map_id, type=STRING macro=rss_schema
 						// property: name=router_id, type=STRING macro=rss_schema
 						"router_id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Router id.",
 						},
 						// key name holder for attribute: name=router_id, type=STRING macro=rss_schema
 						// property: name=scope, type=STRING macro=rss_schema
 						"scope": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Scope.",
 						},
 						// key name holder for attribute: name=scope, type=STRING macro=rss_schema
 						// property: name=shutdown, type=BOOLEAN macro=rss_schema
 						"shutdown": dsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Shutdown.",
 						},
 						// key name holder for attribute: name=shutdown, type=BOOLEAN macro=rss_schema
 						// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 						"tags": dsschema.SetAttribute{
 							Required:    false,
-							Computed:    false,
-							Optional:    true,
+							Computed:    true,
+							Optional:    false,
 							Sensitive:   false,
+							Description: "Tags. At most 10 items. Each item: at most 1024 characters, matching `[^,\\s]+`.",
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 						// property: name=vrf_context_id, type=STRING macro=rss_schema
 						"vrf_context_id": dsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    false,
+							Sensitive:   false,
+							Description: "Vrf context id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`.",
 						},
 						// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
 					},
@@ -374,7 +426,7 @@ func (d *elementOspfConfigDataSource) Read(ctx context.Context, req datasource.R
 	svc := sdwan_client.NewClient(d.client)
 
 	// Prepare input for the API endpoint.
-	get_path := "/sdwan/v2.0/api/sites/{site_id}/elements/{element_id}/ospfconfigs/{ospf_config_id}"
+	get_path := "/sdwan/v2.1/api/sites/{site_id}/elements/{element_id}/ospfconfigs/{ospf_config_id}"
 	list_request := &sdwan_client.SdwanClientRequestResponse{}
 	list_request.Method = "GET"
 	list_request.Path = get_path[:strings.LastIndex(get_path, "/")]
@@ -385,17 +437,25 @@ func (d *elementOspfConfigDataSource) Read(ctx context.Context, req datasource.R
 
 	// Perform the operation.
 	svc.ExecuteSdwanRequest(ctx, list_request)
+	response_body_string := `{"items":[]}`
 	if list_request.ResponseErr != nil {
-		if IsObjectNotFound(*list_request.ResponseErr) {
-			resp.State.RemoveResource(ctx)
-		} else {
-			resp.Diagnostics.AddError("error reading prismasdwan_element_ospf_config", (*list_request.ResponseErr).Error())
+		// a 404 here means the list endpoint itself is missing, which must not look like "no matches"
+		{
+			resp.Diagnostics.AddError("error reading prismasdwan_element_ospf_config",
+				fmt.Sprintf("%s (GET %s)", (*list_request.ResponseErr).Error(), *list_request.FinalPath))
+			return
 		}
-		return
+	} else {
+		response_body_string = string(*list_request.ResponseBytes)
+		// some endpoints return the one object itself instead of {"items": [...]}: treat it as the only item
+		var body map[string]interface{}
+		if err := json.Unmarshal([]byte(response_body_string), &body); err == nil {
+			if _, isList := body["items"]; !isList && body["id"] != nil {
+				wrapped, _ := json.Marshal(map[string]interface{}{"items": []map[string]interface{}{body}})
+				response_body_string = string(wrapped)
+			}
+		}
 	}
-
-	// read json string from http response
-	response_body_string := string(*list_request.ResponseBytes)
 	tflog.Info(ctx, "lookup response from server", map[string]any{
 		"path": response_body_string,
 	})
@@ -408,7 +468,9 @@ func (d *elementOspfConfigDataSource) Read(ctx context.Context, req datasource.R
 		resp.Diagnostics.AddError("error in json unmarshal to generic map in lookup", json_err.Error())
 		return
 	}
-	// ensure its as array
+
+	// no match is an empty list, not null: items[0] and length(items) must work on a miss
+	state_with_filter.Items = []*dsModelOspfConfigScreenV2N1{} // ensure its as array
 	for _, item := range response.Items {
 		// create json from item
 		item_json, item_err := json.Marshal(item)
@@ -445,25 +507,27 @@ func (d *elementOspfConfigDataSource) Read(ctx context.Context, req datasource.R
 		}
 
 		// Store the answer to state.
-		var state dsModelOspfConfigScreen
+		var state dsModelOspfConfigScreenV2N1
 
 		// start copying attributes
-		var ans sdwan_schema.OspfConfigScreen
+		var ans sdwan_schema.OspfConfigScreenV2N1
 		// copy from json response
 		json_err := json.Unmarshal(item_json, &ans)
 		// if found, exit
 		if json_err != nil {
-			resp.Diagnostics.AddError("error in json unmarshal to OspfConfigScreen", json_err.Error())
+			resp.Diagnostics.AddError("error in json unmarshal to OspfConfigScreenV2N1", json_err.Error())
 			return
 		}
 
-		// lets copy all items into state schema=OspfConfigScreen
-		// copy_to_state: state=state prefix=dsModel ans=ans properties=16
+		// lets copy all items into state schema=OspfConfigScreenV2N1
+		// copy_to_state: state=state prefix=dsModel ans=ans properties=18
 		tflog.Debug(ctx, "copy_to_state state=state prefix=dsModel ans=ans")
 		// property: name=_etag, type=INTEGER macro=copy_to_state
 		state.Etag = types.Int64PointerValue(ans.Etag)
 		// property: name=_schema, type=INTEGER macro=copy_to_state
 		state.Schema = types.Int64PointerValue(ans.Schema)
+		// property: name=advertise_fabric_default_route, type=BOOLEAN macro=copy_to_state
+		state.AdvertiseFabricDefaultRoute = types.BoolPointerValue(ans.AdvertiseFabricDefaultRoute)
 		// property: name=areas, type=ARRAY_REFERENCE macro=copy_to_state
 		if ans.Areas == nil {
 			state.Areas = nil
@@ -482,6 +546,8 @@ func (d *elementOspfConfigDataSource) Read(ctx context.Context, req datasource.R
 				state.Areas[varLoopAreasIndex].AreaType = types.StringPointerValue(varLoopAreas.AreaType)
 			}
 		}
+		// property: name=cost_for_default_route, type=INTEGER macro=copy_to_state
+		state.CostForDefaultRoute = types.Int64PointerValue(ans.CostForDefaultRoute)
 		// property: name=description, type=STRING macro=copy_to_state
 		state.Description = types.StringPointerValue(ans.Description)
 		// property: name=id, type=STRING macro=copy_to_state
@@ -546,6 +612,10 @@ func (d *elementOspfConfigDataSource) Read(ctx context.Context, req datasource.R
 		varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 		state.Tags = varTags
 		resp.Diagnostics.Append(errTags.Errors()...)
+		// api does not accept empty list as missing value
+		if len(ans.Tags) == 0 {
+			state.Tags = types.SetNull(types.StringType)
+		}
 		// property: name=vrf_context_id, type=STRING macro=copy_to_state
 		state.VrfContextId = types.StringPointerValue(ans.VrfContextId)
 

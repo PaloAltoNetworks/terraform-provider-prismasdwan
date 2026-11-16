@@ -33,9 +33,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &externalCaConfigResource{}
-	_ resource.ResourceWithConfigure   = &externalCaConfigResource{}
-	_ resource.ResourceWithImportState = &externalCaConfigResource{}
+	_ resource.Resource                   = &externalCaConfigResource{}
+	_ resource.ResourceWithConfigure      = &externalCaConfigResource{}
+	_ resource.ResourceWithImportState    = &externalCaConfigResource{}
+	_ resource.ResourceWithValidateConfig = &externalCaConfigResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -56,6 +57,12 @@ type externalCaConfigResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *externalCaConfigResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{})...)
+}
+
 // Metadata returns the data source type name.
 func (r *externalCaConfigResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_external_ca_config"
@@ -64,13 +71,14 @@ func (r *externalCaConfigResource) Metadata(_ context.Context, req resource.Meta
 // Schema defines the schema for this data source.
 func (r *externalCaConfigResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN External Ca Config.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=CertificateAuthorityConfig
 			// generic x_parameters is added to accomodate path parameters
@@ -79,135 +87,159 @@ func (r *externalCaConfigResource) Schema(_ context.Context, _ resource.SchemaRe
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=ca_sign_timeout, type=INTEGER macro=rss_schema
 			"ca_sign_timeout": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ca sign timeout. Value: between 10 and 300.",
 			},
 			// key name holder for attribute: name=ca_sign_timeout, type=INTEGER macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=manual_renew_trigger_threshold, type=INTEGER macro=rss_schema
 			"manual_renew_trigger_threshold": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Manual renew trigger threshold. Value: between 5 and 1440.",
 			},
 			// key name holder for attribute: name=manual_renew_trigger_threshold, type=INTEGER macro=rss_schema
 			// property: name=renewal_window_from_expiry, type=INTEGER macro=rss_schema
 			"renewal_window_from_expiry": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Renewal window from expiry. Value: between 30 and 90.",
 			},
 			// key name holder for attribute: name=renewal_window_from_expiry, type=INTEGER macro=rss_schema
 			// property: name=scep_config, type=REFERENCE macro=rss_schema
 			"scep_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Scep config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=challenge_uri, type=STRING macro=rss_schema
 					"challenge_uri": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Challenge uri.",
 					},
 					// key name holder for attribute: name=challenge_uri, type=STRING macro=rss_schema
 					// property: name=enrollment_uri, type=STRING macro=rss_schema
 					"enrollment_uri": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Enrollment uri.",
 					},
 					// key name holder for attribute: name=enrollment_uri, type=STRING macro=rss_schema
 					// property: name=https, type=BOOLEAN macro=rss_schema
 					"https": rsschema.BoolAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Https.",
 					},
 					// key name holder for attribute: name=https, type=BOOLEAN macro=rss_schema
 					// property: name=num_challenge_passwords, type=INTEGER macro=rss_schema
 					"num_challenge_passwords": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Num challenge passwords.",
 					},
 					// key name holder for attribute: name=num_challenge_passwords, type=INTEGER macro=rss_schema
 					// property: name=server_certificate, type=STRING macro=rss_schema
 					"server_certificate": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Server certificate.",
 					},
 					// key name holder for attribute: name=server_certificate, type=STRING macro=rss_schema
 					// property: name=server_password, type=STRING macro=rss_schema
 					"server_password": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Server password.",
 					},
 					// key name holder for attribute: name=server_password, type=STRING macro=rss_schema
+					"server_password_internal_key_name": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute server_password, managed automatically by the provider.",
+					},
 					// property: name=server_primary_address, type=STRING macro=rss_schema
 					"server_primary_address": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Server primary address.",
 					},
 					// key name holder for attribute: name=server_primary_address, type=STRING macro=rss_schema
 					// property: name=server_username, type=STRING macro=rss_schema
 					"server_username": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Server username.",
 					},
 					// key name holder for attribute: name=server_username, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=server_username, type=STRING macro=rss_schema
+			// key name holder for attribute: name=scep_config, type=REFERENCE macro=rss_schema
 			// property: name=type, type=STRING macro=rss_schema
 			"type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Type. Value: one of local, scep.",
 			},
 			// key name holder for attribute: name=type, type=STRING macro=rss_schema
 		},
@@ -409,7 +441,20 @@ func (r *externalCaConfigResource) doPost(ctx context.Context, plan *rsModelCert
 		// property: name=server_certificate, type=STRING macro=copy_to_state
 		state.ScepConfig.ServerCertificate = types.StringPointerValue(ans.ScepConfig.ServerCertificate)
 		// property: name=server_password, type=STRING macro=copy_to_state
-		state.ScepConfig.ServerPassword = types.StringPointerValue(ans.ScepConfig.ServerPassword)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.ScepConfig.ServerPasswordInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.ScepConfig.ServerPassword = types.StringNull()
+		if plan.ScepConfig != nil {
+			state.ScepConfig.ServerPassword = types.StringPointerValue(plan.ScepConfig.ServerPassword.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.ScepConfig.ServerPassword.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedServerPassword, _ := Encrypt([]byte(state.ScepConfig.ServerPassword.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedServerPasswordJson, _ := json.Marshal(encryptedServerPassword)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ScepConfig.ServerPasswordInternalKeyName.String(), encryptedServerPasswordJson)...)
+		}
 		// property: name=server_primary_address, type=STRING macro=copy_to_state
 		state.ScepConfig.ServerPrimaryAddress = types.StringPointerValue(ans.ScepConfig.ServerPrimaryAddress)
 		// property: name=server_username, type=STRING macro=copy_to_state
@@ -442,13 +487,13 @@ func (r *externalCaConfigResource) doGet(ctx context.Context, state *rsModelCert
 	read_request := &sdwan_client.SdwanClientRequestResponse{}
 	read_request.ResourceType = "prismasdwan_external_ca_config"
 	read_request.Method = "GET"
-	read_request.Path = "/sdwan/v2.0/api/externalcaconfigs/{id}"
+	read_request.Path = "/sdwan/v2.0/api/externalcaconfigs/{externalcaconfig_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, savestate.TfParameters)
 	read_request.PathParameters = &params
 	// add last parameter as ObjectID
-	(*read_request.PathParameters)["id"] = &tokens[0]
+	(*read_request.PathParameters)["externalcaconfig_id"] = &tokens[0]
 	// add other parameters by splitting on `=`
 	for _, token := range tokens[0:] {
 		param := strings.Split(token, "=")
@@ -488,7 +533,23 @@ func (r *externalCaConfigResource) doGet(ctx context.Context, state *rsModelCert
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -534,7 +595,17 @@ func (r *externalCaConfigResource) doGet(ctx context.Context, state *rsModelCert
 		// property: name=server_certificate, type=STRING macro=copy_to_state
 		state.ScepConfig.ServerCertificate = types.StringPointerValue(ans.ScepConfig.ServerCertificate)
 		// property: name=server_password, type=STRING macro=copy_to_state
-		state.ScepConfig.ServerPassword = types.StringPointerValue(ans.ScepConfig.ServerPassword)
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.ScepConfig != nil {
+			state.ScepConfig.ServerPasswordInternalKeyName = savestate.ScepConfig.ServerPasswordInternalKeyName
+		}
+		encryptedServerPasswordKeyName := state.ScepConfig.ServerPasswordInternalKeyName.String()
+		encryptedServerPasswordValueBytes, _ := resp.Private.GetKey(ctx, encryptedServerPasswordKeyName)
+		var encryptedServerPasswordValue string
+		if encryptedServerPasswordValueBytes != nil && json.Unmarshal(encryptedServerPasswordValueBytes, &encryptedServerPasswordValue) == nil {
+			decryptedServerPassword, _ := Decrypt(encryptedServerPasswordValue)
+			state.ScepConfig.ServerPassword = types.StringValue(decryptedServerPassword)
+		}
 		// property: name=server_primary_address, type=STRING macro=copy_to_state
 		state.ScepConfig.ServerPrimaryAddress = types.StringPointerValue(ans.ScepConfig.ServerPrimaryAddress)
 		// property: name=server_username, type=STRING macro=copy_to_state
@@ -573,13 +644,13 @@ func (r *externalCaConfigResource) doPut(ctx context.Context, plan *rsModelCerti
 	put_request := &sdwan_client.SdwanClientRequestResponse{}
 	put_request.ResourceType = "prismasdwan_external_ca_config"
 	put_request.Method = "PUT"
-	put_request.Path = "/sdwan/v2.0/api/externalcaconfigs/{id}"
+	put_request.Path = "/sdwan/v2.0/api/externalcaconfigs/{externalcaconfig_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
 	put_request.PathParameters = &params
 	// add last parameter as ObjectID
-	(*put_request.PathParameters)["id"] = &tokens[0]
+	(*put_request.PathParameters)["externalcaconfig_id"] = &tokens[0]
 	// add other parameters by splitting on `=`
 	for _, token := range tokens[0:] {
 		param := strings.Split(token, "=")
@@ -642,49 +713,49 @@ func (r *externalCaConfigResource) doPut(ctx context.Context, plan *rsModelCerti
 		// copy_from_plan_or_state: body=body.ScepConfig prefix=rsModel state=state.ScepConfig plan=plan.ScepConfig properties=8
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.ScepConfig prefix=rsModel state=state.ScepConfig plan=plan.ScepConfig")
 		// property: name=challenge_uri, type=STRING macro=copy_from_plan_or_state
-		if state.ScepConfig != nil {
+		if state != nil && state.ScepConfig != nil {
 			body.ScepConfig.ChallengeUri = ValueStringPointerFromPlanOrState(plan.ScepConfig.ChallengeUri, state.ScepConfig.ChallengeUri)
 		} else {
 			body.ScepConfig.ChallengeUri = StringValueOrNil(plan.ScepConfig.ChallengeUri)
 		}
 		// property: name=enrollment_uri, type=STRING macro=copy_from_plan_or_state
-		if state.ScepConfig != nil {
+		if state != nil && state.ScepConfig != nil {
 			body.ScepConfig.EnrollmentUri = ValueStringPointerFromPlanOrState(plan.ScepConfig.EnrollmentUri, state.ScepConfig.EnrollmentUri)
 		} else {
 			body.ScepConfig.EnrollmentUri = StringValueOrNil(plan.ScepConfig.EnrollmentUri)
 		}
 		// property: name=https, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.ScepConfig != nil {
+		if state != nil && state.ScepConfig != nil {
 			body.ScepConfig.Https = ValueBoolPointerFromPlanOrState(plan.ScepConfig.Https, state.ScepConfig.Https)
 		} else {
 			body.ScepConfig.Https = BoolValueOrNil(plan.ScepConfig.Https)
 		}
 		// property: name=num_challenge_passwords, type=INTEGER macro=copy_from_plan_or_state
-		if state.ScepConfig != nil {
+		if state != nil && state.ScepConfig != nil {
 			body.ScepConfig.NumChallengePasswords = ValueInt64PointerFromPlanOrState(plan.ScepConfig.NumChallengePasswords, state.ScepConfig.NumChallengePasswords)
 		} else {
 			body.ScepConfig.NumChallengePasswords = Int64ValueOrNil(plan.ScepConfig.NumChallengePasswords)
 		}
 		// property: name=server_certificate, type=STRING macro=copy_from_plan_or_state
-		if state.ScepConfig != nil {
+		if state != nil && state.ScepConfig != nil {
 			body.ScepConfig.ServerCertificate = ValueStringPointerFromPlanOrState(plan.ScepConfig.ServerCertificate, state.ScepConfig.ServerCertificate)
 		} else {
 			body.ScepConfig.ServerCertificate = StringValueOrNil(plan.ScepConfig.ServerCertificate)
 		}
 		// property: name=server_password, type=STRING macro=copy_from_plan_or_state
-		if state.ScepConfig != nil {
+		if state != nil && state.ScepConfig != nil {
 			body.ScepConfig.ServerPassword = ValueStringPointerFromPlanOrState(plan.ScepConfig.ServerPassword, state.ScepConfig.ServerPassword)
 		} else {
 			body.ScepConfig.ServerPassword = StringValueOrNil(plan.ScepConfig.ServerPassword)
 		}
 		// property: name=server_primary_address, type=STRING macro=copy_from_plan_or_state
-		if state.ScepConfig != nil {
+		if state != nil && state.ScepConfig != nil {
 			body.ScepConfig.ServerPrimaryAddress = ValueStringPointerFromPlanOrState(plan.ScepConfig.ServerPrimaryAddress, state.ScepConfig.ServerPrimaryAddress)
 		} else {
 			body.ScepConfig.ServerPrimaryAddress = StringValueOrNil(plan.ScepConfig.ServerPrimaryAddress)
 		}
 		// property: name=server_username, type=STRING macro=copy_from_plan_or_state
-		if state.ScepConfig != nil {
+		if state != nil && state.ScepConfig != nil {
 			body.ScepConfig.ServerUsername = ValueStringPointerFromPlanOrState(plan.ScepConfig.ServerUsername, state.ScepConfig.ServerUsername)
 		} else {
 			body.ScepConfig.ServerUsername = StringValueOrNil(plan.ScepConfig.ServerUsername)
@@ -745,6 +816,12 @@ func (r *externalCaConfigResource) doPut(ctx context.Context, plan *rsModelCerti
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=CertificateAuthorityConfig
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=8
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -778,7 +855,20 @@ func (r *externalCaConfigResource) doPut(ctx context.Context, plan *rsModelCerti
 		// property: name=server_certificate, type=STRING macro=copy_to_state
 		state.ScepConfig.ServerCertificate = types.StringPointerValue(ans.ScepConfig.ServerCertificate)
 		// property: name=server_password, type=STRING macro=copy_to_state
-		state.ScepConfig.ServerPassword = types.StringPointerValue(ans.ScepConfig.ServerPassword)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.ScepConfig.ServerPasswordInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.ScepConfig.ServerPassword = types.StringNull()
+		if plan.ScepConfig != nil {
+			state.ScepConfig.ServerPassword = types.StringPointerValue(plan.ScepConfig.ServerPassword.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.ScepConfig.ServerPassword.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedServerPassword, _ := Encrypt([]byte(state.ScepConfig.ServerPassword.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedServerPasswordJson, _ := json.Marshal(encryptedServerPassword)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.ScepConfig.ServerPasswordInternalKeyName.String(), encryptedServerPasswordJson)...)
+		}
 		// property: name=server_primary_address, type=STRING macro=copy_to_state
 		state.ScepConfig.ServerPrimaryAddress = types.StringPointerValue(ans.ScepConfig.ServerPrimaryAddress)
 		// property: name=server_username, type=STRING macro=copy_to_state
@@ -810,13 +900,13 @@ func (r *externalCaConfigResource) doDelete(ctx context.Context, state *rsModelC
 	delete_request := &sdwan_client.SdwanClientRequestResponse{}
 	delete_request.ResourceType = "prismasdwan_external_ca_config"
 	delete_request.Method = "DELETE"
-	delete_request.Path = "/sdwan/v2.0/api/externalcaconfigs/{id}"
+	delete_request.Path = "/sdwan/v2.0/api/externalcaconfigs/{externalcaconfig_id}"
 
 	// copy parameters from plan always
 	params := MapStringValueOrNil(ctx, state.TfParameters)
 	delete_request.PathParameters = &params
 	// add last parameter as ObjectID
-	(*delete_request.PathParameters)["id"] = &tokens[0]
+	(*delete_request.PathParameters)["externalcaconfig_id"] = &tokens[0]
 	// add other parameters by splitting on `=`
 	for _, token := range tokens[0:] {
 		param := strings.Split(token, "=")

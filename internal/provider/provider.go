@@ -295,6 +295,7 @@ func (p *SdwanProvider) DataSources(_ context.Context) []func() datasource.DataS
 		NewQosPolicyRuleDataSource,
 		NewQosPolicySetDataSource,
 		NewQosPolicyStackDataSource,
+		NewSdwanappDataSource, // hand-written (sdwanapp_manual.go), not generated
 		NewSdwanappsConfigDataSource,
 		NewSecurityPolicyGlobalPrefixDataSource,
 		NewSecurityPolicyLocalPrefixDataSource,
@@ -308,7 +309,6 @@ func (p *SdwanProvider) DataSources(_ context.Context) []func() datasource.DataS
 		NewSiteDataSource,
 		NewSiteDhcpServerDataSource,
 		NewSiteHubClusterDataSource,
-		NewSiteHubClusterMemberDataSource,
 		NewSiteHubDistributionFabricDataSource,
 		NewSiteHubPrefixFilterAssociationDataSource,
 		NewSiteHubPrefixFilterDataSource,
@@ -431,7 +431,6 @@ func (p *SdwanProvider) Resources(_ context.Context) []func() resource.Resource 
 		NewServiceGroupResource,
 		NewSiteCiphersResource,
 		NewSiteDhcpServerResource,
-		NewSiteHubClusterMemberResource,
 		NewSiteHubClusterResource,
 		NewSiteHubDistributionFabricResource,
 		NewSiteHubPrefixFilterAssociationResource,

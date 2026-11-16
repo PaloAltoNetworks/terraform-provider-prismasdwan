@@ -1,0 +1,40 @@
+# Copyright Palo Alto Networks Inc. 2025
+#
+# Sample resource example for "element_tacacs_plus_server".
+# This file is generated - do not edit by hand.
+#
+# Before using this example, configure the Prisma SD-WAN provider:
+#
+#   terraform {
+#     required_providers {
+#       prismasdwan = {
+#         source  = "paloaltonetworks/prismasdwan"
+#       }
+#     }
+#   }
+#
+#   provider "prismasdwan" {
+#     host          = "api.sase.paloaltonetworks.com"
+#     client_id     = "acmeuser@12345.iam.panserviceaccount.com"
+#     client_secret = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+#     scope         = "tsg_id:12345"
+#     auth_url      = "https://auth.apps.paloaltonetworks.com/am/oauth2/access_token"
+#   }
+
+resource "prismasdwan_element_tacacs_plus_server" "example" {
+  authentication_protocol = "chap"
+  description             = "Managed by Terraform"
+  enabled                 = true
+  name                    = "example_name"
+  source_interface_id     = "<source_interface_id>"
+  tacacs_plus_profile_id  = "<tacacs_plus_profile_id>"
+  tacacs_plus_servers = [{
+    secret      = "<secret>"
+    server_fqdn = "server.example.com"
+    server_ip   = "10.0.0.1"
+    server_ipv6 = "2001:db8::1"
+    server_port = 443
+    timeout     = 30
+  }]
+  tags = ["terraform"]
+}

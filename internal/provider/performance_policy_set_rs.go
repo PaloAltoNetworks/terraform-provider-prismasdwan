@@ -24,9 +24,17 @@ import (
 )
 
 // +-----------------------------------------------------------------
-// | Schema Map Summary (size=goLangStructMap=8)
+// | Schema Map Summary (size=goLangStructMap=16)
 // | Computed Resource Name=perfmgmtpolicysets
 // +-----------------------------------------------------------------
+// | FlowMetricThresholds HasID=false
+// | CircuitUtilizationMetricThresholds HasID=false
+// | SystemHealthMetricThresholds HasID=false
+// | SyntheticProbeThreshold HasID=false
+// | SyntheticProbeThresholds HasID=false
+// | StaticAppMetricConfig HasID=false
+// | LQMThresholdConfig HasID=false
+// | PerfMgmtThresholdProfile HasID=true
 // | PerfMgmtHealthThresholds HasID=false
 // | PerfMgmtActionParameters HasID=false
 // | PerfMgmtAction HasID=false
@@ -39,9 +47,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &performancePolicySetResource{}
-	_ resource.ResourceWithConfigure   = &performancePolicySetResource{}
-	_ resource.ResourceWithImportState = &performancePolicySetResource{}
+	_ resource.Resource                   = &performancePolicySetResource{}
+	_ resource.ResourceWithConfigure      = &performancePolicySetResource{}
+	_ resource.ResourceWithImportState    = &performancePolicySetResource{}
+	_ resource.ResourceWithValidateConfig = &performancePolicySetResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -62,6 +71,12 @@ type performancePolicySetResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *performancePolicySetResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{})...)
+}
+
 // Metadata returns the data source type name.
 func (r *performancePolicySetResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_performance_policy_set"
@@ -70,13 +85,14 @@ func (r *performancePolicySetResource) Metadata(_ context.Context, req resource.
 // Schema defines the schema for this data source.
 func (r *performancePolicySetResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Performance Policy Set.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=PerfMgmtPolicySet
 			// generic x_parameters is added to accomodate path parameters
@@ -85,85 +101,96 @@ func (r *performancePolicySetResource) Schema(_ context.Context, _ resource.Sche
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=clone_from, type=STRING macro=rss_schema
 			"clone_from": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Clone from. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`.",
 			},
 			// key name holder for attribute: name=clone_from, type=STRING macro=rss_schema
 			// property: name=defaultrule_policyset, type=BOOLEAN macro=rss_schema
 			"defaultrule_policyset": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Defaultrule policyset. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=defaultrule_policyset, type=BOOLEAN macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=disabled, type=BOOLEAN macro=rss_schema
 			"disabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Disabled.",
 			},
 			// key name holder for attribute: name=disabled, type=BOOLEAN macro=rss_schema
 			// property: name=disabled_reason, type=STRING macro=rss_schema
 			"disabled_reason": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Disabled reason. Value: at most 5000 characters.",
 			},
 			// key name holder for attribute: name=disabled_reason, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=inactive, type=BOOLEAN macro=rss_schema
 			"inactive": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Inactive.",
 			},
 			// key name holder for attribute: name=inactive, type=BOOLEAN macro=rss_schema
 			// property: name=inactive_reason, type=STRING macro=rss_schema
 			"inactive_reason": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Inactive reason. Value: at most 5000 characters.",
 			},
 			// key name holder for attribute: name=inactive_reason, type=STRING macro=rss_schema
 			// property: name=link_health_policyrule_order, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -172,15 +199,18 @@ func (r *performancePolicySetResource) Schema(_ context.Context, _ resource.Sche
 				Computed:    true,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Link health policyrule order. Filled in by the server when it is not set.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=link_health_policyrule_order, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=link_health_rules, type=ARRAY_REFERENCE macro=rss_schema
 			"link_health_rules": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Link health rules.",
+				Validators:  NotSettable("link_health_rules"),
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// generic x_parameters is added to accomodate path parameters
@@ -189,277 +219,323 @@ func (r *performancePolicySetResource) Schema(_ context.Context, _ resource.Sche
 							Computed:    false,
 							Optional:    true,
 							ElementType: types.StringType,
+							Description: "Path parameters for the resource, managed automatically by the provider.",
+						},
+						// the Go model of this struct has Tfid whether it is nested or a resource of its own
+						"tfid": rsschema.StringAttribute{
+							Computed:    true,
+							Description: "The Terraform internal identifier for this object.",
 						},
 						// property: name=_etag, type=INTEGER macro=rss_schema
 						"x_etag": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 						// property: name=_schema, type=INTEGER macro=rss_schema
 						"x_schema": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 						// property: name=actions, type=ARRAY_REFERENCE macro=rss_schema
 						"actions": rsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Actions.",
 							NestedObject: rsschema.NestedAttributeObject{
 								Attributes: map[string]rsschema.Attribute{
 									// property: name=action_type, type=STRING macro=rss_schema
 									"action_type": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Action type. Value: one of raise_alarm, move_flows, move_flows_forced, fec, visibility, app_acceleration, packet_duplication.",
 									},
 									// key name holder for attribute: name=action_type, type=STRING macro=rss_schema
 									// property: name=always_on, type=BOOLEAN macro=rss_schema
 									"always_on": rsschema.BoolAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Always on.",
 									},
 									// key name holder for attribute: name=always_on, type=BOOLEAN macro=rss_schema
 									// property: name=app_perf, type=REFERENCE macro=rss_schema
 									"app_perf": rsschema.SingleNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "App perf.",
 										Attributes: map[string]rsschema.Attribute{
 											// property: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 											"bad_health_thresholds": rsschema.SingleNestedAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Bad health thresholds.",
 												Attributes: map[string]rsschema.Attribute{
 													// property: name=clear_below, type=INTEGER macro=rss_schema
 													"clear_below": rsschema.Int64Attribute{
-														Required:  false,
-														Computed:  false,
-														Optional:  true,
-														Sensitive: false,
+														Required:    false,
+														Computed:    false,
+														Optional:    true,
+														Sensitive:   false,
+														Description: "Clear below. Value: between 1 and 80.",
 													},
 													// key name holder for attribute: name=clear_below, type=INTEGER macro=rss_schema
 													// property: name=raise_above, type=INTEGER macro=rss_schema
 													"raise_above": rsschema.Int64Attribute{
-														Required:  false,
-														Computed:  false,
-														Optional:  true,
-														Sensitive: false,
+														Required:    false,
+														Computed:    false,
+														Optional:    true,
+														Sensitive:   false,
+														Description: "Raise above. Value: between 10 and 100.",
 													},
 													// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
 												},
 											},
-											// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
+											// key name holder for attribute: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 											// property: name=monitoring_approach, type=STRING macro=rss_schema
 											"monitoring_approach": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Monitoring approach. Value: one of aggressive, moderate, conservative.",
 											},
 											// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
 										},
 									},
-									// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
+									// key name holder for attribute: name=app_perf, type=REFERENCE macro=rss_schema
 									// property: name=circuit_utilization_perf, type=REFERENCE macro=rss_schema
 									"circuit_utilization_perf": rsschema.SingleNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Circuit utilization perf.",
 										Attributes: map[string]rsschema.Attribute{
 											// property: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 											"bad_health_thresholds": rsschema.SingleNestedAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Bad health thresholds.",
 												Attributes: map[string]rsschema.Attribute{
 													// property: name=clear_below, type=INTEGER macro=rss_schema
 													"clear_below": rsschema.Int64Attribute{
-														Required:  false,
-														Computed:  false,
-														Optional:  true,
-														Sensitive: false,
+														Required:    false,
+														Computed:    false,
+														Optional:    true,
+														Sensitive:   false,
+														Description: "Clear below. Value: between 1 and 80.",
 													},
 													// key name holder for attribute: name=clear_below, type=INTEGER macro=rss_schema
 													// property: name=raise_above, type=INTEGER macro=rss_schema
 													"raise_above": rsschema.Int64Attribute{
-														Required:  false,
-														Computed:  false,
-														Optional:  true,
-														Sensitive: false,
+														Required:    false,
+														Computed:    false,
+														Optional:    true,
+														Sensitive:   false,
+														Description: "Raise above. Value: between 10 and 100.",
 													},
 													// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
 												},
 											},
-											// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
+											// key name holder for attribute: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 											// property: name=monitoring_approach, type=STRING macro=rss_schema
 											"monitoring_approach": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Monitoring approach. Value: one of aggressive, moderate, conservative.",
 											},
 											// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
 										},
 									},
-									// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
+									// key name holder for attribute: name=circuit_utilization_perf, type=REFERENCE macro=rss_schema
 									// property: name=lqm_perf, type=REFERENCE macro=rss_schema
 									"lqm_perf": rsschema.SingleNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Lqm perf.",
 										Attributes: map[string]rsschema.Attribute{
 											// property: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 											"bad_health_thresholds": rsschema.SingleNestedAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Bad health thresholds.",
 												Attributes: map[string]rsschema.Attribute{
 													// property: name=clear_below, type=INTEGER macro=rss_schema
 													"clear_below": rsschema.Int64Attribute{
-														Required:  false,
-														Computed:  false,
-														Optional:  true,
-														Sensitive: false,
+														Required:    false,
+														Computed:    false,
+														Optional:    true,
+														Sensitive:   false,
+														Description: "Clear below. Value: between 1 and 80.",
 													},
 													// key name holder for attribute: name=clear_below, type=INTEGER macro=rss_schema
 													// property: name=raise_above, type=INTEGER macro=rss_schema
 													"raise_above": rsschema.Int64Attribute{
-														Required:  false,
-														Computed:  false,
-														Optional:  true,
-														Sensitive: false,
+														Required:    false,
+														Computed:    false,
+														Optional:    true,
+														Sensitive:   false,
+														Description: "Raise above. Value: between 10 and 100.",
 													},
 													// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
 												},
 											},
-											// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
+											// key name holder for attribute: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 											// property: name=monitoring_approach, type=STRING macro=rss_schema
 											"monitoring_approach": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Monitoring approach. Value: one of aggressive, moderate, conservative.",
 											},
 											// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
 										},
 									},
-									// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
+									// key name holder for attribute: name=lqm_perf, type=REFERENCE macro=rss_schema
 									// property: name=probe_perf, type=REFERENCE macro=rss_schema
 									"probe_perf": rsschema.SingleNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Probe perf.",
 										Attributes: map[string]rsschema.Attribute{
 											// property: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 											"bad_health_thresholds": rsschema.SingleNestedAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Bad health thresholds.",
 												Attributes: map[string]rsschema.Attribute{
 													// property: name=clear_below, type=INTEGER macro=rss_schema
 													"clear_below": rsschema.Int64Attribute{
-														Required:  false,
-														Computed:  false,
-														Optional:  true,
-														Sensitive: false,
+														Required:    false,
+														Computed:    false,
+														Optional:    true,
+														Sensitive:   false,
+														Description: "Clear below. Value: between 1 and 80.",
 													},
 													// key name holder for attribute: name=clear_below, type=INTEGER macro=rss_schema
 													// property: name=raise_above, type=INTEGER macro=rss_schema
 													"raise_above": rsschema.Int64Attribute{
-														Required:  false,
-														Computed:  false,
-														Optional:  true,
-														Sensitive: false,
+														Required:    false,
+														Computed:    false,
+														Optional:    true,
+														Sensitive:   false,
+														Description: "Raise above. Value: between 10 and 100.",
 													},
 													// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
 												},
 											},
-											// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
+											// key name holder for attribute: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 											// property: name=monitoring_approach, type=STRING macro=rss_schema
 											"monitoring_approach": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Monitoring approach. Value: one of aggressive, moderate, conservative.",
 											},
 											// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
 										},
 									},
-									// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
+									// key name holder for attribute: name=probe_perf, type=REFERENCE macro=rss_schema
 									// property: name=sys_perf, type=REFERENCE macro=rss_schema
 									"sys_perf": rsschema.SingleNestedAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Sys perf.",
 										Attributes: map[string]rsschema.Attribute{
 											// property: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 											"bad_health_thresholds": rsschema.SingleNestedAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Bad health thresholds.",
 												Attributes: map[string]rsschema.Attribute{
 													// property: name=clear_below, type=INTEGER macro=rss_schema
 													"clear_below": rsschema.Int64Attribute{
-														Required:  false,
-														Computed:  false,
-														Optional:  true,
-														Sensitive: false,
+														Required:    false,
+														Computed:    false,
+														Optional:    true,
+														Sensitive:   false,
+														Description: "Clear below. Value: between 1 and 80.",
 													},
 													// key name holder for attribute: name=clear_below, type=INTEGER macro=rss_schema
 													// property: name=raise_above, type=INTEGER macro=rss_schema
 													"raise_above": rsschema.Int64Attribute{
-														Required:  false,
-														Computed:  false,
-														Optional:  true,
-														Sensitive: false,
+														Required:    false,
+														Computed:    false,
+														Optional:    true,
+														Sensitive:   false,
+														Description: "Raise above. Value: between 10 and 100.",
 													},
 													// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
 												},
 											},
-											// key name holder for attribute: name=raise_above, type=INTEGER macro=rss_schema
+											// key name holder for attribute: name=bad_health_thresholds, type=REFERENCE macro=rss_schema
 											// property: name=monitoring_approach, type=STRING macro=rss_schema
 											"monitoring_approach": rsschema.StringAttribute{
-												Required:  false,
-												Computed:  false,
-												Optional:  true,
-												Sensitive: false,
+												Required:    false,
+												Computed:    false,
+												Optional:    true,
+												Sensitive:   false,
+												Description: "Monitoring approach. Value: one of aggressive, moderate, conservative.",
 											},
 											// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
 										},
 									},
-									// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
+									// key name holder for attribute: name=sys_perf, type=REFERENCE macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=monitoring_approach, type=STRING macro=rss_schema
+						// key name holder for attribute: name=actions, type=ARRAY_REFERENCE macro=rss_schema
+						// property: name=app_acceleration_update, type=BOOLEAN macro=rss_schema
+						"app_acceleration_update": rsschema.BoolAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "App acceleration update.",
+						},
+						// key name holder for attribute: name=app_acceleration_update, type=BOOLEAN macro=rss_schema
 						// property: name=app_filters, type=REFERENCE macro=rss_schema
 						"app_filters": rsschema.SingleNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "App filters.",
 							Attributes: map[string]rsschema.Attribute{
 								// property: name=app_transfer_types, type=ARRAY_PRIMITIVE macro=rss_schema
 								"app_transfer_types": rsschema.ListAttribute{
@@ -467,6 +543,8 @@ func (r *performancePolicySetResource) Schema(_ context.Context, _ resource.Sche
 									Computed:    false,
 									Optional:    true,
 									Sensitive:   false,
+									Description: "App transfer types. At most 4 items. Each item: one of rt-audio, rt-video, transactional, bulk.",
+									Validators:  ListMaxItems(4),
 									ElementType: types.StringType,
 								},
 								// key name holder for attribute: name=app_transfer_types, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -476,78 +554,172 @@ func (r *performancePolicySetResource) Schema(_ context.Context, _ resource.Sche
 									Computed:    false,
 									Optional:    true,
 									Sensitive:   false,
+									Description: "Application ids. At most 64 items.",
+									Validators:  ListMaxItems(64),
 									ElementType: types.StringType,
 								},
 								// key name holder for attribute: name=application_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 							},
 						},
-						// key name holder for attribute: name=application_ids, type=ARRAY_PRIMITIVE macro=rss_schema
+						// key name holder for attribute: name=app_filters, type=REFERENCE macro=rss_schema
+						// property: name=default_rule, type=BOOLEAN macro=rss_schema
+						"default_rule": rsschema.BoolAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Default rule.",
+						},
+						// key name holder for attribute: name=default_rule, type=BOOLEAN macro=rss_schema
 						// property: name=description, type=STRING macro=rss_schema
 						"description": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Description. Value: at most 256 characters.",
 						},
 						// key name holder for attribute: name=description, type=STRING macro=rss_schema
+						// property: name=disabled, type=BOOLEAN macro=rss_schema
+						"disabled": rsschema.BoolAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Disabled.",
+						},
+						// key name holder for attribute: name=disabled, type=BOOLEAN macro=rss_schema
+						// property: name=disabled_reason, type=STRING macro=rss_schema
+						"disabled_reason": rsschema.StringAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Disabled reason. Value: at most 5000 characters.",
+						},
+						// key name holder for attribute: name=disabled_reason, type=STRING macro=rss_schema
 						// property: name=enabled, type=BOOLEAN macro=rss_schema
 						"enabled": rsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Enabled.",
 						},
 						// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 						// property: name=id, type=STRING macro=rss_schema
 						"id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=id, type=STRING macro=rss_schema
+						// property: name=inactive, type=BOOLEAN macro=rss_schema
+						"inactive": rsschema.BoolAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Inactive.",
+						},
+						// key name holder for attribute: name=inactive, type=BOOLEAN macro=rss_schema
+						// property: name=inactive_reason, type=STRING macro=rss_schema
+						"inactive_reason": rsschema.StringAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Inactive reason. Value: at most 5000 characters.",
+						},
+						// key name holder for attribute: name=inactive_reason, type=STRING macro=rss_schema
 						// property: name=name, type=STRING macro=rss_schema
 						"name": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Name. Value: at most 128 characters.",
 						},
 						// key name holder for attribute: name=name, type=STRING macro=rss_schema
+						// property: name=network_context_ids, type=ARRAY_PRIMITIVE macro=rss_schema
+						"network_context_ids": rsschema.ListAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Network context ids.",
+							ElementType: types.StringType,
+						},
+						// key name holder for attribute: name=network_context_ids, type=ARRAY_PRIMITIVE macro=rss_schema
+						// property: name=path_filter_update, type=BOOLEAN macro=rss_schema
+						"path_filter_update": rsschema.BoolAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Path filter update.",
+						},
+						// key name holder for attribute: name=path_filter_update, type=BOOLEAN macro=rss_schema
 						// property: name=path_filters, type=ARRAY_REFERENCE macro=rss_schema
 						"path_filters": rsschema.ListNestedAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Path filters. At most 32 items.",
+							Validators:  ListMaxItems(32),
 							NestedObject: rsschema.NestedAttributeObject{
 								Attributes: map[string]rsschema.Attribute{
 									// property: name=label, type=STRING macro=rss_schema
 									"label": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Label. Value: matching `(public|private)-((([1-9])|([1-2][0-9])|(3[0-2]))|([*]))`.",
 									},
 									// key name holder for attribute: name=label, type=STRING macro=rss_schema
 									// property: name=path_type, type=STRING macro=rss_schema
 									"path_type": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Path type. Value: one of vpn, direct, servicelink, pa_vpn, all.",
 									},
 									// key name holder for attribute: name=path_type, type=STRING macro=rss_schema
 								},
 							},
 						},
-						// key name holder for attribute: name=path_type, type=STRING macro=rss_schema
+						// key name holder for attribute: name=path_filters, type=ARRAY_REFERENCE macro=rss_schema
+						// property: name=policyset_id, type=STRING macro=rss_schema
+						"policyset_id": rsschema.StringAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Policyset id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
+						},
+						// key name holder for attribute: name=policyset_id, type=STRING macro=rss_schema
+						// property: name=region, type=STRING macro=rss_schema
+						"region": rsschema.StringAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Region.",
+						},
+						// key name holder for attribute: name=region, type=STRING macro=rss_schema
 						// property: name=service_label_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 						"service_label_ids": rsschema.ListAttribute{
 							Required:    false,
 							Computed:    false,
 							Optional:    true,
 							Sensitive:   false,
+							Description: "Service label ids. At most 32 items.",
+							Validators:  ListMaxItems(32),
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=service_label_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -557,43 +729,541 @@ func (r *performancePolicySetResource) Schema(_ context.Context, _ resource.Sche
 							Computed:    false,
 							Optional:    true,
 							Sensitive:   false,
+							Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+							Validators:  SetMaxItems(10),
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
+						// property: name=thresholdprofile, type=REFERENCE macro=rss_schema
+						"thresholdprofile": rsschema.SingleNestedAttribute{
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Thresholdprofile.",
+							Attributes: map[string]rsschema.Attribute{
+								// generic x_parameters is added to accomodate path parameters
+								"x_parameters": rsschema.MapAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									ElementType: types.StringType,
+									Description: "Path parameters for the resource, managed automatically by the provider.",
+								},
+								// the Go model of this struct has Tfid whether it is nested or a resource of its own
+								"tfid": rsschema.StringAttribute{
+									Computed:    true,
+									Description: "The Terraform internal identifier for this object.",
+								},
+								// property: name=_etag, type=INTEGER macro=rss_schema
+								"x_etag": rsschema.Int64Attribute{
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
+								},
+								// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
+								// property: name=_schema, type=INTEGER macro=rss_schema
+								"x_schema": rsschema.Int64Attribute{
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
+								},
+								// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
+								// property: name=circuit_utilization_metrics_thresholds, type=REFERENCE macro=rss_schema
+								"circuit_utilization_metrics_thresholds": rsschema.SingleNestedAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Circuit utilization metrics thresholds.",
+									Attributes: map[string]rsschema.Attribute{
+										// property: name=percentage_circuit_utilization, type=INTEGER macro=rss_schema
+										"percentage_circuit_utilization": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Percentage circuit utilization. Value: between 1 and 100.",
+										},
+										// key name holder for attribute: name=percentage_circuit_utilization, type=INTEGER macro=rss_schema
+									},
+								},
+								// key name holder for attribute: name=circuit_utilization_metrics_thresholds, type=REFERENCE macro=rss_schema
+								// property: name=description, type=STRING macro=rss_schema
+								"description": rsschema.StringAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Description. Value: at most 256 characters.",
+								},
+								// key name holder for attribute: name=description, type=STRING macro=rss_schema
+								// property: name=disabled, type=BOOLEAN macro=rss_schema
+								"disabled": rsschema.BoolAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Disabled.",
+								},
+								// key name holder for attribute: name=disabled, type=BOOLEAN macro=rss_schema
+								// property: name=disabled_reason, type=STRING macro=rss_schema
+								"disabled_reason": rsschema.StringAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Disabled reason. Value: at most 5000 characters.",
+								},
+								// key name holder for attribute: name=disabled_reason, type=STRING macro=rss_schema
+								// property: name=flow_metrics_thresholds, type=REFERENCE macro=rss_schema
+								"flow_metrics_thresholds": rsschema.SingleNestedAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Flow metrics thresholds.",
+									Attributes: map[string]rsschema.Attribute{
+										// property: name=percentage_flow_utilization, type=INTEGER macro=rss_schema
+										"percentage_flow_utilization": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Percentage flow utilization. Value: between 1 and 100.",
+										},
+										// key name holder for attribute: name=percentage_flow_utilization, type=INTEGER macro=rss_schema
+									},
+								},
+								// key name holder for attribute: name=flow_metrics_thresholds, type=REFERENCE macro=rss_schema
+								// property: name=hard_limit_app_metrics, type=REFERENCE macro=rss_schema
+								"hard_limit_app_metrics": rsschema.SingleNestedAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Hard limit app metrics.",
+									Attributes: map[string]rsschema.Attribute{
+										// property: name=max_init_failure_rate, type=INTEGER macro=rss_schema
+										"max_init_failure_rate": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Max init failure rate. Value: between 0 and 100.",
+										},
+										// key name holder for attribute: name=max_init_failure_rate, type=INTEGER macro=rss_schema
+										// property: name=max_rtt, type=INTEGER macro=rss_schema
+										"max_rtt": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Max rtt. Value: between 0 and 500.",
+										},
+										// key name holder for attribute: name=max_rtt, type=INTEGER macro=rss_schema
+										// property: name=udp_trt, type=INTEGER macro=rss_schema
+										"udp_trt": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Udp trt. Value: between 0 and 500.",
+										},
+										// key name holder for attribute: name=udp_trt, type=INTEGER macro=rss_schema
+									},
+								},
+								// key name holder for attribute: name=hard_limit_app_metrics, type=REFERENCE macro=rss_schema
+								// property: name=id, type=STRING macro=rss_schema
+								"id": rsschema.StringAttribute{
+									Required:    false,
+									Computed:    true,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
+								},
+								// key name holder for attribute: name=id, type=STRING macro=rss_schema
+								// property: name=inactive, type=BOOLEAN macro=rss_schema
+								"inactive": rsschema.BoolAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Inactive.",
+								},
+								// key name holder for attribute: name=inactive, type=BOOLEAN macro=rss_schema
+								// property: name=inactive_reason, type=STRING macro=rss_schema
+								"inactive_reason": rsschema.StringAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Inactive reason. Value: at most 5000 characters.",
+								},
+								// key name holder for attribute: name=inactive_reason, type=STRING macro=rss_schema
+								// property: name=is_default, type=BOOLEAN macro=rss_schema
+								"is_default": rsschema.BoolAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Is default.",
+								},
+								// key name holder for attribute: name=is_default, type=BOOLEAN macro=rss_schema
+								// property: name=lqm_thresholds, type=REFERENCE macro=rss_schema
+								"lqm_thresholds": rsschema.SingleNestedAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Lqm thresholds.",
+									Attributes: map[string]rsschema.Attribute{
+										// property: name=max_jitter, type=INTEGER macro=rss_schema
+										"max_jitter": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Max jitter. Value: between 0 and 100.",
+										},
+										// key name holder for attribute: name=max_jitter, type=INTEGER macro=rss_schema
+										// property: name=max_latency, type=INTEGER macro=rss_schema
+										"max_latency": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Max latency. Value: between 0 and 500.",
+										},
+										// key name holder for attribute: name=max_latency, type=INTEGER macro=rss_schema
+										// property: name=max_packet_loss, type=INTEGER macro=rss_schema
+										"max_packet_loss": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Max packet loss. Value: between 0 and 20.",
+										},
+										// key name holder for attribute: name=max_packet_loss, type=INTEGER macro=rss_schema
+										// property: name=min_mos, type=INTEGER macro=rss_schema
+										"min_mos": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Min mos. Value: between 1 and 5.",
+										},
+										// key name holder for attribute: name=min_mos, type=INTEGER macro=rss_schema
+									},
+								},
+								// key name holder for attribute: name=lqm_thresholds, type=REFERENCE macro=rss_schema
+								// property: name=name, type=STRING macro=rss_schema
+								"name": rsschema.StringAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Name. Value: at most 128 characters.",
+								},
+								// key name holder for attribute: name=name, type=STRING macro=rss_schema
+								// property: name=region, type=STRING macro=rss_schema
+								"region": rsschema.StringAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Region.",
+								},
+								// key name holder for attribute: name=region, type=STRING macro=rss_schema
+								// property: name=soft_limit_app_metrics, type=REFERENCE macro=rss_schema
+								"soft_limit_app_metrics": rsschema.SingleNestedAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Soft limit app metrics.",
+									Attributes: map[string]rsschema.Attribute{
+										// property: name=max_init_failure_rate, type=INTEGER macro=rss_schema
+										"max_init_failure_rate": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Max init failure rate. Value: between 0 and 100.",
+										},
+										// key name holder for attribute: name=max_init_failure_rate, type=INTEGER macro=rss_schema
+										// property: name=max_rtt, type=INTEGER macro=rss_schema
+										"max_rtt": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Max rtt. Value: between 0 and 500.",
+										},
+										// key name holder for attribute: name=max_rtt, type=INTEGER macro=rss_schema
+										// property: name=udp_trt, type=INTEGER macro=rss_schema
+										"udp_trt": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Udp trt. Value: between 0 and 500.",
+										},
+										// key name holder for attribute: name=udp_trt, type=INTEGER macro=rss_schema
+									},
+								},
+								// key name holder for attribute: name=soft_limit_app_metrics, type=REFERENCE macro=rss_schema
+								// property: name=synthetic_probe_thresholds, type=REFERENCE macro=rss_schema
+								"synthetic_probe_thresholds": rsschema.SingleNestedAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Synthetic probe thresholds.",
+									Attributes: map[string]rsschema.Attribute{
+										// property: name=dns_txn_failure_pct, type=REFERENCE macro=rss_schema
+										"dns_txn_failure_pct": rsschema.SingleNestedAttribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Dns txn failure pct.",
+											Attributes: map[string]rsschema.Attribute{
+												// property: name=probe_config_id, type=STRING macro=rss_schema
+												"probe_config_id": rsschema.StringAttribute{
+													Required:    false,
+													Computed:    false,
+													Optional:    true,
+													Sensitive:   false,
+													Description: "Probe config id.",
+												},
+												// key name holder for attribute: name=probe_config_id, type=STRING macro=rss_schema
+												// property: name=value, type=INTEGER macro=rss_schema
+												"value": rsschema.Int64Attribute{
+													Required:    false,
+													Computed:    false,
+													Optional:    true,
+													Sensitive:   false,
+													Description: "Value.",
+												},
+												// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+											},
+										},
+										// key name holder for attribute: name=dns_txn_failure_pct, type=REFERENCE macro=rss_schema
+										// property: name=init_failure_pct, type=REFERENCE macro=rss_schema
+										"init_failure_pct": rsschema.SingleNestedAttribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Init failure pct.",
+											Attributes: map[string]rsschema.Attribute{
+												// property: name=probe_config_id, type=STRING macro=rss_schema
+												"probe_config_id": rsschema.StringAttribute{
+													Required:    false,
+													Computed:    false,
+													Optional:    true,
+													Sensitive:   false,
+													Description: "Probe config id.",
+												},
+												// key name holder for attribute: name=probe_config_id, type=STRING macro=rss_schema
+												// property: name=value, type=INTEGER macro=rss_schema
+												"value": rsschema.Int64Attribute{
+													Required:    false,
+													Computed:    false,
+													Optional:    true,
+													Sensitive:   false,
+													Description: "Value.",
+												},
+												// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+											},
+										},
+										// key name holder for attribute: name=init_failure_pct, type=REFERENCE macro=rss_schema
+										// property: name=jitter, type=REFERENCE macro=rss_schema
+										"jitter": rsschema.SingleNestedAttribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Jitter.",
+											Attributes: map[string]rsschema.Attribute{
+												// property: name=probe_config_id, type=STRING macro=rss_schema
+												"probe_config_id": rsschema.StringAttribute{
+													Required:    false,
+													Computed:    false,
+													Optional:    true,
+													Sensitive:   false,
+													Description: "Probe config id.",
+												},
+												// key name holder for attribute: name=probe_config_id, type=STRING macro=rss_schema
+												// property: name=value, type=INTEGER macro=rss_schema
+												"value": rsschema.Int64Attribute{
+													Required:    false,
+													Computed:    false,
+													Optional:    true,
+													Sensitive:   false,
+													Description: "Value.",
+												},
+												// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+											},
+										},
+										// key name holder for attribute: name=jitter, type=REFERENCE macro=rss_schema
+										// property: name=latency, type=REFERENCE macro=rss_schema
+										"latency": rsschema.SingleNestedAttribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Latency.",
+											Attributes: map[string]rsschema.Attribute{
+												// property: name=probe_config_id, type=STRING macro=rss_schema
+												"probe_config_id": rsschema.StringAttribute{
+													Required:    false,
+													Computed:    false,
+													Optional:    true,
+													Sensitive:   false,
+													Description: "Probe config id.",
+												},
+												// key name holder for attribute: name=probe_config_id, type=STRING macro=rss_schema
+												// property: name=value, type=INTEGER macro=rss_schema
+												"value": rsschema.Int64Attribute{
+													Required:    false,
+													Computed:    false,
+													Optional:    true,
+													Sensitive:   false,
+													Description: "Value.",
+												},
+												// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+											},
+										},
+										// key name holder for attribute: name=latency, type=REFERENCE macro=rss_schema
+										// property: name=packet_loss, type=REFERENCE macro=rss_schema
+										"packet_loss": rsschema.SingleNestedAttribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Packet loss.",
+											Attributes: map[string]rsschema.Attribute{
+												// property: name=probe_config_id, type=STRING macro=rss_schema
+												"probe_config_id": rsschema.StringAttribute{
+													Required:    false,
+													Computed:    false,
+													Optional:    true,
+													Sensitive:   false,
+													Description: "Probe config id.",
+												},
+												// key name holder for attribute: name=probe_config_id, type=STRING macro=rss_schema
+												// property: name=value, type=INTEGER macro=rss_schema
+												"value": rsschema.Int64Attribute{
+													Required:    false,
+													Computed:    false,
+													Optional:    true,
+													Sensitive:   false,
+													Description: "Value.",
+												},
+												// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+											},
+										},
+										// key name holder for attribute: name=packet_loss, type=REFERENCE macro=rss_schema
+									},
+								},
+								// key name holder for attribute: name=synthetic_probe_thresholds, type=REFERENCE macro=rss_schema
+								// property: name=system_health_metrics_thresholds, type=REFERENCE macro=rss_schema
+								"system_health_metrics_thresholds": rsschema.SingleNestedAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "System health metrics thresholds.",
+									Attributes: map[string]rsschema.Attribute{
+										// property: name=cpu_utilization, type=INTEGER macro=rss_schema
+										"cpu_utilization": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Cpu utilization. Value: between 0 and 100.",
+										},
+										// key name holder for attribute: name=cpu_utilization, type=INTEGER macro=rss_schema
+										// property: name=disk_utilization, type=INTEGER macro=rss_schema
+										"disk_utilization": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Disk utilization. Value: between 0 and 100.",
+										},
+										// key name holder for attribute: name=disk_utilization, type=INTEGER macro=rss_schema
+										// property: name=memory_utilization, type=INTEGER macro=rss_schema
+										"memory_utilization": rsschema.Int64Attribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Memory utilization. Value: between 0 and 100.",
+										},
+										// key name holder for attribute: name=memory_utilization, type=INTEGER macro=rss_schema
+									},
+								},
+								// key name holder for attribute: name=system_health_metrics_thresholds, type=REFERENCE macro=rss_schema
+								// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
+								"tags": rsschema.SetAttribute{
+									Required:    false,
+									Computed:    false,
+									Optional:    true,
+									Sensitive:   false,
+									Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+									Validators:  SetMaxItems(10),
+									ElementType: types.StringType,
+								},
+								// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
+							},
+						},
+						// key name holder for attribute: name=thresholdprofile, type=REFERENCE macro=rss_schema
 						// property: name=thresholdprofile_id, type=STRING macro=rss_schema
 						"thresholdprofile_id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Thresholdprofile id.",
 						},
 						// key name holder for attribute: name=thresholdprofile_id, type=STRING macro=rss_schema
 						// property: name=type, type=STRING macro=rss_schema
 						"type": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Type. Value: one of app_circuit_health, system_site_health.",
 						},
 						// key name holder for attribute: name=type, type=STRING macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=type, type=STRING macro=rss_schema
+			// key name holder for attribute: name=link_health_rules, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=policy_rules, type=ARRAY_REFERENCE macro=rss_schema
 			"policy_rules": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Policy rules.",
+				Validators:  NotSettable("policy_rules"),
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// generic x_parameters is added to accomodate path parameters
@@ -602,93 +1272,110 @@ func (r *performancePolicySetResource) Schema(_ context.Context, _ resource.Sche
 							Computed:    false,
 							Optional:    true,
 							ElementType: types.StringType,
+							Description: "Path parameters for the resource, managed automatically by the provider.",
+						},
+						// the Go model of this struct has Tfid whether it is nested or a resource of its own
+						"tfid": rsschema.StringAttribute{
+							Computed:    true,
+							Description: "The Terraform internal identifier for this object.",
 						},
 						// property: name=_etag, type=INTEGER macro=rss_schema
 						"x_etag": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 						// property: name=_schema, type=INTEGER macro=rss_schema
 						"x_schema": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 						// property: name=description, type=STRING macro=rss_schema
 						"description": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Description. Value: at most 256 characters.",
 						},
 						// key name holder for attribute: name=description, type=STRING macro=rss_schema
 						// property: name=disabled, type=BOOLEAN macro=rss_schema
 						"disabled": rsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Disabled.",
 						},
 						// key name holder for attribute: name=disabled, type=BOOLEAN macro=rss_schema
 						// property: name=disabled_reason, type=STRING macro=rss_schema
 						"disabled_reason": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Disabled reason. Value: at most 5000 characters.",
 						},
 						// key name holder for attribute: name=disabled_reason, type=STRING macro=rss_schema
 						// property: name=id, type=STRING macro=rss_schema
 						"id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 						},
 						// key name holder for attribute: name=id, type=STRING macro=rss_schema
 						// property: name=inactive, type=BOOLEAN macro=rss_schema
 						"inactive": rsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Inactive.",
 						},
 						// key name holder for attribute: name=inactive, type=BOOLEAN macro=rss_schema
 						// property: name=inactive_reason, type=STRING macro=rss_schema
 						"inactive_reason": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Inactive reason. Value: at most 5000 characters.",
 						},
 						// key name holder for attribute: name=inactive_reason, type=STRING macro=rss_schema
 						// property: name=name, type=STRING macro=rss_schema
 						"name": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Name. Value: at most 128 characters.",
 						},
 						// key name holder for attribute: name=name, type=STRING macro=rss_schema
 						// property: name=policyset_id, type=STRING macro=rss_schema
 						"policyset_id": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Policyset id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
 						},
 						// key name holder for attribute: name=policyset_id, type=STRING macro=rss_schema
 						// property: name=region, type=STRING macro=rss_schema
 						"region": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Region.",
 						},
 						// key name holder for attribute: name=region, type=STRING macro=rss_schema
 						// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -697,27 +1384,31 @@ func (r *performancePolicySetResource) Schema(_ context.Context, _ resource.Sche
 							Computed:    false,
 							Optional:    true,
 							Sensitive:   false,
+							Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+							Validators:  SetMaxItems(10),
 							ElementType: types.StringType,
 						},
 						// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 					},
 				},
 			},
-			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
+			// key name holder for attribute: name=policy_rules, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=region, type=STRING macro=rss_schema
 			"region": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Region.",
 			},
 			// key name holder for attribute: name=region, type=STRING macro=rss_schema
 			// property: name=send_to_element, type=BOOLEAN macro=rss_schema
 			"send_to_element": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Send to element. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=send_to_element, type=BOOLEAN macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -726,6 +1417,8 @@ func (r *performancePolicySetResource) Schema(_ context.Context, _ resource.Sche
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -814,7 +1507,7 @@ func (r *performancePolicySetResource) doPost(ctx context.Context, plan *rsModel
 		for varLoopLinkHealthRulesIndex, varLoopLinkHealthRules := range plan.LinkHealthRules {
 			// add a new item
 			body.LinkHealthRules = append(body.LinkHealthRules, sdwan_schema.PerfMgmtPolicyRule{})
-			// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel plan=varLoopLinkHealthRules properties=13
+			// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel plan=varLoopLinkHealthRules properties=24
 			tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel plan=varLoopLinkHealthRules")
 			// property: name=_etag, type=INTEGER macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Etag = Int64ValueOrNil(varLoopLinkHealthRules.Etag)
@@ -928,6 +1621,8 @@ func (r *performancePolicySetResource) doPost(ctx context.Context, plan *rsModel
 					}
 				}
 			}
+			// property: name=app_acceleration_update, type=BOOLEAN macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].AppAccelerationUpdate = BoolValueOrNil(varLoopLinkHealthRules.AppAccelerationUpdate)
 			// property: name=app_filters, type=REFERENCE macro=copy_from_plan
 			if varLoopLinkHealthRules.AppFilters != nil {
 				body.LinkHealthRules[varLoopLinkHealthRulesIndex].AppFilters = &sdwan_schema.ApplicationFilter{}
@@ -938,14 +1633,28 @@ func (r *performancePolicySetResource) doPost(ctx context.Context, plan *rsModel
 				// property: name=application_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
 				body.LinkHealthRules[varLoopLinkHealthRulesIndex].AppFilters.ApplicationIds = ListStringValueOrNil(ctx, varLoopLinkHealthRules.AppFilters.ApplicationIds)
 			}
+			// property: name=default_rule, type=BOOLEAN macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].DefaultRule = BoolValueOrNil(varLoopLinkHealthRules.DefaultRule)
 			// property: name=description, type=STRING macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Description = StringValueOrNil(varLoopLinkHealthRules.Description)
+			// property: name=disabled, type=BOOLEAN macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Disabled = BoolValueOrNil(varLoopLinkHealthRules.Disabled)
+			// property: name=disabled_reason, type=STRING macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].DisabledReason = StringValueOrNil(varLoopLinkHealthRules.DisabledReason)
 			// property: name=enabled, type=BOOLEAN macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Enabled = BoolValueOrNil(varLoopLinkHealthRules.Enabled)
 			// property: name=id, type=STRING macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Id = StringValueOrNil(varLoopLinkHealthRules.Id)
+			// property: name=inactive, type=BOOLEAN macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Inactive = BoolValueOrNil(varLoopLinkHealthRules.Inactive)
+			// property: name=inactive_reason, type=STRING macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].InactiveReason = StringValueOrNil(varLoopLinkHealthRules.InactiveReason)
 			// property: name=name, type=STRING macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Name = StringValueOrNil(varLoopLinkHealthRules.Name)
+			// property: name=network_context_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].NetworkContextIds = ListStringValueOrNil(ctx, varLoopLinkHealthRules.NetworkContextIds)
+			// property: name=path_filter_update, type=BOOLEAN macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilterUpdate = BoolValueOrNil(varLoopLinkHealthRules.PathFilterUpdate)
 			// property: name=path_filters, type=ARRAY_REFERENCE macro=copy_from_plan
 			if varLoopLinkHealthRules.PathFilters == nil {
 				body.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilters = nil
@@ -964,10 +1673,166 @@ func (r *performancePolicySetResource) doPost(ctx context.Context, plan *rsModel
 					body.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilters[varLoopPathFiltersIndex].PathType = StringValueOrNil(varLoopPathFilters.PathType)
 				}
 			}
+			// property: name=policyset_id, type=STRING macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].PolicysetId = StringValueOrNil(varLoopLinkHealthRules.PolicysetId)
+			// property: name=region, type=STRING macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Region = StringValueOrNil(varLoopLinkHealthRules.Region)
 			// property: name=service_label_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].ServiceLabelIds = ListStringValueOrNil(ctx, varLoopLinkHealthRules.ServiceLabelIds)
 			// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags = SetStringValueOrNil(ctx, varLoopLinkHealthRules.Tags)
+			// property: name=thresholdprofile, type=REFERENCE macro=copy_from_plan
+			if varLoopLinkHealthRules.Thresholdprofile != nil {
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile = &sdwan_schema.PerfMgmtThresholdProfile{}
+				// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile properties=19
+				tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile")
+				// property: name=_etag, type=INTEGER macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Etag = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Etag)
+				// property: name=_schema, type=INTEGER macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Schema = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Schema)
+				// property: name=circuit_utilization_metrics_thresholds, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds = &sdwan_schema.CircuitUtilizationMetricThresholds{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds properties=1
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds")
+					// property: name=percentage_circuit_utilization, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization)
+				}
+				// property: name=description, type=STRING macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Description = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Description)
+				// property: name=disabled, type=BOOLEAN macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Disabled = BoolValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Disabled)
+				// property: name=disabled_reason, type=STRING macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.DisabledReason = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.DisabledReason)
+				// property: name=flow_metrics_thresholds, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds = &sdwan_schema.FlowMetricThresholds{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds properties=1
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds")
+					// property: name=percentage_flow_utilization, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds.PercentageFlowUtilization = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds.PercentageFlowUtilization)
+				}
+				// property: name=hard_limit_app_metrics, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics = &sdwan_schema.StaticAppMetricConfig{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics properties=3
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics")
+					// property: name=max_init_failure_rate, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.MaxInitFailureRate = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.MaxInitFailureRate)
+					// property: name=max_rtt, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.MaxRtt = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.MaxRtt)
+					// property: name=udp_trt, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.UdpTrt = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.UdpTrt)
+				}
+				// property: name=id, type=STRING macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Id = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Id)
+				// property: name=inactive, type=BOOLEAN macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Inactive = BoolValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Inactive)
+				// property: name=inactive_reason, type=STRING macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.InactiveReason = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.InactiveReason)
+				// property: name=is_default, type=BOOLEAN macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.IsDefault = BoolValueOrNil(varLoopLinkHealthRules.Thresholdprofile.IsDefault)
+				// property: name=lqm_thresholds, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.LqmThresholds != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds = &sdwan_schema.LQMThresholdConfig{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.LqmThresholds properties=4
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.LqmThresholds")
+					// property: name=max_jitter, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxJitter = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxJitter)
+					// property: name=max_latency, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxLatency = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxLatency)
+					// property: name=max_packet_loss, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxPacketLoss = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxPacketLoss)
+					// property: name=min_mos, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MinMos = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MinMos)
+				}
+				// property: name=name, type=STRING macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Name = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Name)
+				// property: name=region, type=STRING macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Region = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Region)
+				// property: name=soft_limit_app_metrics, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics = &sdwan_schema.StaticAppMetricConfig{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics properties=3
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics")
+					// property: name=max_init_failure_rate, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.MaxInitFailureRate = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.MaxInitFailureRate)
+					// property: name=max_rtt, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.MaxRtt = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.MaxRtt)
+					// property: name=udp_trt, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.UdpTrt = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.UdpTrt)
+				}
+				// property: name=synthetic_probe_thresholds, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds = &sdwan_schema.SyntheticProbeThresholds{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds properties=5
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds")
+					// property: name=dns_txn_failure_pct, type=REFERENCE macro=copy_from_plan
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct != nil {
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct = &sdwan_schema.SyntheticProbeThreshold{}
+						// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct properties=2
+						tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct")
+						// property: name=probe_config_id, type=STRING macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.Value = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.Value)
+					}
+					// property: name=init_failure_pct, type=REFERENCE macro=copy_from_plan
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct != nil {
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct = &sdwan_schema.SyntheticProbeThreshold{}
+						// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct properties=2
+						tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct")
+						// property: name=probe_config_id, type=STRING macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.Value = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.Value)
+					}
+					// property: name=jitter, type=REFERENCE macro=copy_from_plan
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter != nil {
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter = &sdwan_schema.SyntheticProbeThreshold{}
+						// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter properties=2
+						tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter")
+						// property: name=probe_config_id, type=STRING macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter.ProbeConfigId = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter.Value = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter.Value)
+					}
+					// property: name=latency, type=REFERENCE macro=copy_from_plan
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency != nil {
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency = &sdwan_schema.SyntheticProbeThreshold{}
+						// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency properties=2
+						tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency")
+						// property: name=probe_config_id, type=STRING macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency.ProbeConfigId = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency.Value = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency.Value)
+					}
+					// property: name=packet_loss, type=REFERENCE macro=copy_from_plan
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss != nil {
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss = &sdwan_schema.SyntheticProbeThreshold{}
+						// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss properties=2
+						tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss")
+						// property: name=probe_config_id, type=STRING macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss.ProbeConfigId = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss.Value = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss.Value)
+					}
+				}
+				// property: name=system_health_metrics_thresholds, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds = &sdwan_schema.SystemHealthMetricThresholds{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds properties=3
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds")
+					// property: name=cpu_utilization, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.CpuUtilization = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.CpuUtilization)
+					// property: name=disk_utilization, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.DiskUtilization = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.DiskUtilization)
+					// property: name=memory_utilization, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.MemoryUtilization = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.MemoryUtilization)
+				}
+				// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags = SetStringValueOrNil(ctx, varLoopLinkHealthRules.Thresholdprofile.Tags)
+			}
 			// property: name=thresholdprofile_id, type=STRING macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].ThresholdprofileId = StringValueOrNil(varLoopLinkHealthRules.ThresholdprofileId)
 			// property: name=type, type=STRING macro=copy_from_plan
@@ -1155,7 +2020,7 @@ func (r *performancePolicySetResource) doPost(ctx context.Context, plan *rsModel
 		for varLoopLinkHealthRulesIndex, varLoopLinkHealthRules := range ans.LinkHealthRules {
 			// add a new item
 			state.LinkHealthRules = append(state.LinkHealthRules, rsModelPerfMgmtPolicyRule{})
-			// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel ans=varLoopLinkHealthRules properties=13
+			// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel ans=varLoopLinkHealthRules properties=24
 			tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel ans=varLoopLinkHealthRules")
 			// property: name=_etag, type=INTEGER macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Etag = types.Int64PointerValue(varLoopLinkHealthRules.Etag)
@@ -1289,6 +2154,8 @@ func (r *performancePolicySetResource) doPost(ctx context.Context, plan *rsModel
 					}
 				}
 			}
+			// property: name=app_acceleration_update, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].AppAccelerationUpdate = types.BoolPointerValue(varLoopLinkHealthRules.AppAccelerationUpdate)
 			// property: name=app_filters, type=REFERENCE macro=copy_to_state
 			if varLoopLinkHealthRules.AppFilters == nil {
 				state.LinkHealthRules[varLoopLinkHealthRulesIndex].AppFilters = nil
@@ -1305,14 +2172,30 @@ func (r *performancePolicySetResource) doPost(ctx context.Context, plan *rsModel
 				state.LinkHealthRules[varLoopLinkHealthRulesIndex].AppFilters.ApplicationIds = varApplicationIds
 				resp.Diagnostics.Append(errApplicationIds.Errors()...)
 			}
+			// property: name=default_rule, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].DefaultRule = types.BoolPointerValue(varLoopLinkHealthRules.DefaultRule)
 			// property: name=description, type=STRING macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Description = types.StringPointerValue(varLoopLinkHealthRules.Description)
+			// property: name=disabled, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Disabled = types.BoolPointerValue(varLoopLinkHealthRules.Disabled)
+			// property: name=disabled_reason, type=STRING macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].DisabledReason = types.StringPointerValue(varLoopLinkHealthRules.DisabledReason)
 			// property: name=enabled, type=BOOLEAN macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Enabled = types.BoolPointerValue(varLoopLinkHealthRules.Enabled)
 			// property: name=id, type=STRING macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Id = types.StringPointerValue(varLoopLinkHealthRules.Id)
+			// property: name=inactive, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Inactive = types.BoolPointerValue(varLoopLinkHealthRules.Inactive)
+			// property: name=inactive_reason, type=STRING macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].InactiveReason = types.StringPointerValue(varLoopLinkHealthRules.InactiveReason)
 			// property: name=name, type=STRING macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Name = types.StringPointerValue(varLoopLinkHealthRules.Name)
+			// property: name=network_context_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varNetworkContextIds, errNetworkContextIds := types.ListValueFrom(ctx, types.StringType, varLoopLinkHealthRules.NetworkContextIds)
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].NetworkContextIds = varNetworkContextIds
+			resp.Diagnostics.Append(errNetworkContextIds.Errors()...)
+			// property: name=path_filter_update, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilterUpdate = types.BoolPointerValue(varLoopLinkHealthRules.PathFilterUpdate)
 			// property: name=path_filters, type=ARRAY_REFERENCE macro=copy_to_state
 			if varLoopLinkHealthRules.PathFilters == nil {
 				state.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilters = nil
@@ -1331,6 +2214,10 @@ func (r *performancePolicySetResource) doPost(ctx context.Context, plan *rsModel
 					state.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilters[varLoopPathFiltersIndex].PathType = types.StringPointerValue(varLoopPathFilters.PathType)
 				}
 			}
+			// property: name=policyset_id, type=STRING macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].PolicysetId = types.StringPointerValue(varLoopLinkHealthRules.PolicysetId)
+			// property: name=region, type=STRING macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Region = types.StringPointerValue(varLoopLinkHealthRules.Region)
 			// property: name=service_label_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 			varServiceLabelIds, errServiceLabelIds := types.ListValueFrom(ctx, types.StringType, varLoopLinkHealthRules.ServiceLabelIds)
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].ServiceLabelIds = varServiceLabelIds
@@ -1339,6 +2226,202 @@ func (r *performancePolicySetResource) doPost(ctx context.Context, plan *rsModel
 			varTags, errTags := types.SetValueFrom(ctx, types.StringType, varLoopLinkHealthRules.Tags)
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags = varTags
 			resp.Diagnostics.Append(errTags.Errors()...)
+			// api does not accept empty list as missing value
+			if len(varLoopLinkHealthRules.Tags) == 0 {
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags = types.SetNull(types.StringType)
+			}
+			// the configuration states an empty list: keep it
+			if len(plan.LinkHealthRules) > varLoopLinkHealthRulesIndex && len(varLoopLinkHealthRules.Tags) == 0 && !plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags.IsNull() && !plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags.IsUnknown() && len(plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags.Elements()) == 0 {
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags = plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags
+			}
+			// property: name=thresholdprofile, type=REFERENCE macro=copy_to_state
+			if varLoopLinkHealthRules.Thresholdprofile == nil {
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile = nil
+			} else {
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile = &rsModelPerfMgmtThresholdProfile{}
+				// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile properties=19
+				tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile")
+				// property: name=_etag, type=INTEGER macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Etag = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.Etag)
+				// property: name=_schema, type=INTEGER macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Schema = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.Schema)
+				// property: name=circuit_utilization_metrics_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds = &rsModelCircuitUtilizationMetricThresholds{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds properties=1
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds")
+					// property: name=percentage_circuit_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization)
+				}
+				// property: name=description, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Description = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.Description)
+				// property: name=disabled, type=BOOLEAN macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Disabled = types.BoolPointerValue(varLoopLinkHealthRules.Thresholdprofile.Disabled)
+				// property: name=disabled_reason, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.DisabledReason = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.DisabledReason)
+				// property: name=flow_metrics_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds = &rsModelFlowMetricThresholds{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds properties=1
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds")
+					// property: name=percentage_flow_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds.PercentageFlowUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds.PercentageFlowUtilization)
+				}
+				// property: name=hard_limit_app_metrics, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics = &rsModelStaticAppMetricConfig{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics properties=3
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics")
+					// property: name=max_init_failure_rate, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.MaxInitFailureRate = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.MaxInitFailureRate)
+					// property: name=max_rtt, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.MaxRtt = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.MaxRtt)
+					// property: name=udp_trt, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.UdpTrt = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.UdpTrt)
+				}
+				// property: name=id, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Id = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.Id)
+				// property: name=inactive, type=BOOLEAN macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Inactive = types.BoolPointerValue(varLoopLinkHealthRules.Thresholdprofile.Inactive)
+				// property: name=inactive_reason, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.InactiveReason = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.InactiveReason)
+				// property: name=is_default, type=BOOLEAN macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.IsDefault = types.BoolPointerValue(varLoopLinkHealthRules.Thresholdprofile.IsDefault)
+				// property: name=lqm_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.LqmThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds = &rsModelLQMThresholdConfig{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.LqmThresholds properties=4
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.LqmThresholds")
+					// property: name=max_jitter, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxJitter = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxJitter)
+					// property: name=max_latency, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxLatency = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxLatency)
+					// property: name=max_packet_loss, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxPacketLoss = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxPacketLoss)
+					// property: name=min_mos, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MinMos = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MinMos)
+				}
+				// property: name=name, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Name = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.Name)
+				// property: name=region, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Region = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.Region)
+				// property: name=soft_limit_app_metrics, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics = &rsModelStaticAppMetricConfig{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics properties=3
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics")
+					// property: name=max_init_failure_rate, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.MaxInitFailureRate = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.MaxInitFailureRate)
+					// property: name=max_rtt, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.MaxRtt = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.MaxRtt)
+					// property: name=udp_trt, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.UdpTrt = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.UdpTrt)
+				}
+				// property: name=synthetic_probe_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds = &rsModelSyntheticProbeThresholds{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds properties=5
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds")
+					// property: name=dns_txn_failure_pct, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.Value)
+					}
+					// property: name=init_failure_pct, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.Value)
+					}
+					// property: name=jitter, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter.Value)
+					}
+					// property: name=latency, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency.Value)
+					}
+					// property: name=packet_loss, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss.Value)
+					}
+				}
+				// property: name=system_health_metrics_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds = &rsModelSystemHealthMetricThresholds{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds properties=3
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds")
+					// property: name=cpu_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.CpuUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.CpuUtilization)
+					// property: name=disk_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.DiskUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.DiskUtilization)
+					// property: name=memory_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.MemoryUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.MemoryUtilization)
+				}
+				// property: name=tags, type=SET_PRIMITIVE macro=copy_to_state
+				varTags, errTags := types.SetValueFrom(ctx, types.StringType, varLoopLinkHealthRules.Thresholdprofile.Tags)
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags = varTags
+				resp.Diagnostics.Append(errTags.Errors()...)
+				// api does not accept empty list as missing value
+				if len(varLoopLinkHealthRules.Thresholdprofile.Tags) == 0 {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags = types.SetNull(types.StringType)
+				}
+				// the configuration states an empty list: keep it
+				if len(plan.LinkHealthRules) > varLoopLinkHealthRulesIndex && plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile != nil && len(varLoopLinkHealthRules.Thresholdprofile.Tags) == 0 && !plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags.IsNull() && !plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags.IsUnknown() && len(plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags.Elements()) == 0 {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags = plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags
+				}
+			}
 			// property: name=thresholdprofile_id, type=STRING macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].ThresholdprofileId = types.StringPointerValue(varLoopLinkHealthRules.ThresholdprofileId)
 			// property: name=type, type=STRING macro=copy_to_state
@@ -1385,16 +2468,41 @@ func (r *performancePolicySetResource) doPost(ctx context.Context, plan *rsModel
 			varTags, errTags := types.SetValueFrom(ctx, types.StringType, varLoopPolicyRules.Tags)
 			state.PolicyRules[varLoopPolicyRulesIndex].Tags = varTags
 			resp.Diagnostics.Append(errTags.Errors()...)
+			// api does not accept empty list as missing value
+			if len(varLoopPolicyRules.Tags) == 0 {
+				state.PolicyRules[varLoopPolicyRulesIndex].Tags = types.SetNull(types.StringType)
+			}
+			// the configuration states an empty list: keep it
+			if len(plan.PolicyRules) > varLoopPolicyRulesIndex && len(varLoopPolicyRules.Tags) == 0 && !plan.PolicyRules[varLoopPolicyRulesIndex].Tags.IsNull() && !plan.PolicyRules[varLoopPolicyRulesIndex].Tags.IsUnknown() && len(plan.PolicyRules[varLoopPolicyRulesIndex].Tags.Elements()) == 0 {
+				state.PolicyRules[varLoopPolicyRulesIndex].Tags = plan.PolicyRules[varLoopPolicyRulesIndex].Tags
+			}
 		}
 	}
 	// property: name=region, type=STRING macro=copy_to_state
 	state.Region = types.StringPointerValue(ans.Region)
 	// property: name=send_to_element, type=BOOLEAN macro=copy_to_state
+	priorSendToElement := state.SendToElement
 	state.SendToElement = types.BoolPointerValue(ans.SendToElement)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.SendToElement == nil {
+		if !plan.SendToElement.IsUnknown() {
+			state.SendToElement = plan.SendToElement
+		} else {
+			state.SendToElement = priorSendToElement
+		}
+	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_to_state
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
@@ -1466,7 +2574,23 @@ func (r *performancePolicySetResource) doGet(ctx context.Context, state *rsModel
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -1516,7 +2640,7 @@ func (r *performancePolicySetResource) doGet(ctx context.Context, state *rsModel
 		for varLoopLinkHealthRulesIndex, varLoopLinkHealthRules := range ans.LinkHealthRules {
 			// add a new item
 			state.LinkHealthRules = append(state.LinkHealthRules, rsModelPerfMgmtPolicyRule{})
-			// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel ans=varLoopLinkHealthRules properties=13
+			// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel ans=varLoopLinkHealthRules properties=24
 			tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel ans=varLoopLinkHealthRules")
 			// property: name=_etag, type=INTEGER macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Etag = types.Int64PointerValue(varLoopLinkHealthRules.Etag)
@@ -1650,6 +2774,8 @@ func (r *performancePolicySetResource) doGet(ctx context.Context, state *rsModel
 					}
 				}
 			}
+			// property: name=app_acceleration_update, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].AppAccelerationUpdate = types.BoolPointerValue(varLoopLinkHealthRules.AppAccelerationUpdate)
 			// property: name=app_filters, type=REFERENCE macro=copy_to_state
 			if varLoopLinkHealthRules.AppFilters == nil {
 				state.LinkHealthRules[varLoopLinkHealthRulesIndex].AppFilters = nil
@@ -1666,14 +2792,30 @@ func (r *performancePolicySetResource) doGet(ctx context.Context, state *rsModel
 				state.LinkHealthRules[varLoopLinkHealthRulesIndex].AppFilters.ApplicationIds = varApplicationIds
 				resp.Diagnostics.Append(errApplicationIds.Errors()...)
 			}
+			// property: name=default_rule, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].DefaultRule = types.BoolPointerValue(varLoopLinkHealthRules.DefaultRule)
 			// property: name=description, type=STRING macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Description = types.StringPointerValue(varLoopLinkHealthRules.Description)
+			// property: name=disabled, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Disabled = types.BoolPointerValue(varLoopLinkHealthRules.Disabled)
+			// property: name=disabled_reason, type=STRING macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].DisabledReason = types.StringPointerValue(varLoopLinkHealthRules.DisabledReason)
 			// property: name=enabled, type=BOOLEAN macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Enabled = types.BoolPointerValue(varLoopLinkHealthRules.Enabled)
 			// property: name=id, type=STRING macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Id = types.StringPointerValue(varLoopLinkHealthRules.Id)
+			// property: name=inactive, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Inactive = types.BoolPointerValue(varLoopLinkHealthRules.Inactive)
+			// property: name=inactive_reason, type=STRING macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].InactiveReason = types.StringPointerValue(varLoopLinkHealthRules.InactiveReason)
 			// property: name=name, type=STRING macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Name = types.StringPointerValue(varLoopLinkHealthRules.Name)
+			// property: name=network_context_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varNetworkContextIds, errNetworkContextIds := types.ListValueFrom(ctx, types.StringType, varLoopLinkHealthRules.NetworkContextIds)
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].NetworkContextIds = varNetworkContextIds
+			resp.Diagnostics.Append(errNetworkContextIds.Errors()...)
+			// property: name=path_filter_update, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilterUpdate = types.BoolPointerValue(varLoopLinkHealthRules.PathFilterUpdate)
 			// property: name=path_filters, type=ARRAY_REFERENCE macro=copy_to_state
 			if varLoopLinkHealthRules.PathFilters == nil {
 				state.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilters = nil
@@ -1692,6 +2834,10 @@ func (r *performancePolicySetResource) doGet(ctx context.Context, state *rsModel
 					state.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilters[varLoopPathFiltersIndex].PathType = types.StringPointerValue(varLoopPathFilters.PathType)
 				}
 			}
+			// property: name=policyset_id, type=STRING macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].PolicysetId = types.StringPointerValue(varLoopLinkHealthRules.PolicysetId)
+			// property: name=region, type=STRING macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Region = types.StringPointerValue(varLoopLinkHealthRules.Region)
 			// property: name=service_label_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 			varServiceLabelIds, errServiceLabelIds := types.ListValueFrom(ctx, types.StringType, varLoopLinkHealthRules.ServiceLabelIds)
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].ServiceLabelIds = varServiceLabelIds
@@ -1700,6 +2846,202 @@ func (r *performancePolicySetResource) doGet(ctx context.Context, state *rsModel
 			varTags, errTags := types.SetValueFrom(ctx, types.StringType, varLoopLinkHealthRules.Tags)
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags = varTags
 			resp.Diagnostics.Append(errTags.Errors()...)
+			// api does not accept empty list as missing value
+			if len(varLoopLinkHealthRules.Tags) == 0 {
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags = types.SetNull(types.StringType)
+			}
+			// the configuration states an empty list: keep it
+			if len(savestate.LinkHealthRules) > varLoopLinkHealthRulesIndex && len(varLoopLinkHealthRules.Tags) == 0 && !savestate.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags.IsNull() && !savestate.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags.IsUnknown() && len(savestate.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags.Elements()) == 0 {
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags = savestate.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags
+			}
+			// property: name=thresholdprofile, type=REFERENCE macro=copy_to_state
+			if varLoopLinkHealthRules.Thresholdprofile == nil {
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile = nil
+			} else {
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile = &rsModelPerfMgmtThresholdProfile{}
+				// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile properties=19
+				tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile")
+				// property: name=_etag, type=INTEGER macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Etag = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.Etag)
+				// property: name=_schema, type=INTEGER macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Schema = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.Schema)
+				// property: name=circuit_utilization_metrics_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds = &rsModelCircuitUtilizationMetricThresholds{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds properties=1
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds")
+					// property: name=percentage_circuit_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization)
+				}
+				// property: name=description, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Description = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.Description)
+				// property: name=disabled, type=BOOLEAN macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Disabled = types.BoolPointerValue(varLoopLinkHealthRules.Thresholdprofile.Disabled)
+				// property: name=disabled_reason, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.DisabledReason = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.DisabledReason)
+				// property: name=flow_metrics_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds = &rsModelFlowMetricThresholds{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds properties=1
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds")
+					// property: name=percentage_flow_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds.PercentageFlowUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds.PercentageFlowUtilization)
+				}
+				// property: name=hard_limit_app_metrics, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics = &rsModelStaticAppMetricConfig{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics properties=3
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics")
+					// property: name=max_init_failure_rate, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.MaxInitFailureRate = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.MaxInitFailureRate)
+					// property: name=max_rtt, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.MaxRtt = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.MaxRtt)
+					// property: name=udp_trt, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.UdpTrt = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.UdpTrt)
+				}
+				// property: name=id, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Id = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.Id)
+				// property: name=inactive, type=BOOLEAN macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Inactive = types.BoolPointerValue(varLoopLinkHealthRules.Thresholdprofile.Inactive)
+				// property: name=inactive_reason, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.InactiveReason = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.InactiveReason)
+				// property: name=is_default, type=BOOLEAN macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.IsDefault = types.BoolPointerValue(varLoopLinkHealthRules.Thresholdprofile.IsDefault)
+				// property: name=lqm_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.LqmThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds = &rsModelLQMThresholdConfig{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.LqmThresholds properties=4
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.LqmThresholds")
+					// property: name=max_jitter, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxJitter = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxJitter)
+					// property: name=max_latency, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxLatency = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxLatency)
+					// property: name=max_packet_loss, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxPacketLoss = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxPacketLoss)
+					// property: name=min_mos, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MinMos = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MinMos)
+				}
+				// property: name=name, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Name = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.Name)
+				// property: name=region, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Region = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.Region)
+				// property: name=soft_limit_app_metrics, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics = &rsModelStaticAppMetricConfig{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics properties=3
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics")
+					// property: name=max_init_failure_rate, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.MaxInitFailureRate = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.MaxInitFailureRate)
+					// property: name=max_rtt, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.MaxRtt = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.MaxRtt)
+					// property: name=udp_trt, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.UdpTrt = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.UdpTrt)
+				}
+				// property: name=synthetic_probe_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds = &rsModelSyntheticProbeThresholds{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds properties=5
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds")
+					// property: name=dns_txn_failure_pct, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.Value)
+					}
+					// property: name=init_failure_pct, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.Value)
+					}
+					// property: name=jitter, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter.Value)
+					}
+					// property: name=latency, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency.Value)
+					}
+					// property: name=packet_loss, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss.Value)
+					}
+				}
+				// property: name=system_health_metrics_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds = &rsModelSystemHealthMetricThresholds{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds properties=3
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds")
+					// property: name=cpu_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.CpuUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.CpuUtilization)
+					// property: name=disk_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.DiskUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.DiskUtilization)
+					// property: name=memory_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.MemoryUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.MemoryUtilization)
+				}
+				// property: name=tags, type=SET_PRIMITIVE macro=copy_to_state
+				varTags, errTags := types.SetValueFrom(ctx, types.StringType, varLoopLinkHealthRules.Thresholdprofile.Tags)
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags = varTags
+				resp.Diagnostics.Append(errTags.Errors()...)
+				// api does not accept empty list as missing value
+				if len(varLoopLinkHealthRules.Thresholdprofile.Tags) == 0 {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags = types.SetNull(types.StringType)
+				}
+				// the configuration states an empty list: keep it
+				if len(savestate.LinkHealthRules) > varLoopLinkHealthRulesIndex && savestate.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile != nil && len(varLoopLinkHealthRules.Thresholdprofile.Tags) == 0 && !savestate.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags.IsNull() && !savestate.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags.IsUnknown() && len(savestate.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags.Elements()) == 0 {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags = savestate.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags
+				}
+			}
 			// property: name=thresholdprofile_id, type=STRING macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].ThresholdprofileId = types.StringPointerValue(varLoopLinkHealthRules.ThresholdprofileId)
 			// property: name=type, type=STRING macro=copy_to_state
@@ -1746,16 +3088,41 @@ func (r *performancePolicySetResource) doGet(ctx context.Context, state *rsModel
 			varTags, errTags := types.SetValueFrom(ctx, types.StringType, varLoopPolicyRules.Tags)
 			state.PolicyRules[varLoopPolicyRulesIndex].Tags = varTags
 			resp.Diagnostics.Append(errTags.Errors()...)
+			// api does not accept empty list as missing value
+			if len(varLoopPolicyRules.Tags) == 0 {
+				state.PolicyRules[varLoopPolicyRulesIndex].Tags = types.SetNull(types.StringType)
+			}
+			// the configuration states an empty list: keep it
+			if len(savestate.PolicyRules) > varLoopPolicyRulesIndex && len(varLoopPolicyRules.Tags) == 0 && !savestate.PolicyRules[varLoopPolicyRulesIndex].Tags.IsNull() && !savestate.PolicyRules[varLoopPolicyRulesIndex].Tags.IsUnknown() && len(savestate.PolicyRules[varLoopPolicyRulesIndex].Tags.Elements()) == 0 {
+				state.PolicyRules[varLoopPolicyRulesIndex].Tags = savestate.PolicyRules[varLoopPolicyRulesIndex].Tags
+			}
 		}
 	}
 	// property: name=region, type=STRING macro=copy_to_state
 	state.Region = types.StringPointerValue(ans.Region)
 	// property: name=send_to_element, type=BOOLEAN macro=copy_to_state
+	priorSendToElement := state.SendToElement
 	state.SendToElement = types.BoolPointerValue(ans.SendToElement)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.SendToElement == nil {
+		if !savestate.SendToElement.IsUnknown() {
+			state.SendToElement = savestate.SendToElement
+		} else {
+			state.SendToElement = priorSendToElement
+		}
+	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_to_state
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	return true
 }
 
@@ -1873,11 +3240,16 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 		body.InactiveReason = StringValueOrNil(plan.InactiveReason)
 	}
 	// property: name=link_health_policyrule_order, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.LinkHealthPolicyruleOrder = ListStringValueOrNil(ctx, plan.LinkHealthPolicyruleOrder)
+	if state != nil && plan.LinkHealthPolicyruleOrder.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.LinkHealthPolicyruleOrder = ListStringValueOrNil(ctx, state.LinkHealthPolicyruleOrder)
+	} else {
+		body.LinkHealthPolicyruleOrder = ListStringValueOrNil(ctx, plan.LinkHealthPolicyruleOrder)
+	}
 	// property: name=link_health_rules, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.LinkHealthRules == nil && (state == nil || state.LinkHealthRules == nil) {
+	if plan.LinkHealthRules == nil && (!(state != nil) || state.LinkHealthRules == nil) {
 		body.LinkHealthRules = nil
-	} else if len(plan.LinkHealthRules) == 0 && (state == nil || len(state.LinkHealthRules) == 0) {
+	} else if len(plan.LinkHealthRules) == 0 && (!(state != nil) || len(state.LinkHealthRules) == 0) {
 		body.LinkHealthRules = []sdwan_schema.PerfMgmtPolicyRule{}
 	} else if len(plan.LinkHealthRules) != 0 || (state != nil && len(state.LinkHealthRules) != 0) {
 		LinkHealthRulesToUse := plan.LinkHealthRules
@@ -1889,7 +3261,7 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 			// add a new item
 			body.LinkHealthRules = append(body.LinkHealthRules, sdwan_schema.PerfMgmtPolicyRule{})
 			// since we have chosen to stick with either the plan or state, we need to simply copy child properties
-			// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel plan=varLoopLinkHealthRules properties=13
+			// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel plan=varLoopLinkHealthRules properties=24
 			tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel plan=varLoopLinkHealthRules")
 			// property: name=_etag, type=INTEGER macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Etag = Int64ValueOrNil(varLoopLinkHealthRules.Etag)
@@ -2003,6 +3375,8 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 					}
 				}
 			}
+			// property: name=app_acceleration_update, type=BOOLEAN macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].AppAccelerationUpdate = BoolValueOrNil(varLoopLinkHealthRules.AppAccelerationUpdate)
 			// property: name=app_filters, type=REFERENCE macro=copy_from_plan
 			if varLoopLinkHealthRules.AppFilters != nil {
 				body.LinkHealthRules[varLoopLinkHealthRulesIndex].AppFilters = &sdwan_schema.ApplicationFilter{}
@@ -2013,14 +3387,28 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 				// property: name=application_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
 				body.LinkHealthRules[varLoopLinkHealthRulesIndex].AppFilters.ApplicationIds = ListStringValueOrNil(ctx, varLoopLinkHealthRules.AppFilters.ApplicationIds)
 			}
+			// property: name=default_rule, type=BOOLEAN macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].DefaultRule = BoolValueOrNil(varLoopLinkHealthRules.DefaultRule)
 			// property: name=description, type=STRING macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Description = StringValueOrNil(varLoopLinkHealthRules.Description)
+			// property: name=disabled, type=BOOLEAN macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Disabled = BoolValueOrNil(varLoopLinkHealthRules.Disabled)
+			// property: name=disabled_reason, type=STRING macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].DisabledReason = StringValueOrNil(varLoopLinkHealthRules.DisabledReason)
 			// property: name=enabled, type=BOOLEAN macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Enabled = BoolValueOrNil(varLoopLinkHealthRules.Enabled)
 			// property: name=id, type=STRING macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Id = StringValueOrNil(varLoopLinkHealthRules.Id)
+			// property: name=inactive, type=BOOLEAN macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Inactive = BoolValueOrNil(varLoopLinkHealthRules.Inactive)
+			// property: name=inactive_reason, type=STRING macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].InactiveReason = StringValueOrNil(varLoopLinkHealthRules.InactiveReason)
 			// property: name=name, type=STRING macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Name = StringValueOrNil(varLoopLinkHealthRules.Name)
+			// property: name=network_context_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].NetworkContextIds = ListStringValueOrNil(ctx, varLoopLinkHealthRules.NetworkContextIds)
+			// property: name=path_filter_update, type=BOOLEAN macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilterUpdate = BoolValueOrNil(varLoopLinkHealthRules.PathFilterUpdate)
 			// property: name=path_filters, type=ARRAY_REFERENCE macro=copy_from_plan
 			if varLoopLinkHealthRules.PathFilters == nil {
 				body.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilters = nil
@@ -2039,10 +3427,166 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 					body.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilters[varLoopPathFiltersIndex].PathType = StringValueOrNil(varLoopPathFilters.PathType)
 				}
 			}
+			// property: name=policyset_id, type=STRING macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].PolicysetId = StringValueOrNil(varLoopLinkHealthRules.PolicysetId)
+			// property: name=region, type=STRING macro=copy_from_plan
+			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Region = StringValueOrNil(varLoopLinkHealthRules.Region)
 			// property: name=service_label_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].ServiceLabelIds = ListStringValueOrNil(ctx, varLoopLinkHealthRules.ServiceLabelIds)
 			// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags = SetStringValueOrNil(ctx, varLoopLinkHealthRules.Tags)
+			// property: name=thresholdprofile, type=REFERENCE macro=copy_from_plan
+			if varLoopLinkHealthRules.Thresholdprofile != nil {
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile = &sdwan_schema.PerfMgmtThresholdProfile{}
+				// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile properties=19
+				tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile")
+				// property: name=_etag, type=INTEGER macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Etag = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Etag)
+				// property: name=_schema, type=INTEGER macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Schema = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Schema)
+				// property: name=circuit_utilization_metrics_thresholds, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds = &sdwan_schema.CircuitUtilizationMetricThresholds{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds properties=1
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds")
+					// property: name=percentage_circuit_utilization, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization)
+				}
+				// property: name=description, type=STRING macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Description = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Description)
+				// property: name=disabled, type=BOOLEAN macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Disabled = BoolValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Disabled)
+				// property: name=disabled_reason, type=STRING macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.DisabledReason = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.DisabledReason)
+				// property: name=flow_metrics_thresholds, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds = &sdwan_schema.FlowMetricThresholds{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds properties=1
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds")
+					// property: name=percentage_flow_utilization, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds.PercentageFlowUtilization = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds.PercentageFlowUtilization)
+				}
+				// property: name=hard_limit_app_metrics, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics = &sdwan_schema.StaticAppMetricConfig{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics properties=3
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics")
+					// property: name=max_init_failure_rate, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.MaxInitFailureRate = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.MaxInitFailureRate)
+					// property: name=max_rtt, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.MaxRtt = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.MaxRtt)
+					// property: name=udp_trt, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.UdpTrt = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.UdpTrt)
+				}
+				// property: name=id, type=STRING macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Id = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Id)
+				// property: name=inactive, type=BOOLEAN macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Inactive = BoolValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Inactive)
+				// property: name=inactive_reason, type=STRING macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.InactiveReason = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.InactiveReason)
+				// property: name=is_default, type=BOOLEAN macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.IsDefault = BoolValueOrNil(varLoopLinkHealthRules.Thresholdprofile.IsDefault)
+				// property: name=lqm_thresholds, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.LqmThresholds != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds = &sdwan_schema.LQMThresholdConfig{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.LqmThresholds properties=4
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.LqmThresholds")
+					// property: name=max_jitter, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxJitter = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxJitter)
+					// property: name=max_latency, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxLatency = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxLatency)
+					// property: name=max_packet_loss, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxPacketLoss = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxPacketLoss)
+					// property: name=min_mos, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MinMos = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MinMos)
+				}
+				// property: name=name, type=STRING macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Name = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Name)
+				// property: name=region, type=STRING macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Region = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.Region)
+				// property: name=soft_limit_app_metrics, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics = &sdwan_schema.StaticAppMetricConfig{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics properties=3
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics")
+					// property: name=max_init_failure_rate, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.MaxInitFailureRate = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.MaxInitFailureRate)
+					// property: name=max_rtt, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.MaxRtt = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.MaxRtt)
+					// property: name=udp_trt, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.UdpTrt = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.UdpTrt)
+				}
+				// property: name=synthetic_probe_thresholds, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds = &sdwan_schema.SyntheticProbeThresholds{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds properties=5
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds")
+					// property: name=dns_txn_failure_pct, type=REFERENCE macro=copy_from_plan
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct != nil {
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct = &sdwan_schema.SyntheticProbeThreshold{}
+						// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct properties=2
+						tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct")
+						// property: name=probe_config_id, type=STRING macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.Value = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.Value)
+					}
+					// property: name=init_failure_pct, type=REFERENCE macro=copy_from_plan
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct != nil {
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct = &sdwan_schema.SyntheticProbeThreshold{}
+						// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct properties=2
+						tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct")
+						// property: name=probe_config_id, type=STRING macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.Value = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.Value)
+					}
+					// property: name=jitter, type=REFERENCE macro=copy_from_plan
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter != nil {
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter = &sdwan_schema.SyntheticProbeThreshold{}
+						// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter properties=2
+						tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter")
+						// property: name=probe_config_id, type=STRING macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter.ProbeConfigId = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter.Value = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter.Value)
+					}
+					// property: name=latency, type=REFERENCE macro=copy_from_plan
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency != nil {
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency = &sdwan_schema.SyntheticProbeThreshold{}
+						// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency properties=2
+						tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency")
+						// property: name=probe_config_id, type=STRING macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency.ProbeConfigId = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency.Value = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency.Value)
+					}
+					// property: name=packet_loss, type=REFERENCE macro=copy_from_plan
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss != nil {
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss = &sdwan_schema.SyntheticProbeThreshold{}
+						// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss properties=2
+						tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss")
+						// property: name=probe_config_id, type=STRING macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss.ProbeConfigId = StringValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_from_plan
+						body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss.Value = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss.Value)
+					}
+				}
+				// property: name=system_health_metrics_thresholds, type=REFERENCE macro=copy_from_plan
+				if varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds != nil {
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds = &sdwan_schema.SystemHealthMetricThresholds{}
+					// copy_from_plan: body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds properties=3
+					tflog.Debug(ctx, "copy_from_plan body=body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds prefix=rsModel plan=varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds")
+					// property: name=cpu_utilization, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.CpuUtilization = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.CpuUtilization)
+					// property: name=disk_utilization, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.DiskUtilization = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.DiskUtilization)
+					// property: name=memory_utilization, type=INTEGER macro=copy_from_plan
+					body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.MemoryUtilization = Int64ValueOrNil(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.MemoryUtilization)
+				}
+				// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan
+				body.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags = SetStringValueOrNil(ctx, varLoopLinkHealthRules.Thresholdprofile.Tags)
+			}
 			// property: name=thresholdprofile_id, type=STRING macro=copy_from_plan
 			body.LinkHealthRules[varLoopLinkHealthRulesIndex].ThresholdprofileId = StringValueOrNil(varLoopLinkHealthRules.ThresholdprofileId)
 			// property: name=type, type=STRING macro=copy_from_plan
@@ -2056,9 +3600,9 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 		body.Name = StringValueOrNil(plan.Name)
 	}
 	// property: name=policy_rules, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.PolicyRules == nil && (state == nil || state.PolicyRules == nil) {
+	if plan.PolicyRules == nil && (!(state != nil) || state.PolicyRules == nil) {
 		body.PolicyRules = nil
-	} else if len(plan.PolicyRules) == 0 && (state == nil || len(state.PolicyRules) == 0) {
+	} else if len(plan.PolicyRules) == 0 && (!(state != nil) || len(state.PolicyRules) == 0) {
 		body.PolicyRules = []sdwan_schema.BasePolicyRule{}
 	} else if len(plan.PolicyRules) != 0 || (state != nil && len(state.PolicyRules) != 0) {
 		PolicyRulesToUse := plan.PolicyRules
@@ -2111,7 +3655,12 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 		body.SendToElement = BoolValueOrNil(plan.SendToElement)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
@@ -2182,6 +3731,12 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=PerfMgmtPolicySet
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=17
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -2219,7 +3774,7 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 		for varLoopLinkHealthRulesIndex, varLoopLinkHealthRules := range ans.LinkHealthRules {
 			// add a new item
 			state.LinkHealthRules = append(state.LinkHealthRules, rsModelPerfMgmtPolicyRule{})
-			// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel ans=varLoopLinkHealthRules properties=13
+			// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel ans=varLoopLinkHealthRules properties=24
 			tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex] prefix=rsModel ans=varLoopLinkHealthRules")
 			// property: name=_etag, type=INTEGER macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Etag = types.Int64PointerValue(varLoopLinkHealthRules.Etag)
@@ -2353,6 +3908,8 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 					}
 				}
 			}
+			// property: name=app_acceleration_update, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].AppAccelerationUpdate = types.BoolPointerValue(varLoopLinkHealthRules.AppAccelerationUpdate)
 			// property: name=app_filters, type=REFERENCE macro=copy_to_state
 			if varLoopLinkHealthRules.AppFilters == nil {
 				state.LinkHealthRules[varLoopLinkHealthRulesIndex].AppFilters = nil
@@ -2369,14 +3926,30 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 				state.LinkHealthRules[varLoopLinkHealthRulesIndex].AppFilters.ApplicationIds = varApplicationIds
 				resp.Diagnostics.Append(errApplicationIds.Errors()...)
 			}
+			// property: name=default_rule, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].DefaultRule = types.BoolPointerValue(varLoopLinkHealthRules.DefaultRule)
 			// property: name=description, type=STRING macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Description = types.StringPointerValue(varLoopLinkHealthRules.Description)
+			// property: name=disabled, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Disabled = types.BoolPointerValue(varLoopLinkHealthRules.Disabled)
+			// property: name=disabled_reason, type=STRING macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].DisabledReason = types.StringPointerValue(varLoopLinkHealthRules.DisabledReason)
 			// property: name=enabled, type=BOOLEAN macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Enabled = types.BoolPointerValue(varLoopLinkHealthRules.Enabled)
 			// property: name=id, type=STRING macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Id = types.StringPointerValue(varLoopLinkHealthRules.Id)
+			// property: name=inactive, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Inactive = types.BoolPointerValue(varLoopLinkHealthRules.Inactive)
+			// property: name=inactive_reason, type=STRING macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].InactiveReason = types.StringPointerValue(varLoopLinkHealthRules.InactiveReason)
 			// property: name=name, type=STRING macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Name = types.StringPointerValue(varLoopLinkHealthRules.Name)
+			// property: name=network_context_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varNetworkContextIds, errNetworkContextIds := types.ListValueFrom(ctx, types.StringType, varLoopLinkHealthRules.NetworkContextIds)
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].NetworkContextIds = varNetworkContextIds
+			resp.Diagnostics.Append(errNetworkContextIds.Errors()...)
+			// property: name=path_filter_update, type=BOOLEAN macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilterUpdate = types.BoolPointerValue(varLoopLinkHealthRules.PathFilterUpdate)
 			// property: name=path_filters, type=ARRAY_REFERENCE macro=copy_to_state
 			if varLoopLinkHealthRules.PathFilters == nil {
 				state.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilters = nil
@@ -2395,6 +3968,10 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 					state.LinkHealthRules[varLoopLinkHealthRulesIndex].PathFilters[varLoopPathFiltersIndex].PathType = types.StringPointerValue(varLoopPathFilters.PathType)
 				}
 			}
+			// property: name=policyset_id, type=STRING macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].PolicysetId = types.StringPointerValue(varLoopLinkHealthRules.PolicysetId)
+			// property: name=region, type=STRING macro=copy_to_state
+			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Region = types.StringPointerValue(varLoopLinkHealthRules.Region)
 			// property: name=service_label_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 			varServiceLabelIds, errServiceLabelIds := types.ListValueFrom(ctx, types.StringType, varLoopLinkHealthRules.ServiceLabelIds)
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].ServiceLabelIds = varServiceLabelIds
@@ -2403,6 +3980,202 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 			varTags, errTags := types.SetValueFrom(ctx, types.StringType, varLoopLinkHealthRules.Tags)
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags = varTags
 			resp.Diagnostics.Append(errTags.Errors()...)
+			// api does not accept empty list as missing value
+			if len(varLoopLinkHealthRules.Tags) == 0 {
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags = types.SetNull(types.StringType)
+			}
+			// the configuration states an empty list: keep it
+			if len(plan.LinkHealthRules) > varLoopLinkHealthRulesIndex && len(varLoopLinkHealthRules.Tags) == 0 && !plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags.IsNull() && !plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags.IsUnknown() && len(plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags.Elements()) == 0 {
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags = plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Tags
+			}
+			// property: name=thresholdprofile, type=REFERENCE macro=copy_to_state
+			if varLoopLinkHealthRules.Thresholdprofile == nil {
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile = nil
+			} else {
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile = &rsModelPerfMgmtThresholdProfile{}
+				// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile properties=19
+				tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile")
+				// property: name=_etag, type=INTEGER macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Etag = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.Etag)
+				// property: name=_schema, type=INTEGER macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Schema = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.Schema)
+				// property: name=circuit_utilization_metrics_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds = &rsModelCircuitUtilizationMetricThresholds{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds properties=1
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds")
+					// property: name=percentage_circuit_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization)
+				}
+				// property: name=description, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Description = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.Description)
+				// property: name=disabled, type=BOOLEAN macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Disabled = types.BoolPointerValue(varLoopLinkHealthRules.Thresholdprofile.Disabled)
+				// property: name=disabled_reason, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.DisabledReason = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.DisabledReason)
+				// property: name=flow_metrics_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds = &rsModelFlowMetricThresholds{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds properties=1
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds")
+					// property: name=percentage_flow_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.FlowMetricsThresholds.PercentageFlowUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.FlowMetricsThresholds.PercentageFlowUtilization)
+				}
+				// property: name=hard_limit_app_metrics, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics = &rsModelStaticAppMetricConfig{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics properties=3
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics")
+					// property: name=max_init_failure_rate, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.MaxInitFailureRate = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.MaxInitFailureRate)
+					// property: name=max_rtt, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.MaxRtt = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.MaxRtt)
+					// property: name=udp_trt, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.HardLimitAppMetrics.UdpTrt = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.HardLimitAppMetrics.UdpTrt)
+				}
+				// property: name=id, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Id = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.Id)
+				// property: name=inactive, type=BOOLEAN macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Inactive = types.BoolPointerValue(varLoopLinkHealthRules.Thresholdprofile.Inactive)
+				// property: name=inactive_reason, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.InactiveReason = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.InactiveReason)
+				// property: name=is_default, type=BOOLEAN macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.IsDefault = types.BoolPointerValue(varLoopLinkHealthRules.Thresholdprofile.IsDefault)
+				// property: name=lqm_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.LqmThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds = &rsModelLQMThresholdConfig{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.LqmThresholds properties=4
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.LqmThresholds")
+					// property: name=max_jitter, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxJitter = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxJitter)
+					// property: name=max_latency, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxLatency = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxLatency)
+					// property: name=max_packet_loss, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MaxPacketLoss = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MaxPacketLoss)
+					// property: name=min_mos, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.LqmThresholds.MinMos = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.LqmThresholds.MinMos)
+				}
+				// property: name=name, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Name = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.Name)
+				// property: name=region, type=STRING macro=copy_to_state
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Region = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.Region)
+				// property: name=soft_limit_app_metrics, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics = &rsModelStaticAppMetricConfig{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics properties=3
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics")
+					// property: name=max_init_failure_rate, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.MaxInitFailureRate = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.MaxInitFailureRate)
+					// property: name=max_rtt, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.MaxRtt = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.MaxRtt)
+					// property: name=udp_trt, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SoftLimitAppMetrics.UdpTrt = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SoftLimitAppMetrics.UdpTrt)
+				}
+				// property: name=synthetic_probe_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds = &rsModelSyntheticProbeThresholds{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds properties=5
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds")
+					// property: name=dns_txn_failure_pct, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.DnsTxnFailurePct.Value)
+					}
+					// property: name=init_failure_pct, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.InitFailurePct.Value)
+					}
+					// property: name=jitter, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Jitter.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Jitter.Value)
+					}
+					// property: name=latency, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.Latency.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.Latency.Value)
+					}
+					// property: name=packet_loss, type=REFERENCE macro=copy_to_state
+					if varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss == nil {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss = nil
+					} else {
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss = &rsModelSyntheticProbeThreshold{}
+						// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss properties=2
+						tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss")
+						// property: name=probe_config_id, type=STRING macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss.ProbeConfigId = types.StringPointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss.ProbeConfigId)
+						// property: name=value, type=INTEGER macro=copy_to_state
+						state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SyntheticProbeThresholds.PacketLoss.Value = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SyntheticProbeThresholds.PacketLoss.Value)
+					}
+				}
+				// property: name=system_health_metrics_thresholds, type=REFERENCE macro=copy_to_state
+				if varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds == nil {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds = nil
+				} else {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds = &rsModelSystemHealthMetricThresholds{}
+					// copy_to_state: state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds properties=3
+					tflog.Debug(ctx, "copy_to_state state=state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds prefix=rsModel ans=varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds")
+					// property: name=cpu_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.CpuUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.CpuUtilization)
+					// property: name=disk_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.DiskUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.DiskUtilization)
+					// property: name=memory_utilization, type=INTEGER macro=copy_to_state
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.SystemHealthMetricsThresholds.MemoryUtilization = types.Int64PointerValue(varLoopLinkHealthRules.Thresholdprofile.SystemHealthMetricsThresholds.MemoryUtilization)
+				}
+				// property: name=tags, type=SET_PRIMITIVE macro=copy_to_state
+				varTags, errTags := types.SetValueFrom(ctx, types.StringType, varLoopLinkHealthRules.Thresholdprofile.Tags)
+				state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags = varTags
+				resp.Diagnostics.Append(errTags.Errors()...)
+				// api does not accept empty list as missing value
+				if len(varLoopLinkHealthRules.Thresholdprofile.Tags) == 0 {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags = types.SetNull(types.StringType)
+				}
+				// the configuration states an empty list: keep it
+				if len(plan.LinkHealthRules) > varLoopLinkHealthRulesIndex && plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile != nil && len(varLoopLinkHealthRules.Thresholdprofile.Tags) == 0 && !plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags.IsNull() && !plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags.IsUnknown() && len(plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags.Elements()) == 0 {
+					state.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags = plan.LinkHealthRules[varLoopLinkHealthRulesIndex].Thresholdprofile.Tags
+				}
+			}
 			// property: name=thresholdprofile_id, type=STRING macro=copy_to_state
 			state.LinkHealthRules[varLoopLinkHealthRulesIndex].ThresholdprofileId = types.StringPointerValue(varLoopLinkHealthRules.ThresholdprofileId)
 			// property: name=type, type=STRING macro=copy_to_state
@@ -2449,16 +4222,41 @@ func (r *performancePolicySetResource) doPut(ctx context.Context, plan *rsModelP
 			varTags, errTags := types.SetValueFrom(ctx, types.StringType, varLoopPolicyRules.Tags)
 			state.PolicyRules[varLoopPolicyRulesIndex].Tags = varTags
 			resp.Diagnostics.Append(errTags.Errors()...)
+			// api does not accept empty list as missing value
+			if len(varLoopPolicyRules.Tags) == 0 {
+				state.PolicyRules[varLoopPolicyRulesIndex].Tags = types.SetNull(types.StringType)
+			}
+			// the configuration states an empty list: keep it
+			if len(plan.PolicyRules) > varLoopPolicyRulesIndex && len(varLoopPolicyRules.Tags) == 0 && !plan.PolicyRules[varLoopPolicyRulesIndex].Tags.IsNull() && !plan.PolicyRules[varLoopPolicyRulesIndex].Tags.IsUnknown() && len(plan.PolicyRules[varLoopPolicyRulesIndex].Tags.Elements()) == 0 {
+				state.PolicyRules[varLoopPolicyRulesIndex].Tags = plan.PolicyRules[varLoopPolicyRulesIndex].Tags
+			}
 		}
 	}
 	// property: name=region, type=STRING macro=copy_to_state
 	state.Region = types.StringPointerValue(ans.Region)
 	// property: name=send_to_element, type=BOOLEAN macro=copy_to_state
+	priorSendToElement := state.SendToElement
 	state.SendToElement = types.BoolPointerValue(ans.SendToElement)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.SendToElement == nil {
+		if !plan.SendToElement.IsUnknown() {
+			state.SendToElement = plan.SendToElement
+		} else {
+			state.SendToElement = priorSendToElement
+		}
+	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_to_state
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 

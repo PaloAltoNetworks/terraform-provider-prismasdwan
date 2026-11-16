@@ -35,9 +35,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &siteWanInterfaceResource{}
-	_ resource.ResourceWithConfigure   = &siteWanInterfaceResource{}
-	_ resource.ResourceWithImportState = &siteWanInterfaceResource{}
+	_ resource.Resource                   = &siteWanInterfaceResource{}
+	_ resource.ResourceWithConfigure      = &siteWanInterfaceResource{}
+	_ resource.ResourceWithImportState    = &siteWanInterfaceResource{}
+	_ resource.ResourceWithValidateConfig = &siteWanInterfaceResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -58,6 +59,12 @@ type siteWanInterfaceResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *siteWanInterfaceResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *siteWanInterfaceResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_site_wan_interface"
@@ -66,13 +73,14 @@ func (r *siteWanInterfaceResource) Metadata(_ context.Context, req resource.Meta
 // Schema defines the schema for this data source.
 func (r *siteWanInterfaceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Site Wan Interface.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=WANInterfaceScreenV2N10
 			// generic x_parameters is added to accomodate path parameters
@@ -81,85 +89,96 @@ func (r *siteWanInterfaceResource) Schema(_ context.Context, _ resource.SchemaRe
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=app_acceleration_enabled, type=BOOLEAN macro=rss_schema
 			"app_acceleration_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "App acceleration enabled.",
 			},
 			// key name holder for attribute: name=app_acceleration_enabled, type=BOOLEAN macro=rss_schema
 			// property: name=bfd_mode, type=STRING macro=rss_schema
 			"bfd_mode": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Bfd mode. Value: one of aggressive, non_aggressive. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=bfd_mode, type=STRING macro=rss_schema
 			// property: name=bw_config_mode, type=STRING macro=rss_schema
 			"bw_config_mode": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Bw config mode. Value: one of auto, manual, manual_bwm_disabled.",
 			},
 			// key name holder for attribute: name=bw_config_mode, type=STRING macro=rss_schema
 			// property: name=bwc_enabled, type=BOOLEAN macro=rss_schema
 			"bwc_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Bwc enabled.",
 			},
 			// key name holder for attribute: name=bwc_enabled, type=BOOLEAN macro=rss_schema
 			// property: name=cost, type=INTEGER macro=rss_schema
 			"cost": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Cost. Value: between 0 and 1024. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=cost, type=INTEGER macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=l3_reachability, type=REFERENCE macro=rss_schema
 			"l3_reachability": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "L3 reachability.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=probe_config_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 					"probe_config_ids": rsschema.ListAttribute{
@@ -167,50 +186,56 @@ func (r *siteWanInterfaceResource) Schema(_ context.Context, _ resource.SchemaRe
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "Probe config ids.",
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=probe_config_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 					// property: name=use_element_default, type=BOOLEAN macro=rss_schema
 					"use_element_default": rsschema.BoolAttribute{
-						Required:  true,
-						Computed:  false,
-						Optional:  false,
-						Sensitive: false,
+						Required:    true,
+						Computed:    false,
+						Optional:    false,
+						Sensitive:   false,
+						Description: "Use element default.",
 					},
 					// key name holder for attribute: name=use_element_default, type=BOOLEAN macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=use_element_default, type=BOOLEAN macro=rss_schema
+			// key name holder for attribute: name=l3_reachability, type=REFERENCE macro=rss_schema
 			// property: name=label_id, type=STRING macro=rss_schema
 			"label_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Label id. Value: at least 1 characters.",
 			},
 			// key name holder for attribute: name=label_id, type=STRING macro=rss_schema
 			// property: name=link_bw_down, type=NUMBER macro=rss_schema
 			"link_bw_down": rsschema.Float64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Link bw down.",
 			},
 			// key name holder for attribute: name=link_bw_down, type=NUMBER macro=rss_schema
 			// property: name=link_bw_up, type=NUMBER macro=rss_schema
 			"link_bw_up": rsschema.Float64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Link bw up.",
 			},
 			// key name holder for attribute: name=link_bw_up, type=NUMBER macro=rss_schema
 			// property: name=lqm_config, type=REFERENCE macro=rss_schema
 			"lqm_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Lqm config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=hub_site_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 					"hub_site_ids": rsschema.ListAttribute{
@@ -218,58 +243,83 @@ func (r *siteWanInterfaceResource) Schema(_ context.Context, _ resource.SchemaRe
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "Hub site ids.",
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=hub_site_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 					// property: name=inter_packet_gap, type=INTEGER macro=rss_schema
 					"inter_packet_gap": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Inter packet gap.",
 					},
 					// key name holder for attribute: name=inter_packet_gap, type=INTEGER macro=rss_schema
 					// property: name=statistic, type=STRING macro=rss_schema
 					"statistic": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Statistic.",
 					},
 					// key name holder for attribute: name=statistic, type=STRING macro=rss_schema
+					// property: name=use_hub_sites, type=BOOLEAN macro=rss_schema
+					"use_hub_sites": rsschema.BoolAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Use hub sites.",
+					},
+					// key name holder for attribute: name=use_hub_sites, type=BOOLEAN macro=rss_schema
+					// property: name=use_prisma_access_service_endpoints, type=BOOLEAN macro=rss_schema
+					"use_prisma_access_service_endpoints": rsschema.BoolAttribute{
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Use prisma access service endpoints.",
+					},
+					// key name holder for attribute: name=use_prisma_access_service_endpoints, type=BOOLEAN macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=statistic, type=STRING macro=rss_schema
+			// key name holder for attribute: name=lqm_config, type=REFERENCE macro=rss_schema
 			// property: name=lqm_enabled, type=BOOLEAN macro=rss_schema
 			"lqm_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Lqm enabled.",
 			},
 			// key name holder for attribute: name=lqm_enabled, type=BOOLEAN macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=network_id, type=STRING macro=rss_schema
 			"network_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Network id. Value: at least 1 characters.",
 			},
 			// key name holder for attribute: name=network_id, type=STRING macro=rss_schema
 			// property: name=probe_profile_id, type=STRING macro=rss_schema
 			"probe_profile_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Probe profile id.",
 			},
 			// key name holder for attribute: name=probe_profile_id, type=STRING macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -278,67 +328,76 @@ func (r *siteWanInterfaceResource) Schema(_ context.Context, _ resource.SchemaRe
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=type, type=STRING macro=rss_schema
 			"type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Type. Value: one of publicwan, privatewan.",
 			},
 			// key name holder for attribute: name=type, type=STRING macro=rss_schema
 			// property: name=use_for_application_reachability_probes, type=BOOLEAN macro=rss_schema
 			"use_for_application_reachability_probes": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Use for application reachability probes.",
 			},
 			// key name holder for attribute: name=use_for_application_reachability_probes, type=BOOLEAN macro=rss_schema
 			// property: name=use_for_controller_connections, type=BOOLEAN macro=rss_schema
 			"use_for_controller_connections": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Use for controller connections.",
 			},
 			// key name holder for attribute: name=use_for_controller_connections, type=BOOLEAN macro=rss_schema
 			// property: name=use_lqm_for_non_hub_paths, type=BOOLEAN macro=rss_schema
 			"use_lqm_for_non_hub_paths": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Use lqm for non hub paths.",
 			},
 			// key name holder for attribute: name=use_lqm_for_non_hub_paths, type=BOOLEAN macro=rss_schema
 			// property: name=vpnlink_configuration, type=REFERENCE macro=rss_schema
 			"vpnlink_configuration": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Vpnlink configuration.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=keep_alive_failure_count, type=INTEGER macro=rss_schema
 					"keep_alive_failure_count": rsschema.Int64Attribute{
-						Required:  true,
-						Computed:  false,
-						Optional:  false,
-						Sensitive: false,
+						Required:    true,
+						Computed:    false,
+						Optional:    false,
+						Sensitive:   false,
+						Description: "Keep alive failure count. Value: between 3 and 30.",
 					},
 					// key name holder for attribute: name=keep_alive_failure_count, type=INTEGER macro=rss_schema
 					// property: name=keep_alive_interval, type=INTEGER macro=rss_schema
 					"keep_alive_interval": rsschema.Int64Attribute{
-						Required:  true,
-						Computed:  false,
-						Optional:  false,
-						Sensitive: false,
+						Required:    true,
+						Computed:    false,
+						Optional:    false,
+						Sensitive:   false,
+						Description: "Keep alive interval. Value: between 100 and 1740000.",
 					},
 					// key name holder for attribute: name=keep_alive_interval, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=keep_alive_interval, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=vpnlink_configuration, type=REFERENCE macro=rss_schema
 		},
 	}
 }
@@ -429,7 +488,7 @@ func (r *siteWanInterfaceResource) doPost(ctx context.Context, plan *rsModelWANI
 	// property: name=lqm_config, type=REFERENCE macro=copy_from_plan
 	if plan.LqmConfig != nil {
 		body.LqmConfig = &sdwan_schema.LQMConfig{}
-		// copy_from_plan: body=body.LqmConfig prefix=rsModel plan=plan.LqmConfig properties=3
+		// copy_from_plan: body=body.LqmConfig prefix=rsModel plan=plan.LqmConfig properties=5
 		tflog.Debug(ctx, "copy_from_plan body=body.LqmConfig prefix=rsModel plan=plan.LqmConfig")
 		// property: name=hub_site_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan
 		body.LqmConfig.HubSiteIds = ListStringValueOrNil(ctx, plan.LqmConfig.HubSiteIds)
@@ -437,6 +496,10 @@ func (r *siteWanInterfaceResource) doPost(ctx context.Context, plan *rsModelWANI
 		body.LqmConfig.InterPacketGap = Int64ValueOrNil(plan.LqmConfig.InterPacketGap)
 		// property: name=statistic, type=STRING macro=copy_from_plan
 		body.LqmConfig.Statistic = StringValueOrNil(plan.LqmConfig.Statistic)
+		// property: name=use_hub_sites, type=BOOLEAN macro=copy_from_plan
+		body.LqmConfig.UseHubSites = BoolValueOrNil(plan.LqmConfig.UseHubSites)
+		// property: name=use_prisma_access_service_endpoints, type=BOOLEAN macro=copy_from_plan
+		body.LqmConfig.UsePrismaAccessServiceEndpoints = BoolValueOrNil(plan.LqmConfig.UsePrismaAccessServiceEndpoints)
 	}
 	// property: name=lqm_enabled, type=BOOLEAN macro=copy_from_plan
 	body.LqmEnabled = BoolValueOrNil(plan.LqmEnabled)
@@ -582,14 +645,24 @@ func (r *siteWanInterfaceResource) doPost(ctx context.Context, plan *rsModelWANI
 	state.LabelId = types.StringPointerValue(ans.LabelId)
 	// property: name=link_bw_down, type=NUMBER macro=copy_to_state
 	state.LinkBwDown = types.Float64PointerValue(ans.LinkBwDown)
+	// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+	// value when the answer is the same number to six decimals
+	if true {
+		state.LinkBwDown = Float64KeepPlanWhenNear(ans.LinkBwDown, plan.LinkBwDown)
+	}
 	// property: name=link_bw_up, type=NUMBER macro=copy_to_state
 	state.LinkBwUp = types.Float64PointerValue(ans.LinkBwUp)
+	// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+	// value when the answer is the same number to six decimals
+	if true {
+		state.LinkBwUp = Float64KeepPlanWhenNear(ans.LinkBwUp, plan.LinkBwUp)
+	}
 	// property: name=lqm_config, type=REFERENCE macro=copy_to_state
 	if ans.LqmConfig == nil {
 		state.LqmConfig = nil
 	} else {
 		state.LqmConfig = &rsModelLQMConfig{}
-		// copy_to_state: state=state.LqmConfig prefix=rsModel ans=ans.LqmConfig properties=3
+		// copy_to_state: state=state.LqmConfig prefix=rsModel ans=ans.LqmConfig properties=5
 		tflog.Debug(ctx, "copy_to_state state=state.LqmConfig prefix=rsModel ans=ans.LqmConfig")
 		// property: name=hub_site_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 		varHubSiteIds, errHubSiteIds := types.ListValueFrom(ctx, types.StringType, ans.LqmConfig.HubSiteIds)
@@ -599,6 +672,10 @@ func (r *siteWanInterfaceResource) doPost(ctx context.Context, plan *rsModelWANI
 		state.LqmConfig.InterPacketGap = types.Int64PointerValue(ans.LqmConfig.InterPacketGap)
 		// property: name=statistic, type=STRING macro=copy_to_state
 		state.LqmConfig.Statistic = types.StringPointerValue(ans.LqmConfig.Statistic)
+		// property: name=use_hub_sites, type=BOOLEAN macro=copy_to_state
+		state.LqmConfig.UseHubSites = types.BoolPointerValue(ans.LqmConfig.UseHubSites)
+		// property: name=use_prisma_access_service_endpoints, type=BOOLEAN macro=copy_to_state
+		state.LqmConfig.UsePrismaAccessServiceEndpoints = types.BoolPointerValue(ans.LqmConfig.UsePrismaAccessServiceEndpoints)
 	}
 	// property: name=lqm_enabled, type=BOOLEAN macro=copy_to_state
 	state.LqmEnabled = types.BoolPointerValue(ans.LqmEnabled)
@@ -612,6 +689,14 @@ func (r *siteWanInterfaceResource) doPost(ctx context.Context, plan *rsModelWANI
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=type, type=STRING macro=copy_to_state
 	state.Type = types.StringPointerValue(ans.Type)
 	// property: name=use_for_application_reachability_probes, type=BOOLEAN macro=copy_to_state
@@ -703,7 +788,23 @@ func (r *siteWanInterfaceResource) doGet(ctx context.Context, state *rsModelWANI
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -755,14 +856,24 @@ func (r *siteWanInterfaceResource) doGet(ctx context.Context, state *rsModelWANI
 	state.LabelId = types.StringPointerValue(ans.LabelId)
 	// property: name=link_bw_down, type=NUMBER macro=copy_to_state
 	state.LinkBwDown = types.Float64PointerValue(ans.LinkBwDown)
+	// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+	// value when the answer is the same number to six decimals
+	if true {
+		state.LinkBwDown = Float64KeepPlanWhenNear(ans.LinkBwDown, savestate.LinkBwDown)
+	}
 	// property: name=link_bw_up, type=NUMBER macro=copy_to_state
 	state.LinkBwUp = types.Float64PointerValue(ans.LinkBwUp)
+	// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+	// value when the answer is the same number to six decimals
+	if true {
+		state.LinkBwUp = Float64KeepPlanWhenNear(ans.LinkBwUp, savestate.LinkBwUp)
+	}
 	// property: name=lqm_config, type=REFERENCE macro=copy_to_state
 	if ans.LqmConfig == nil {
 		state.LqmConfig = nil
 	} else {
 		state.LqmConfig = &rsModelLQMConfig{}
-		// copy_to_state: state=state.LqmConfig prefix=rsModel ans=ans.LqmConfig properties=3
+		// copy_to_state: state=state.LqmConfig prefix=rsModel ans=ans.LqmConfig properties=5
 		tflog.Debug(ctx, "copy_to_state state=state.LqmConfig prefix=rsModel ans=ans.LqmConfig")
 		// property: name=hub_site_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 		varHubSiteIds, errHubSiteIds := types.ListValueFrom(ctx, types.StringType, ans.LqmConfig.HubSiteIds)
@@ -772,6 +883,10 @@ func (r *siteWanInterfaceResource) doGet(ctx context.Context, state *rsModelWANI
 		state.LqmConfig.InterPacketGap = types.Int64PointerValue(ans.LqmConfig.InterPacketGap)
 		// property: name=statistic, type=STRING macro=copy_to_state
 		state.LqmConfig.Statistic = types.StringPointerValue(ans.LqmConfig.Statistic)
+		// property: name=use_hub_sites, type=BOOLEAN macro=copy_to_state
+		state.LqmConfig.UseHubSites = types.BoolPointerValue(ans.LqmConfig.UseHubSites)
+		// property: name=use_prisma_access_service_endpoints, type=BOOLEAN macro=copy_to_state
+		state.LqmConfig.UsePrismaAccessServiceEndpoints = types.BoolPointerValue(ans.LqmConfig.UsePrismaAccessServiceEndpoints)
 	}
 	// property: name=lqm_enabled, type=BOOLEAN macro=copy_to_state
 	state.LqmEnabled = types.BoolPointerValue(ans.LqmEnabled)
@@ -785,6 +900,14 @@ func (r *siteWanInterfaceResource) doGet(ctx context.Context, state *rsModelWANI
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=type, type=STRING macro=copy_to_state
 	state.Type = types.StringPointerValue(ans.Type)
 	// property: name=use_for_application_reachability_probes, type=BOOLEAN macro=copy_to_state
@@ -923,9 +1046,14 @@ func (r *siteWanInterfaceResource) doPut(ctx context.Context, plan *rsModelWANIn
 		// copy_from_plan_or_state: body=body.L3Reachability prefix=rsModel state=state.L3Reachability plan=plan.L3Reachability properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.L3Reachability prefix=rsModel state=state.L3Reachability plan=plan.L3Reachability")
 		// property: name=probe_config_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.L3Reachability.ProbeConfigIds = ListStringValueOrNil(ctx, plan.L3Reachability.ProbeConfigIds)
+		if state != nil && state.L3Reachability != nil && plan.L3Reachability.ProbeConfigIds.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.L3Reachability.ProbeConfigIds = ListStringValueOrNil(ctx, state.L3Reachability.ProbeConfigIds)
+		} else {
+			body.L3Reachability.ProbeConfigIds = ListStringValueOrNil(ctx, plan.L3Reachability.ProbeConfigIds)
+		}
 		// property: name=use_element_default, type=BOOLEAN macro=copy_from_plan_or_state
-		if state.L3Reachability != nil {
+		if state != nil && state.L3Reachability != nil {
 			body.L3Reachability.UseElementDefault = ValueBoolPointerFromPlanOrState(plan.L3Reachability.UseElementDefault, state.L3Reachability.UseElementDefault)
 		} else {
 			body.L3Reachability.UseElementDefault = BoolValueOrNil(plan.L3Reachability.UseElementDefault)
@@ -954,21 +1082,38 @@ func (r *siteWanInterfaceResource) doPut(ctx context.Context, plan *rsModelWANIn
 		body.LqmConfig = nil
 	} else {
 		body.LqmConfig = &sdwan_schema.LQMConfig{}
-		// copy_from_plan_or_state: body=body.LqmConfig prefix=rsModel state=state.LqmConfig plan=plan.LqmConfig properties=3
+		// copy_from_plan_or_state: body=body.LqmConfig prefix=rsModel state=state.LqmConfig plan=plan.LqmConfig properties=5
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.LqmConfig prefix=rsModel state=state.LqmConfig plan=plan.LqmConfig")
 		// property: name=hub_site_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.LqmConfig.HubSiteIds = ListStringValueOrNil(ctx, plan.LqmConfig.HubSiteIds)
+		if state != nil && state.LqmConfig != nil && plan.LqmConfig.HubSiteIds.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.LqmConfig.HubSiteIds = ListStringValueOrNil(ctx, state.LqmConfig.HubSiteIds)
+		} else {
+			body.LqmConfig.HubSiteIds = ListStringValueOrNil(ctx, plan.LqmConfig.HubSiteIds)
+		}
 		// property: name=inter_packet_gap, type=INTEGER macro=copy_from_plan_or_state
-		if state.LqmConfig != nil {
+		if state != nil && state.LqmConfig != nil {
 			body.LqmConfig.InterPacketGap = ValueInt64PointerFromPlanOrState(plan.LqmConfig.InterPacketGap, state.LqmConfig.InterPacketGap)
 		} else {
 			body.LqmConfig.InterPacketGap = Int64ValueOrNil(plan.LqmConfig.InterPacketGap)
 		}
 		// property: name=statistic, type=STRING macro=copy_from_plan_or_state
-		if state.LqmConfig != nil {
+		if state != nil && state.LqmConfig != nil {
 			body.LqmConfig.Statistic = ValueStringPointerFromPlanOrState(plan.LqmConfig.Statistic, state.LqmConfig.Statistic)
 		} else {
 			body.LqmConfig.Statistic = StringValueOrNil(plan.LqmConfig.Statistic)
+		}
+		// property: name=use_hub_sites, type=BOOLEAN macro=copy_from_plan_or_state
+		if state != nil && state.LqmConfig != nil {
+			body.LqmConfig.UseHubSites = ValueBoolPointerFromPlanOrState(plan.LqmConfig.UseHubSites, state.LqmConfig.UseHubSites)
+		} else {
+			body.LqmConfig.UseHubSites = BoolValueOrNil(plan.LqmConfig.UseHubSites)
+		}
+		// property: name=use_prisma_access_service_endpoints, type=BOOLEAN macro=copy_from_plan_or_state
+		if state != nil && state.LqmConfig != nil {
+			body.LqmConfig.UsePrismaAccessServiceEndpoints = ValueBoolPointerFromPlanOrState(plan.LqmConfig.UsePrismaAccessServiceEndpoints, state.LqmConfig.UsePrismaAccessServiceEndpoints)
+		} else {
+			body.LqmConfig.UsePrismaAccessServiceEndpoints = BoolValueOrNil(plan.LqmConfig.UsePrismaAccessServiceEndpoints)
 		}
 	}
 	// property: name=lqm_enabled, type=BOOLEAN macro=copy_from_plan_or_state
@@ -996,7 +1141,12 @@ func (r *siteWanInterfaceResource) doPut(ctx context.Context, plan *rsModelWANIn
 		body.ProbeProfileId = StringValueOrNil(plan.ProbeProfileId)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=type, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.Type = ValueStringPointerFromPlanOrState(plan.Type, state.Type)
@@ -1029,13 +1179,13 @@ func (r *siteWanInterfaceResource) doPut(ctx context.Context, plan *rsModelWANIn
 		// copy_from_plan_or_state: body=body.VpnlinkConfiguration prefix=rsModel state=state.VpnlinkConfiguration plan=plan.VpnlinkConfiguration properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.VpnlinkConfiguration prefix=rsModel state=state.VpnlinkConfiguration plan=plan.VpnlinkConfiguration")
 		// property: name=keep_alive_failure_count, type=INTEGER macro=copy_from_plan_or_state
-		if state.VpnlinkConfiguration != nil {
+		if state != nil && state.VpnlinkConfiguration != nil {
 			body.VpnlinkConfiguration.KeepAliveFailureCount = ValueInt64PointerFromPlanOrState(plan.VpnlinkConfiguration.KeepAliveFailureCount, state.VpnlinkConfiguration.KeepAliveFailureCount)
 		} else {
 			body.VpnlinkConfiguration.KeepAliveFailureCount = Int64ValueOrNil(plan.VpnlinkConfiguration.KeepAliveFailureCount)
 		}
 		// property: name=keep_alive_interval, type=INTEGER macro=copy_from_plan_or_state
-		if state.VpnlinkConfiguration != nil {
+		if state != nil && state.VpnlinkConfiguration != nil {
 			body.VpnlinkConfiguration.KeepAliveInterval = ValueInt64PointerFromPlanOrState(plan.VpnlinkConfiguration.KeepAliveInterval, state.VpnlinkConfiguration.KeepAliveInterval)
 		} else {
 			body.VpnlinkConfiguration.KeepAliveInterval = Int64ValueOrNil(plan.VpnlinkConfiguration.KeepAliveInterval)
@@ -1090,6 +1240,12 @@ func (r *siteWanInterfaceResource) doPut(ctx context.Context, plan *rsModelWANIn
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=WANInterfaceScreenV2N10
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=24
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -1129,14 +1285,24 @@ func (r *siteWanInterfaceResource) doPut(ctx context.Context, plan *rsModelWANIn
 	state.LabelId = types.StringPointerValue(ans.LabelId)
 	// property: name=link_bw_down, type=NUMBER macro=copy_to_state
 	state.LinkBwDown = types.Float64PointerValue(ans.LinkBwDown)
+	// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+	// value when the answer is the same number to six decimals
+	if true {
+		state.LinkBwDown = Float64KeepPlanWhenNear(ans.LinkBwDown, plan.LinkBwDown)
+	}
 	// property: name=link_bw_up, type=NUMBER macro=copy_to_state
 	state.LinkBwUp = types.Float64PointerValue(ans.LinkBwUp)
+	// the api rounds floating point values (a longitude of -98.497408 comes back as -98.497406): keep the configured
+	// value when the answer is the same number to six decimals
+	if true {
+		state.LinkBwUp = Float64KeepPlanWhenNear(ans.LinkBwUp, plan.LinkBwUp)
+	}
 	// property: name=lqm_config, type=REFERENCE macro=copy_to_state
 	if ans.LqmConfig == nil {
 		state.LqmConfig = nil
 	} else {
 		state.LqmConfig = &rsModelLQMConfig{}
-		// copy_to_state: state=state.LqmConfig prefix=rsModel ans=ans.LqmConfig properties=3
+		// copy_to_state: state=state.LqmConfig prefix=rsModel ans=ans.LqmConfig properties=5
 		tflog.Debug(ctx, "copy_to_state state=state.LqmConfig prefix=rsModel ans=ans.LqmConfig")
 		// property: name=hub_site_ids, type=ARRAY_PRIMITIVE macro=copy_to_state
 		varHubSiteIds, errHubSiteIds := types.ListValueFrom(ctx, types.StringType, ans.LqmConfig.HubSiteIds)
@@ -1146,6 +1312,10 @@ func (r *siteWanInterfaceResource) doPut(ctx context.Context, plan *rsModelWANIn
 		state.LqmConfig.InterPacketGap = types.Int64PointerValue(ans.LqmConfig.InterPacketGap)
 		// property: name=statistic, type=STRING macro=copy_to_state
 		state.LqmConfig.Statistic = types.StringPointerValue(ans.LqmConfig.Statistic)
+		// property: name=use_hub_sites, type=BOOLEAN macro=copy_to_state
+		state.LqmConfig.UseHubSites = types.BoolPointerValue(ans.LqmConfig.UseHubSites)
+		// property: name=use_prisma_access_service_endpoints, type=BOOLEAN macro=copy_to_state
+		state.LqmConfig.UsePrismaAccessServiceEndpoints = types.BoolPointerValue(ans.LqmConfig.UsePrismaAccessServiceEndpoints)
 	}
 	// property: name=lqm_enabled, type=BOOLEAN macro=copy_to_state
 	state.LqmEnabled = types.BoolPointerValue(ans.LqmEnabled)
@@ -1159,6 +1329,14 @@ func (r *siteWanInterfaceResource) doPut(ctx context.Context, plan *rsModelWANIn
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=type, type=STRING macro=copy_to_state
 	state.Type = types.StringPointerValue(ans.Type)
 	// property: name=use_for_application_reachability_probes, type=BOOLEAN macro=copy_to_state

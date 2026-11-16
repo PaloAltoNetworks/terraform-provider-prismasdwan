@@ -51,7 +51,7 @@ type Client struct {
 	AuthUrl      string            `json:"auth_url"`
 	Host         string            `json:"host"`
 	Port         int               `json:"port"`
-	Timeout      int64             `json:"timeout`
+	Timeout      int64             `json:"timeout"`
 	ClientId     string            `json:"client_id"`
 	ClientSecret string            `json:"client_secret"`
 	Scope        string            `json:"scope"`
@@ -311,7 +311,8 @@ func (c *Client) RefreshJwt(ctx context.Context) error {
 		uv.Set("scope", c.Scope)
 		uv.Set("grant_type", "client_credentials")
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.AuthUrl, strings.NewReader(uv.Encode()))
+		var req *http.Request
+		req, err = http.NewRequestWithContext(ctx, http.MethodPost, c.AuthUrl, strings.NewReader(uv.Encode()))
 
 		if err != nil {
 			return err
@@ -327,10 +328,10 @@ func (c *Client) RefreshJwt(ctx context.Context) error {
 		resp, err = authClient.Do(req)
 	}
 
-	if resp == nil {
-		return fmt.Errorf("no response")
-	} else if err != nil {
+	if err != nil {
 		return err
+	} else if resp == nil {
+		return fmt.Errorf("no response")
 	}
 
 	defer resp.Body.Close()
@@ -420,7 +421,8 @@ func (c *Client) Do(ctx context.Context, method string, path string, queryParams
 		resp = c.testData[c.testIndex%len(c.testData)]
 		c.testIndex++
 	} else {
-		req, err := http.NewRequestWithContext(ctx, method, uri, strings.NewReader(*input))
+		var req *http.Request
+		req, err = http.NewRequestWithContext(ctx, method, uri, strings.NewReader(*input))
 		if err != nil {
 			return nil, 0, err
 		}
@@ -509,9 +511,15 @@ func (c *Client) Do(ctx context.Context, method string, path string, queryParams
 		// https://pan.dev/prisma-cloud/api/cspm/api-errors/#reattempting-requests-that-fail-due-to-a-server-error
 		// TODO(shinmog): When/if this is implemented, verify backoff logic with eng.
 
+		// A POST the server may have processed before it answered 500, 502 or 504 must not be sent again: it can
+		// create a duplicate or answer "already exists". Only 429 and 503 (the request was not processed) are replayed.
+		if method == http.MethodPost && resp.StatusCode != http.StatusTooManyRequests && resp.StatusCode != http.StatusServiceUnavailable {
+			return body, resp.StatusCode, stat
+		}
+
 		// Only sleep if we're not running tests.
 		if len(c.testData) == 0 {
-			time.Sleep(time.Duration(len(retry)+1*2) * time.Second)
+			time.Sleep(retryBackoff(len(retry)))
 		}
 		return c.Do(ctx, method, path, queryParams, input, output, append(retry, stat)...)
 	default:
@@ -531,3 +539,8 @@ func (c *Client) Do(ctx context.Context, method string, path string, queryParams
 
 // GetHost returns the Host property.
 func (c *Client) GetHost() string { return c.Host }
+
+// retryBackoff is the wait before the next attempt, exponential: 1s, 2s, 4s, 8s, 16s.
+func retryBackoff(attempt int) time.Duration {
+	return time.Duration(1<<attempt) * time.Second
+}

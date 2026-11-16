@@ -35,9 +35,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &elementSnmpTrapResource{}
-	_ resource.ResourceWithConfigure   = &elementSnmpTrapResource{}
-	_ resource.ResourceWithImportState = &elementSnmpTrapResource{}
+	_ resource.Resource                   = &elementSnmpTrapResource{}
+	_ resource.ResourceWithConfigure      = &elementSnmpTrapResource{}
+	_ resource.ResourceWithImportState    = &elementSnmpTrapResource{}
+	_ resource.ResourceWithValidateConfig = &elementSnmpTrapResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -58,6 +59,12 @@ type elementSnmpTrapResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *elementSnmpTrapResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id", "element_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *elementSnmpTrapResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_element_snmp_trap"
@@ -66,13 +73,14 @@ func (r *elementSnmpTrapResource) Metadata(_ context.Context, req resource.Metad
 // Schema defines the schema for this data source.
 func (r *elementSnmpTrapResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Element Snmp Trap.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=SNMPTrap
 			// generic x_parameters is added to accomodate path parameters
@@ -81,61 +89,69 @@ func (r *elementSnmpTrapResource) Schema(_ context.Context, _ resource.SchemaReq
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=enabled, type=BOOLEAN macro=rss_schema
 			"enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Enabled.",
 			},
 			// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=server_ip, type=STRING macro=rss_schema
 			"server_ip": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Server ip.",
 			},
 			// key name holder for attribute: name=server_ip, type=STRING macro=rss_schema
 			// property: name=source_interface, type=STRING macro=rss_schema
 			"source_interface": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Source interface.",
 			},
 			// key name holder for attribute: name=source_interface, type=STRING macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -144,121 +160,144 @@ func (r *elementSnmpTrapResource) Schema(_ context.Context, _ resource.SchemaReq
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=v2_config, type=REFERENCE macro=rss_schema
 			"v2_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "V2 config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=community, type=STRING macro=rss_schema
 					"community": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Community.",
 					},
 					// key name holder for attribute: name=community, type=STRING macro=rss_schema
+					"community_internal_key_name": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute community, managed automatically by the provider.",
+					},
 				},
 			},
-			// key name holder for attribute: name=community, type=STRING macro=rss_schema
+			// key name holder for attribute: name=v2_config, type=REFERENCE macro=rss_schema
 			// property: name=v3_config, type=REFERENCE macro=rss_schema
 			"v3_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "V3 config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=user_access, type=REFERENCE macro=rss_schema
 					"user_access": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "User access.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=auth_phrase, type=STRING macro=rss_schema
 							"auth_phrase": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: true,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   true,
+								Description: "Auth phrase.",
 							},
 							// key name holder for attribute: name=auth_phrase, type=STRING macro=rss_schema
 							"auth_phrase_internal_key_name": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  true,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    true,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Internal key name for the sensitive attribute auth_phrase, managed automatically by the provider.",
 							},
 							// property: name=auth_type, type=STRING macro=rss_schema
 							"auth_type": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Auth type. Value: one of none, md5, sha.",
 							},
 							// key name holder for attribute: name=auth_type, type=STRING macro=rss_schema
 							// property: name=enc_phrase, type=STRING macro=rss_schema
 							"enc_phrase": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: true,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   true,
+								Description: "Enc phrase.",
 							},
 							// key name holder for attribute: name=enc_phrase, type=STRING macro=rss_schema
 							"enc_phrase_internal_key_name": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  true,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    true,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Internal key name for the sensitive attribute enc_phrase, managed automatically by the provider.",
 							},
 							// property: name=enc_type, type=STRING macro=rss_schema
 							"enc_type": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Enc type. Value: one of none, aes, des.",
 							},
 							// key name holder for attribute: name=enc_type, type=STRING macro=rss_schema
 							// property: name=engine_id, type=STRING macro=rss_schema
 							"engine_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Engine id.",
 							},
 							// key name holder for attribute: name=engine_id, type=STRING macro=rss_schema
 							// property: name=security_level, type=STRING macro=rss_schema
 							"security_level": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Security level. Value: one of noauth, auth, private.",
 							},
 							// key name holder for attribute: name=security_level, type=STRING macro=rss_schema
 							// property: name=user_name, type=STRING macro=rss_schema
 							"user_name": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "User name.",
 							},
 							// key name holder for attribute: name=user_name, type=STRING macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=user_name, type=STRING macro=rss_schema
+					// key name holder for attribute: name=user_access, type=REFERENCE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=user_name, type=STRING macro=rss_schema
+			// key name holder for attribute: name=v3_config, type=REFERENCE macro=rss_schema
 			// property: name=version, type=STRING macro=rss_schema
 			"version": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Version. Value: one of v2, v3.",
 			},
 			// key name holder for attribute: name=version, type=STRING macro=rss_schema
 		},
@@ -464,6 +503,14 @@ func (r *elementSnmpTrapResource) doPost(ctx context.Context, plan *rsModelSNMPT
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=v2_config, type=REFERENCE macro=copy_to_state
 	if ans.V2Config == nil {
 		state.V2Config = nil
@@ -472,7 +519,20 @@ func (r *elementSnmpTrapResource) doPost(ctx context.Context, plan *rsModelSNMPT
 		// copy_to_state: state=state.V2Config prefix=rsModel ans=ans.V2Config properties=1
 		tflog.Debug(ctx, "copy_to_state state=state.V2Config prefix=rsModel ans=ans.V2Config")
 		// property: name=community, type=STRING macro=copy_to_state
-		state.V2Config.Community = types.StringPointerValue(ans.V2Config.Community)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.V2Config.CommunityInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.V2Config.Community = types.StringNull()
+		if plan.V2Config != nil {
+			state.V2Config.Community = types.StringPointerValue(plan.V2Config.Community.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.V2Config.Community.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedCommunity, _ := Encrypt([]byte(state.V2Config.Community.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedCommunityJson, _ := json.Marshal(encryptedCommunity)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V2Config.CommunityInternalKeyName.String(), encryptedCommunityJson)...)
+		}
 	}
 	// property: name=v3_config, type=REFERENCE macro=copy_to_state
 	if ans.V3Config == nil {
@@ -489,24 +549,36 @@ func (r *elementSnmpTrapResource) doPost(ctx context.Context, plan *rsModelSNMPT
 			// copy_to_state: state=state.V3Config.UserAccess prefix=rsModel ans=ans.V3Config.UserAccess properties=7
 			tflog.Debug(ctx, "copy_to_state state=state.V3Config.UserAccess prefix=rsModel ans=ans.V3Config.UserAccess")
 			// property: name=auth_phrase, type=STRING macro=copy_to_state
-			state.V3Config.UserAccess.AuthPhrase = types.StringPointerValue(plan.V3Config.UserAccess.AuthPhrase.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.V3Config.UserAccess.AuthPhraseInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.V3Config.UserAccess.AuthPhrase = types.StringNull()
+			if plan.V3Config != nil && plan.V3Config.UserAccess != nil {
+				state.V3Config.UserAccess.AuthPhrase = types.StringPointerValue(plan.V3Config.UserAccess.AuthPhrase.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.V3Config.UserAccess.AuthPhrase.IsNull() {
-				encryptedAuthPhrase, _ := Encrypt([]byte(state.V3Config.UserAccess.AuthPhrase.String()))
-				resp.Private.SetKey(ctx, state.V3Config.UserAccess.AuthPhraseInternalKeyName.String(), []byte(encryptedAuthPhrase))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedAuthPhrase, _ := Encrypt([]byte(state.V3Config.UserAccess.AuthPhrase.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedAuthPhraseJson, _ := json.Marshal(encryptedAuthPhrase)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V3Config.UserAccess.AuthPhraseInternalKeyName.String(), encryptedAuthPhraseJson)...)
 			}
 			// property: name=auth_type, type=STRING macro=copy_to_state
 			state.V3Config.UserAccess.AuthType = types.StringPointerValue(ans.V3Config.UserAccess.AuthType)
 			// property: name=enc_phrase, type=STRING macro=copy_to_state
-			state.V3Config.UserAccess.EncPhrase = types.StringPointerValue(plan.V3Config.UserAccess.EncPhrase.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.V3Config.UserAccess.EncPhraseInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.V3Config.UserAccess.EncPhrase = types.StringNull()
+			if plan.V3Config != nil && plan.V3Config.UserAccess != nil {
+				state.V3Config.UserAccess.EncPhrase = types.StringPointerValue(plan.V3Config.UserAccess.EncPhrase.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.V3Config.UserAccess.EncPhrase.IsNull() {
-				encryptedEncPhrase, _ := Encrypt([]byte(state.V3Config.UserAccess.EncPhrase.String()))
-				resp.Private.SetKey(ctx, state.V3Config.UserAccess.EncPhraseInternalKeyName.String(), []byte(encryptedEncPhrase))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedEncPhrase, _ := Encrypt([]byte(state.V3Config.UserAccess.EncPhrase.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedEncPhraseJson, _ := json.Marshal(encryptedEncPhrase)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V3Config.UserAccess.EncPhraseInternalKeyName.String(), encryptedEncPhraseJson)...)
 			}
 			// property: name=enc_type, type=STRING macro=copy_to_state
 			state.V3Config.UserAccess.EncType = types.StringPointerValue(ans.V3Config.UserAccess.EncType)
@@ -591,7 +663,23 @@ func (r *elementSnmpTrapResource) doGet(ctx context.Context, state *rsModelSNMPT
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -625,6 +713,14 @@ func (r *elementSnmpTrapResource) doGet(ctx context.Context, state *rsModelSNMPT
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=v2_config, type=REFERENCE macro=copy_to_state
 	if ans.V2Config == nil {
 		state.V2Config = nil
@@ -633,7 +729,17 @@ func (r *elementSnmpTrapResource) doGet(ctx context.Context, state *rsModelSNMPT
 		// copy_to_state: state=state.V2Config prefix=rsModel ans=ans.V2Config properties=1
 		tflog.Debug(ctx, "copy_to_state state=state.V2Config prefix=rsModel ans=ans.V2Config")
 		// property: name=community, type=STRING macro=copy_to_state
-		state.V2Config.Community = types.StringPointerValue(ans.V2Config.Community)
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.V2Config != nil {
+			state.V2Config.CommunityInternalKeyName = savestate.V2Config.CommunityInternalKeyName
+		}
+		encryptedCommunityKeyName := state.V2Config.CommunityInternalKeyName.String()
+		encryptedCommunityValueBytes, _ := resp.Private.GetKey(ctx, encryptedCommunityKeyName)
+		var encryptedCommunityValue string
+		if encryptedCommunityValueBytes != nil && json.Unmarshal(encryptedCommunityValueBytes, &encryptedCommunityValue) == nil {
+			decryptedCommunity, _ := Decrypt(encryptedCommunityValue)
+			state.V2Config.Community = types.StringValue(decryptedCommunity)
+		}
 	}
 	// property: name=v3_config, type=REFERENCE macro=copy_to_state
 	if ans.V3Config == nil {
@@ -650,19 +756,29 @@ func (r *elementSnmpTrapResource) doGet(ctx context.Context, state *rsModelSNMPT
 			// copy_to_state: state=state.V3Config.UserAccess prefix=rsModel ans=ans.V3Config.UserAccess properties=7
 			tflog.Debug(ctx, "copy_to_state state=state.V3Config.UserAccess prefix=rsModel ans=ans.V3Config.UserAccess")
 			// property: name=auth_phrase, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if savestate.V3Config != nil && savestate.V3Config.UserAccess != nil {
+				state.V3Config.UserAccess.AuthPhraseInternalKeyName = savestate.V3Config.UserAccess.AuthPhraseInternalKeyName
+			}
 			encryptedAuthPhraseKeyName := state.V3Config.UserAccess.AuthPhraseInternalKeyName.String()
 			encryptedAuthPhraseValueBytes, _ := resp.Private.GetKey(ctx, encryptedAuthPhraseKeyName)
-			if encryptedAuthPhraseValueBytes != nil {
-				decryptedAuthPhrase, _ := Decrypt(string(encryptedAuthPhraseValueBytes))
+			var encryptedAuthPhraseValue string
+			if encryptedAuthPhraseValueBytes != nil && json.Unmarshal(encryptedAuthPhraseValueBytes, &encryptedAuthPhraseValue) == nil {
+				decryptedAuthPhrase, _ := Decrypt(encryptedAuthPhraseValue)
 				state.V3Config.UserAccess.AuthPhrase = types.StringValue(decryptedAuthPhrase)
 			}
 			// property: name=auth_type, type=STRING macro=copy_to_state
 			state.V3Config.UserAccess.AuthType = types.StringPointerValue(ans.V3Config.UserAccess.AuthType)
 			// property: name=enc_phrase, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if savestate.V3Config != nil && savestate.V3Config.UserAccess != nil {
+				state.V3Config.UserAccess.EncPhraseInternalKeyName = savestate.V3Config.UserAccess.EncPhraseInternalKeyName
+			}
 			encryptedEncPhraseKeyName := state.V3Config.UserAccess.EncPhraseInternalKeyName.String()
 			encryptedEncPhraseValueBytes, _ := resp.Private.GetKey(ctx, encryptedEncPhraseKeyName)
-			if encryptedEncPhraseValueBytes != nil {
-				decryptedEncPhrase, _ := Decrypt(string(encryptedEncPhraseValueBytes))
+			var encryptedEncPhraseValue string
+			if encryptedEncPhraseValueBytes != nil && json.Unmarshal(encryptedEncPhraseValueBytes, &encryptedEncPhraseValue) == nil {
+				decryptedEncPhrase, _ := Decrypt(encryptedEncPhraseValue)
 				state.V3Config.UserAccess.EncPhrase = types.StringValue(decryptedEncPhrase)
 			}
 			// property: name=enc_type, type=STRING macro=copy_to_state
@@ -776,7 +892,12 @@ func (r *elementSnmpTrapResource) doPut(ctx context.Context, plan *rsModelSNMPTr
 		body.SourceInterface = StringValueOrNil(plan.SourceInterface)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=v2_config, type=REFERENCE macro=copy_from_plan_or_state
 	if plan.V2Config == nil {
 		body.V2Config = nil
@@ -785,7 +906,7 @@ func (r *elementSnmpTrapResource) doPut(ctx context.Context, plan *rsModelSNMPTr
 		// copy_from_plan_or_state: body=body.V2Config prefix=rsModel state=state.V2Config plan=plan.V2Config properties=1
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.V2Config prefix=rsModel state=state.V2Config plan=plan.V2Config")
 		// property: name=community, type=STRING macro=copy_from_plan_or_state
-		if state.V2Config != nil {
+		if state != nil && state.V2Config != nil {
 			body.V2Config.Community = ValueStringPointerFromPlanOrState(plan.V2Config.Community, state.V2Config.Community)
 		} else {
 			body.V2Config.Community = StringValueOrNil(plan.V2Config.Community)
@@ -806,43 +927,43 @@ func (r *elementSnmpTrapResource) doPut(ctx context.Context, plan *rsModelSNMPTr
 			// copy_from_plan_or_state: body=body.V3Config.UserAccess prefix=rsModel state=state.V3Config.UserAccess plan=plan.V3Config.UserAccess properties=7
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.V3Config.UserAccess prefix=rsModel state=state.V3Config.UserAccess plan=plan.V3Config.UserAccess")
 			// property: name=auth_phrase, type=STRING macro=copy_from_plan_or_state
-			if state.V3Config.UserAccess != nil {
+			if state != nil && state.V3Config != nil && state.V3Config.UserAccess != nil {
 				body.V3Config.UserAccess.AuthPhrase = ValueStringPointerFromPlanOrState(plan.V3Config.UserAccess.AuthPhrase, state.V3Config.UserAccess.AuthPhrase)
 			} else {
 				body.V3Config.UserAccess.AuthPhrase = StringValueOrNil(plan.V3Config.UserAccess.AuthPhrase)
 			}
 			// property: name=auth_type, type=STRING macro=copy_from_plan_or_state
-			if state.V3Config.UserAccess != nil {
+			if state != nil && state.V3Config != nil && state.V3Config.UserAccess != nil {
 				body.V3Config.UserAccess.AuthType = ValueStringPointerFromPlanOrState(plan.V3Config.UserAccess.AuthType, state.V3Config.UserAccess.AuthType)
 			} else {
 				body.V3Config.UserAccess.AuthType = StringValueOrNil(plan.V3Config.UserAccess.AuthType)
 			}
 			// property: name=enc_phrase, type=STRING macro=copy_from_plan_or_state
-			if state.V3Config.UserAccess != nil {
+			if state != nil && state.V3Config != nil && state.V3Config.UserAccess != nil {
 				body.V3Config.UserAccess.EncPhrase = ValueStringPointerFromPlanOrState(plan.V3Config.UserAccess.EncPhrase, state.V3Config.UserAccess.EncPhrase)
 			} else {
 				body.V3Config.UserAccess.EncPhrase = StringValueOrNil(plan.V3Config.UserAccess.EncPhrase)
 			}
 			// property: name=enc_type, type=STRING macro=copy_from_plan_or_state
-			if state.V3Config.UserAccess != nil {
+			if state != nil && state.V3Config != nil && state.V3Config.UserAccess != nil {
 				body.V3Config.UserAccess.EncType = ValueStringPointerFromPlanOrState(plan.V3Config.UserAccess.EncType, state.V3Config.UserAccess.EncType)
 			} else {
 				body.V3Config.UserAccess.EncType = StringValueOrNil(plan.V3Config.UserAccess.EncType)
 			}
 			// property: name=engine_id, type=STRING macro=copy_from_plan_or_state
-			if state.V3Config.UserAccess != nil {
+			if state != nil && state.V3Config != nil && state.V3Config.UserAccess != nil {
 				body.V3Config.UserAccess.EngineId = ValueStringPointerFromPlanOrState(plan.V3Config.UserAccess.EngineId, state.V3Config.UserAccess.EngineId)
 			} else {
 				body.V3Config.UserAccess.EngineId = StringValueOrNil(plan.V3Config.UserAccess.EngineId)
 			}
 			// property: name=security_level, type=STRING macro=copy_from_plan_or_state
-			if state.V3Config.UserAccess != nil {
+			if state != nil && state.V3Config != nil && state.V3Config.UserAccess != nil {
 				body.V3Config.UserAccess.SecurityLevel = ValueStringPointerFromPlanOrState(plan.V3Config.UserAccess.SecurityLevel, state.V3Config.UserAccess.SecurityLevel)
 			} else {
 				body.V3Config.UserAccess.SecurityLevel = StringValueOrNil(plan.V3Config.UserAccess.SecurityLevel)
 			}
 			// property: name=user_name, type=STRING macro=copy_from_plan_or_state
-			if state.V3Config.UserAccess != nil {
+			if state != nil && state.V3Config != nil && state.V3Config.UserAccess != nil {
 				body.V3Config.UserAccess.UserName = ValueStringPointerFromPlanOrState(plan.V3Config.UserAccess.UserName, state.V3Config.UserAccess.UserName)
 			} else {
 				body.V3Config.UserAccess.UserName = StringValueOrNil(plan.V3Config.UserAccess.UserName)
@@ -904,6 +1025,12 @@ func (r *elementSnmpTrapResource) doPut(ctx context.Context, plan *rsModelSNMPTr
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=SNMPTrap
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=11
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -925,6 +1052,14 @@ func (r *elementSnmpTrapResource) doPut(ctx context.Context, plan *rsModelSNMPTr
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=v2_config, type=REFERENCE macro=copy_to_state
 	if ans.V2Config == nil {
 		state.V2Config = nil
@@ -933,7 +1068,20 @@ func (r *elementSnmpTrapResource) doPut(ctx context.Context, plan *rsModelSNMPTr
 		// copy_to_state: state=state.V2Config prefix=rsModel ans=ans.V2Config properties=1
 		tflog.Debug(ctx, "copy_to_state state=state.V2Config prefix=rsModel ans=ans.V2Config")
 		// property: name=community, type=STRING macro=copy_to_state
-		state.V2Config.Community = types.StringPointerValue(ans.V2Config.Community)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.V2Config.CommunityInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.V2Config.Community = types.StringNull()
+		if plan.V2Config != nil {
+			state.V2Config.Community = types.StringPointerValue(plan.V2Config.Community.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.V2Config.Community.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedCommunity, _ := Encrypt([]byte(state.V2Config.Community.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedCommunityJson, _ := json.Marshal(encryptedCommunity)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V2Config.CommunityInternalKeyName.String(), encryptedCommunityJson)...)
+		}
 	}
 	// property: name=v3_config, type=REFERENCE macro=copy_to_state
 	if ans.V3Config == nil {
@@ -950,24 +1098,36 @@ func (r *elementSnmpTrapResource) doPut(ctx context.Context, plan *rsModelSNMPTr
 			// copy_to_state: state=state.V3Config.UserAccess prefix=rsModel ans=ans.V3Config.UserAccess properties=7
 			tflog.Debug(ctx, "copy_to_state state=state.V3Config.UserAccess prefix=rsModel ans=ans.V3Config.UserAccess")
 			// property: name=auth_phrase, type=STRING macro=copy_to_state
-			state.V3Config.UserAccess.AuthPhrase = types.StringPointerValue(plan.V3Config.UserAccess.AuthPhrase.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.V3Config.UserAccess.AuthPhraseInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.V3Config.UserAccess.AuthPhrase = types.StringNull()
+			if plan.V3Config != nil && plan.V3Config.UserAccess != nil {
+				state.V3Config.UserAccess.AuthPhrase = types.StringPointerValue(plan.V3Config.UserAccess.AuthPhrase.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.V3Config.UserAccess.AuthPhrase.IsNull() {
-				encryptedAuthPhrase, _ := Encrypt([]byte(state.V3Config.UserAccess.AuthPhrase.String()))
-				resp.Private.SetKey(ctx, state.V3Config.UserAccess.AuthPhraseInternalKeyName.String(), []byte(encryptedAuthPhrase))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedAuthPhrase, _ := Encrypt([]byte(state.V3Config.UserAccess.AuthPhrase.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedAuthPhraseJson, _ := json.Marshal(encryptedAuthPhrase)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V3Config.UserAccess.AuthPhraseInternalKeyName.String(), encryptedAuthPhraseJson)...)
 			}
 			// property: name=auth_type, type=STRING macro=copy_to_state
 			state.V3Config.UserAccess.AuthType = types.StringPointerValue(ans.V3Config.UserAccess.AuthType)
 			// property: name=enc_phrase, type=STRING macro=copy_to_state
-			state.V3Config.UserAccess.EncPhrase = types.StringPointerValue(plan.V3Config.UserAccess.EncPhrase.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.V3Config.UserAccess.EncPhraseInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.V3Config.UserAccess.EncPhrase = types.StringNull()
+			if plan.V3Config != nil && plan.V3Config.UserAccess != nil {
+				state.V3Config.UserAccess.EncPhrase = types.StringPointerValue(plan.V3Config.UserAccess.EncPhrase.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.V3Config.UserAccess.EncPhrase.IsNull() {
-				encryptedEncPhrase, _ := Encrypt([]byte(state.V3Config.UserAccess.EncPhrase.String()))
-				resp.Private.SetKey(ctx, state.V3Config.UserAccess.EncPhraseInternalKeyName.String(), []byte(encryptedEncPhrase))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedEncPhrase, _ := Encrypt([]byte(state.V3Config.UserAccess.EncPhrase.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedEncPhraseJson, _ := json.Marshal(encryptedEncPhrase)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V3Config.UserAccess.EncPhraseInternalKeyName.String(), encryptedEncPhraseJson)...)
 			}
 			// property: name=enc_type, type=STRING macro=copy_to_state
 			state.V3Config.UserAccess.EncType = types.StringPointerValue(ans.V3Config.UserAccess.EncType)

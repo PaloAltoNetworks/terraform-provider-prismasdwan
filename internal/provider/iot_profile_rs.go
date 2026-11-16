@@ -34,9 +34,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &iotProfileResource{}
-	_ resource.ResourceWithConfigure   = &iotProfileResource{}
-	_ resource.ResourceWithImportState = &iotProfileResource{}
+	_ resource.Resource                   = &iotProfileResource{}
+	_ resource.ResourceWithConfigure      = &iotProfileResource{}
+	_ resource.ResourceWithImportState    = &iotProfileResource{}
+	_ resource.ResourceWithValidateConfig = &iotProfileResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -57,6 +58,12 @@ type iotProfileResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *iotProfileResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{})...)
+}
+
 // Metadata returns the data source type name.
 func (r *iotProfileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_iot_profile"
@@ -65,13 +72,14 @@ func (r *iotProfileResource) Metadata(_ context.Context, req resource.MetadataRe
 // Schema defines the schema for this data source.
 func (r *iotProfileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Iot Profile.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=DeviceIdProfile
 			// generic x_parameters is added to accomodate path parameters
@@ -80,133 +88,150 @@ func (r *iotProfileResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=disabled, type=BOOLEAN macro=rss_schema
 			"disabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Disabled. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=disabled, type=BOOLEAN macro=rss_schema
 			// property: name=disabled_reason, type=STRING macro=rss_schema
 			"disabled_reason": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Disabled reason. Value: at most 5000 characters.",
 			},
 			// key name holder for attribute: name=disabled_reason, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=inactive, type=BOOLEAN macro=rss_schema
 			"inactive": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Inactive. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=inactive, type=BOOLEAN macro=rss_schema
 			// property: name=inactive_reason, type=STRING macro=rss_schema
 			"inactive_reason": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Inactive reason. Value: at most 5000 characters.",
 			},
 			// key name holder for attribute: name=inactive_reason, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=num_associated_sites, type=INTEGER macro=rss_schema
 			"num_associated_sites": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Num associated sites. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=num_associated_sites, type=INTEGER macro=rss_schema
 			// property: name=region, type=STRING macro=rss_schema
 			"region": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Region.",
 			},
 			// key name holder for attribute: name=region, type=STRING macro=rss_schema
 			// property: name=snmp_discovery_device_refresh_frequency, type=INTEGER macro=rss_schema
 			"snmp_discovery_device_refresh_frequency": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Snmp discovery device refresh frequency. Value: at least 30.",
 			},
 			// key name holder for attribute: name=snmp_discovery_device_refresh_frequency, type=INTEGER macro=rss_schema
 			// property: name=snmp_discovery_enabled, type=BOOLEAN macro=rss_schema
 			"snmp_discovery_enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Snmp discovery enabled.",
 			},
 			// key name holder for attribute: name=snmp_discovery_enabled, type=BOOLEAN macro=rss_schema
 			// property: name=snmp_discovery_network_refresh_frequency, type=INTEGER macro=rss_schema
 			"snmp_discovery_network_refresh_frequency": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Snmp discovery network refresh frequency.",
 			},
 			// key name holder for attribute: name=snmp_discovery_network_refresh_frequency, type=INTEGER macro=rss_schema
 			// property: name=snmp_discovery_use_local_neighbours, type=BOOLEAN macro=rss_schema
 			"snmp_discovery_use_local_neighbours": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Snmp discovery use local neighbours.",
 			},
 			// key name holder for attribute: name=snmp_discovery_use_local_neighbours, type=BOOLEAN macro=rss_schema
 			// property: name=snmp_version, type=STRING macro=rss_schema
 			"snmp_version": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Snmp version. Value: one of v2, v3.",
 			},
 			// key name holder for attribute: name=snmp_version, type=STRING macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -215,113 +240,142 @@ func (r *iotProfileResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=v2_config, type=REFERENCE macro=rss_schema
 			"v2_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "V2 config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=snmp_community_string, type=STRING macro=rss_schema
 					"snmp_community_string": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Snmp community string. Value: at most 32 characters, matching `^\\S+$`.",
 					},
 					// key name holder for attribute: name=snmp_community_string, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=snmp_community_string, type=STRING macro=rss_schema
+			// key name holder for attribute: name=v2_config, type=REFERENCE macro=rss_schema
 			// property: name=v3_config, type=REFERENCE macro=rss_schema
 			"v3_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "V3 config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=snmp_auth_password, type=STRING macro=rss_schema
 					"snmp_auth_password": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: true,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Snmp auth password. Value: length 5 to 256 characters, matching `^\\S+$`.",
 					},
 					// key name holder for attribute: name=snmp_auth_password, type=STRING macro=rss_schema
 					"snmp_auth_password_internal_key_name": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  true,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute snmp_auth_password, managed automatically by the provider.",
 					},
 					// property: name=snmp_auth_password_encrypted, type=STRING macro=rss_schema
 					"snmp_auth_password_encrypted": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: true,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Snmp auth password encrypted.",
 					},
 					// key name holder for attribute: name=snmp_auth_password_encrypted, type=STRING macro=rss_schema
 					"snmp_auth_password_encrypted_internal_key_name": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  true,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute snmp_auth_password_encrypted, managed automatically by the provider.",
 					},
 					// property: name=snmp_auth_protocol, type=STRING macro=rss_schema
 					"snmp_auth_protocol": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Snmp auth protocol. Value: one of none, md5, sha.",
 					},
 					// key name holder for attribute: name=snmp_auth_protocol, type=STRING macro=rss_schema
 					// property: name=snmp_privacy_password, type=STRING macro=rss_schema
 					"snmp_privacy_password": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Snmp privacy password. Value: length 5 to 256 characters, matching `^\\S+$`.",
 					},
 					// key name holder for attribute: name=snmp_privacy_password, type=STRING macro=rss_schema
+					"snmp_privacy_password_internal_key_name": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute snmp_privacy_password, managed automatically by the provider.",
+					},
 					// property: name=snmp_privacy_password_encrypted, type=STRING macro=rss_schema
 					"snmp_privacy_password_encrypted": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   true,
+						Description: "Snmp privacy password encrypted.",
 					},
 					// key name holder for attribute: name=snmp_privacy_password_encrypted, type=STRING macro=rss_schema
+					"snmp_privacy_password_encrypted_internal_key_name": rsschema.StringAttribute{
+						Required:    false,
+						Computed:    true,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Internal key name for the sensitive attribute snmp_privacy_password_encrypted, managed automatically by the provider.",
+					},
 					// property: name=snmp_privacy_protocol, type=STRING macro=rss_schema
 					"snmp_privacy_protocol": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Snmp privacy protocol. Value: one of none, aes, des.",
 					},
 					// key name holder for attribute: name=snmp_privacy_protocol, type=STRING macro=rss_schema
 					// property: name=snmp_security_level, type=STRING macro=rss_schema
 					"snmp_security_level": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Snmp security level. Value: one of noauth, auth, private.",
 					},
 					// key name holder for attribute: name=snmp_security_level, type=STRING macro=rss_schema
 					// property: name=snmp_username, type=STRING macro=rss_schema
 					"snmp_username": rsschema.StringAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Snmp username. Value: length 4 to 256 characters, matching `^\\S+$`.",
 					},
 					// key name holder for attribute: name=snmp_username, type=STRING macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=snmp_username, type=STRING macro=rss_schema
+			// key name holder for attribute: name=v3_config, type=REFERENCE macro=rss_schema
 		},
 	}
 }
@@ -526,13 +580,31 @@ func (r *iotProfileResource) doPost(ctx context.Context, plan *rsModelDeviceIdPr
 	// property: name=description, type=STRING macro=copy_to_state
 	state.Description = types.StringPointerValue(ans.Description)
 	// property: name=disabled, type=BOOLEAN macro=copy_to_state
+	priorDisabled := state.Disabled
 	state.Disabled = types.BoolPointerValue(ans.Disabled)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.Disabled == nil {
+		if !plan.Disabled.IsUnknown() {
+			state.Disabled = plan.Disabled
+		} else {
+			state.Disabled = priorDisabled
+		}
+	}
 	// property: name=disabled_reason, type=STRING macro=copy_to_state
 	state.DisabledReason = types.StringPointerValue(ans.DisabledReason)
 	// property: name=id, type=STRING macro=copy_to_state
 	state.Id = types.StringPointerValue(ans.Id)
 	// property: name=inactive, type=BOOLEAN macro=copy_to_state
+	priorInactive := state.Inactive
 	state.Inactive = types.BoolPointerValue(ans.Inactive)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.Inactive == nil {
+		if !plan.Inactive.IsUnknown() {
+			state.Inactive = plan.Inactive
+		} else {
+			state.Inactive = priorInactive
+		}
+	}
 	// property: name=inactive_reason, type=STRING macro=copy_to_state
 	state.InactiveReason = types.StringPointerValue(ans.InactiveReason)
 	// property: name=name, type=STRING macro=copy_to_state
@@ -555,6 +627,14 @@ func (r *iotProfileResource) doPost(ctx context.Context, plan *rsModelDeviceIdPr
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=v2_config, type=REFERENCE macro=copy_to_state
 	if ans.V2Config == nil {
 		state.V2Config = nil
@@ -573,29 +653,67 @@ func (r *iotProfileResource) doPost(ctx context.Context, plan *rsModelDeviceIdPr
 		// copy_to_state: state=state.V3Config prefix=rsModel ans=ans.V3Config properties=8
 		tflog.Debug(ctx, "copy_to_state state=state.V3Config prefix=rsModel ans=ans.V3Config")
 		// property: name=snmp_auth_password, type=STRING macro=copy_to_state
-		state.V3Config.SnmpAuthPassword = types.StringPointerValue(plan.V3Config.SnmpAuthPassword.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.V3Config.SnmpAuthPasswordInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.V3Config.SnmpAuthPassword = types.StringNull()
+		if plan.V3Config != nil {
+			state.V3Config.SnmpAuthPassword = types.StringPointerValue(plan.V3Config.SnmpAuthPassword.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.V3Config.SnmpAuthPassword.IsNull() {
-			encryptedSnmpAuthPassword, _ := Encrypt([]byte(state.V3Config.SnmpAuthPassword.String()))
-			resp.Private.SetKey(ctx, state.V3Config.SnmpAuthPasswordInternalKeyName.String(), []byte(encryptedSnmpAuthPassword))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSnmpAuthPassword, _ := Encrypt([]byte(state.V3Config.SnmpAuthPassword.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSnmpAuthPasswordJson, _ := json.Marshal(encryptedSnmpAuthPassword)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V3Config.SnmpAuthPasswordInternalKeyName.String(), encryptedSnmpAuthPasswordJson)...)
 		}
 		// property: name=snmp_auth_password_encrypted, type=STRING macro=copy_to_state
-		state.V3Config.SnmpAuthPasswordEncrypted = types.StringPointerValue(plan.V3Config.SnmpAuthPasswordEncrypted.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.V3Config.SnmpAuthPasswordEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.V3Config.SnmpAuthPasswordEncrypted = types.StringNull()
+		if plan.V3Config != nil {
+			state.V3Config.SnmpAuthPasswordEncrypted = types.StringPointerValue(plan.V3Config.SnmpAuthPasswordEncrypted.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.V3Config.SnmpAuthPasswordEncrypted.IsNull() {
-			encryptedSnmpAuthPasswordEncrypted, _ := Encrypt([]byte(state.V3Config.SnmpAuthPasswordEncrypted.String()))
-			resp.Private.SetKey(ctx, state.V3Config.SnmpAuthPasswordEncryptedInternalKeyName.String(), []byte(encryptedSnmpAuthPasswordEncrypted))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSnmpAuthPasswordEncrypted, _ := Encrypt([]byte(state.V3Config.SnmpAuthPasswordEncrypted.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSnmpAuthPasswordEncryptedJson, _ := json.Marshal(encryptedSnmpAuthPasswordEncrypted)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V3Config.SnmpAuthPasswordEncryptedInternalKeyName.String(), encryptedSnmpAuthPasswordEncryptedJson)...)
 		}
 		// property: name=snmp_auth_protocol, type=STRING macro=copy_to_state
 		state.V3Config.SnmpAuthProtocol = types.StringPointerValue(ans.V3Config.SnmpAuthProtocol)
 		// property: name=snmp_privacy_password, type=STRING macro=copy_to_state
-		state.V3Config.SnmpPrivacyPassword = types.StringPointerValue(ans.V3Config.SnmpPrivacyPassword)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.V3Config.SnmpPrivacyPasswordInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.V3Config.SnmpPrivacyPassword = types.StringNull()
+		if plan.V3Config != nil {
+			state.V3Config.SnmpPrivacyPassword = types.StringPointerValue(plan.V3Config.SnmpPrivacyPassword.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.V3Config.SnmpPrivacyPassword.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSnmpPrivacyPassword, _ := Encrypt([]byte(state.V3Config.SnmpPrivacyPassword.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSnmpPrivacyPasswordJson, _ := json.Marshal(encryptedSnmpPrivacyPassword)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V3Config.SnmpPrivacyPasswordInternalKeyName.String(), encryptedSnmpPrivacyPasswordJson)...)
+		}
 		// property: name=snmp_privacy_password_encrypted, type=STRING macro=copy_to_state
-		state.V3Config.SnmpPrivacyPasswordEncrypted = types.StringPointerValue(ans.V3Config.SnmpPrivacyPasswordEncrypted)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.V3Config.SnmpPrivacyPasswordEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.V3Config.SnmpPrivacyPasswordEncrypted = types.StringNull()
+		if plan.V3Config != nil {
+			state.V3Config.SnmpPrivacyPasswordEncrypted = types.StringPointerValue(plan.V3Config.SnmpPrivacyPasswordEncrypted.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.V3Config.SnmpPrivacyPasswordEncrypted.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSnmpPrivacyPasswordEncrypted, _ := Encrypt([]byte(state.V3Config.SnmpPrivacyPasswordEncrypted.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSnmpPrivacyPasswordEncryptedJson, _ := json.Marshal(encryptedSnmpPrivacyPasswordEncrypted)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V3Config.SnmpPrivacyPasswordEncryptedInternalKeyName.String(), encryptedSnmpPrivacyPasswordEncryptedJson)...)
+		}
 		// property: name=snmp_privacy_protocol, type=STRING macro=copy_to_state
 		state.V3Config.SnmpPrivacyProtocol = types.StringPointerValue(ans.V3Config.SnmpPrivacyProtocol)
 		// property: name=snmp_security_level, type=STRING macro=copy_to_state
@@ -674,7 +792,23 @@ func (r *iotProfileResource) doGet(ctx context.Context, state *rsModelDeviceIdPr
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -697,13 +831,31 @@ func (r *iotProfileResource) doGet(ctx context.Context, state *rsModelDeviceIdPr
 	// property: name=description, type=STRING macro=copy_to_state
 	state.Description = types.StringPointerValue(ans.Description)
 	// property: name=disabled, type=BOOLEAN macro=copy_to_state
+	priorDisabled := state.Disabled
 	state.Disabled = types.BoolPointerValue(ans.Disabled)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.Disabled == nil {
+		if !savestate.Disabled.IsUnknown() {
+			state.Disabled = savestate.Disabled
+		} else {
+			state.Disabled = priorDisabled
+		}
+	}
 	// property: name=disabled_reason, type=STRING macro=copy_to_state
 	state.DisabledReason = types.StringPointerValue(ans.DisabledReason)
 	// property: name=id, type=STRING macro=copy_to_state
 	state.Id = types.StringPointerValue(ans.Id)
 	// property: name=inactive, type=BOOLEAN macro=copy_to_state
+	priorInactive := state.Inactive
 	state.Inactive = types.BoolPointerValue(ans.Inactive)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.Inactive == nil {
+		if !savestate.Inactive.IsUnknown() {
+			state.Inactive = savestate.Inactive
+		} else {
+			state.Inactive = priorInactive
+		}
+	}
 	// property: name=inactive_reason, type=STRING macro=copy_to_state
 	state.InactiveReason = types.StringPointerValue(ans.InactiveReason)
 	// property: name=name, type=STRING macro=copy_to_state
@@ -726,6 +878,14 @@ func (r *iotProfileResource) doGet(ctx context.Context, state *rsModelDeviceIdPr
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=v2_config, type=REFERENCE macro=copy_to_state
 	if ans.V2Config == nil {
 		state.V2Config = nil
@@ -744,25 +904,55 @@ func (r *iotProfileResource) doGet(ctx context.Context, state *rsModelDeviceIdPr
 		// copy_to_state: state=state.V3Config prefix=rsModel ans=ans.V3Config properties=8
 		tflog.Debug(ctx, "copy_to_state state=state.V3Config prefix=rsModel ans=ans.V3Config")
 		// property: name=snmp_auth_password, type=STRING macro=copy_to_state
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.V3Config != nil {
+			state.V3Config.SnmpAuthPasswordInternalKeyName = savestate.V3Config.SnmpAuthPasswordInternalKeyName
+		}
 		encryptedSnmpAuthPasswordKeyName := state.V3Config.SnmpAuthPasswordInternalKeyName.String()
 		encryptedSnmpAuthPasswordValueBytes, _ := resp.Private.GetKey(ctx, encryptedSnmpAuthPasswordKeyName)
-		if encryptedSnmpAuthPasswordValueBytes != nil {
-			decryptedSnmpAuthPassword, _ := Decrypt(string(encryptedSnmpAuthPasswordValueBytes))
+		var encryptedSnmpAuthPasswordValue string
+		if encryptedSnmpAuthPasswordValueBytes != nil && json.Unmarshal(encryptedSnmpAuthPasswordValueBytes, &encryptedSnmpAuthPasswordValue) == nil {
+			decryptedSnmpAuthPassword, _ := Decrypt(encryptedSnmpAuthPasswordValue)
 			state.V3Config.SnmpAuthPassword = types.StringValue(decryptedSnmpAuthPassword)
 		}
 		// property: name=snmp_auth_password_encrypted, type=STRING macro=copy_to_state
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.V3Config != nil {
+			state.V3Config.SnmpAuthPasswordEncryptedInternalKeyName = savestate.V3Config.SnmpAuthPasswordEncryptedInternalKeyName
+		}
 		encryptedSnmpAuthPasswordEncryptedKeyName := state.V3Config.SnmpAuthPasswordEncryptedInternalKeyName.String()
 		encryptedSnmpAuthPasswordEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedSnmpAuthPasswordEncryptedKeyName)
-		if encryptedSnmpAuthPasswordEncryptedValueBytes != nil {
-			decryptedSnmpAuthPasswordEncrypted, _ := Decrypt(string(encryptedSnmpAuthPasswordEncryptedValueBytes))
+		var encryptedSnmpAuthPasswordEncryptedValue string
+		if encryptedSnmpAuthPasswordEncryptedValueBytes != nil && json.Unmarshal(encryptedSnmpAuthPasswordEncryptedValueBytes, &encryptedSnmpAuthPasswordEncryptedValue) == nil {
+			decryptedSnmpAuthPasswordEncrypted, _ := Decrypt(encryptedSnmpAuthPasswordEncryptedValue)
 			state.V3Config.SnmpAuthPasswordEncrypted = types.StringValue(decryptedSnmpAuthPasswordEncrypted)
 		}
 		// property: name=snmp_auth_protocol, type=STRING macro=copy_to_state
 		state.V3Config.SnmpAuthProtocol = types.StringPointerValue(ans.V3Config.SnmpAuthProtocol)
 		// property: name=snmp_privacy_password, type=STRING macro=copy_to_state
-		state.V3Config.SnmpPrivacyPassword = types.StringPointerValue(ans.V3Config.SnmpPrivacyPassword)
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.V3Config != nil {
+			state.V3Config.SnmpPrivacyPasswordInternalKeyName = savestate.V3Config.SnmpPrivacyPasswordInternalKeyName
+		}
+		encryptedSnmpPrivacyPasswordKeyName := state.V3Config.SnmpPrivacyPasswordInternalKeyName.String()
+		encryptedSnmpPrivacyPasswordValueBytes, _ := resp.Private.GetKey(ctx, encryptedSnmpPrivacyPasswordKeyName)
+		var encryptedSnmpPrivacyPasswordValue string
+		if encryptedSnmpPrivacyPasswordValueBytes != nil && json.Unmarshal(encryptedSnmpPrivacyPasswordValueBytes, &encryptedSnmpPrivacyPasswordValue) == nil {
+			decryptedSnmpPrivacyPassword, _ := Decrypt(encryptedSnmpPrivacyPasswordValue)
+			state.V3Config.SnmpPrivacyPassword = types.StringValue(decryptedSnmpPrivacyPassword)
+		}
 		// property: name=snmp_privacy_password_encrypted, type=STRING macro=copy_to_state
-		state.V3Config.SnmpPrivacyPasswordEncrypted = types.StringPointerValue(ans.V3Config.SnmpPrivacyPasswordEncrypted)
+		// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+		if savestate.V3Config != nil {
+			state.V3Config.SnmpPrivacyPasswordEncryptedInternalKeyName = savestate.V3Config.SnmpPrivacyPasswordEncryptedInternalKeyName
+		}
+		encryptedSnmpPrivacyPasswordEncryptedKeyName := state.V3Config.SnmpPrivacyPasswordEncryptedInternalKeyName.String()
+		encryptedSnmpPrivacyPasswordEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedSnmpPrivacyPasswordEncryptedKeyName)
+		var encryptedSnmpPrivacyPasswordEncryptedValue string
+		if encryptedSnmpPrivacyPasswordEncryptedValueBytes != nil && json.Unmarshal(encryptedSnmpPrivacyPasswordEncryptedValueBytes, &encryptedSnmpPrivacyPasswordEncryptedValue) == nil {
+			decryptedSnmpPrivacyPasswordEncrypted, _ := Decrypt(encryptedSnmpPrivacyPasswordEncryptedValue)
+			state.V3Config.SnmpPrivacyPasswordEncrypted = types.StringValue(decryptedSnmpPrivacyPasswordEncrypted)
+		}
 		// property: name=snmp_privacy_protocol, type=STRING macro=copy_to_state
 		state.V3Config.SnmpPrivacyProtocol = types.StringPointerValue(ans.V3Config.SnmpPrivacyProtocol)
 		// property: name=snmp_security_level, type=STRING macro=copy_to_state
@@ -923,7 +1113,12 @@ func (r *iotProfileResource) doPut(ctx context.Context, plan *rsModelDeviceIdPro
 		body.SnmpVersion = StringValueOrNil(plan.SnmpVersion)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=v2_config, type=REFERENCE macro=copy_from_plan_or_state
 	if plan.V2Config == nil {
 		body.V2Config = nil
@@ -932,7 +1127,7 @@ func (r *iotProfileResource) doPut(ctx context.Context, plan *rsModelDeviceIdPro
 		// copy_from_plan_or_state: body=body.V2Config prefix=rsModel state=state.V2Config plan=plan.V2Config properties=1
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.V2Config prefix=rsModel state=state.V2Config plan=plan.V2Config")
 		// property: name=snmp_community_string, type=STRING macro=copy_from_plan_or_state
-		if state.V2Config != nil {
+		if state != nil && state.V2Config != nil {
 			body.V2Config.SnmpCommunityString = ValueStringPointerFromPlanOrState(plan.V2Config.SnmpCommunityString, state.V2Config.SnmpCommunityString)
 		} else {
 			body.V2Config.SnmpCommunityString = StringValueOrNil(plan.V2Config.SnmpCommunityString)
@@ -946,49 +1141,49 @@ func (r *iotProfileResource) doPut(ctx context.Context, plan *rsModelDeviceIdPro
 		// copy_from_plan_or_state: body=body.V3Config prefix=rsModel state=state.V3Config plan=plan.V3Config properties=8
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.V3Config prefix=rsModel state=state.V3Config plan=plan.V3Config")
 		// property: name=snmp_auth_password, type=STRING macro=copy_from_plan_or_state
-		if state.V3Config != nil {
+		if state != nil && state.V3Config != nil {
 			body.V3Config.SnmpAuthPassword = ValueStringPointerFromPlanOrState(plan.V3Config.SnmpAuthPassword, state.V3Config.SnmpAuthPassword)
 		} else {
 			body.V3Config.SnmpAuthPassword = StringValueOrNil(plan.V3Config.SnmpAuthPassword)
 		}
 		// property: name=snmp_auth_password_encrypted, type=STRING macro=copy_from_plan_or_state
-		if state.V3Config != nil {
+		if state != nil && state.V3Config != nil {
 			body.V3Config.SnmpAuthPasswordEncrypted = ValueStringPointerFromPlanOrState(plan.V3Config.SnmpAuthPasswordEncrypted, state.V3Config.SnmpAuthPasswordEncrypted)
 		} else {
 			body.V3Config.SnmpAuthPasswordEncrypted = StringValueOrNil(plan.V3Config.SnmpAuthPasswordEncrypted)
 		}
 		// property: name=snmp_auth_protocol, type=STRING macro=copy_from_plan_or_state
-		if state.V3Config != nil {
+		if state != nil && state.V3Config != nil {
 			body.V3Config.SnmpAuthProtocol = ValueStringPointerFromPlanOrState(plan.V3Config.SnmpAuthProtocol, state.V3Config.SnmpAuthProtocol)
 		} else {
 			body.V3Config.SnmpAuthProtocol = StringValueOrNil(plan.V3Config.SnmpAuthProtocol)
 		}
 		// property: name=snmp_privacy_password, type=STRING macro=copy_from_plan_or_state
-		if state.V3Config != nil {
+		if state != nil && state.V3Config != nil {
 			body.V3Config.SnmpPrivacyPassword = ValueStringPointerFromPlanOrState(plan.V3Config.SnmpPrivacyPassword, state.V3Config.SnmpPrivacyPassword)
 		} else {
 			body.V3Config.SnmpPrivacyPassword = StringValueOrNil(plan.V3Config.SnmpPrivacyPassword)
 		}
 		// property: name=snmp_privacy_password_encrypted, type=STRING macro=copy_from_plan_or_state
-		if state.V3Config != nil {
+		if state != nil && state.V3Config != nil {
 			body.V3Config.SnmpPrivacyPasswordEncrypted = ValueStringPointerFromPlanOrState(plan.V3Config.SnmpPrivacyPasswordEncrypted, state.V3Config.SnmpPrivacyPasswordEncrypted)
 		} else {
 			body.V3Config.SnmpPrivacyPasswordEncrypted = StringValueOrNil(plan.V3Config.SnmpPrivacyPasswordEncrypted)
 		}
 		// property: name=snmp_privacy_protocol, type=STRING macro=copy_from_plan_or_state
-		if state.V3Config != nil {
+		if state != nil && state.V3Config != nil {
 			body.V3Config.SnmpPrivacyProtocol = ValueStringPointerFromPlanOrState(plan.V3Config.SnmpPrivacyProtocol, state.V3Config.SnmpPrivacyProtocol)
 		} else {
 			body.V3Config.SnmpPrivacyProtocol = StringValueOrNil(plan.V3Config.SnmpPrivacyProtocol)
 		}
 		// property: name=snmp_security_level, type=STRING macro=copy_from_plan_or_state
-		if state.V3Config != nil {
+		if state != nil && state.V3Config != nil {
 			body.V3Config.SnmpSecurityLevel = ValueStringPointerFromPlanOrState(plan.V3Config.SnmpSecurityLevel, state.V3Config.SnmpSecurityLevel)
 		} else {
 			body.V3Config.SnmpSecurityLevel = StringValueOrNil(plan.V3Config.SnmpSecurityLevel)
 		}
 		// property: name=snmp_username, type=STRING macro=copy_from_plan_or_state
-		if state.V3Config != nil {
+		if state != nil && state.V3Config != nil {
 			body.V3Config.SnmpUsername = ValueStringPointerFromPlanOrState(plan.V3Config.SnmpUsername, state.V3Config.SnmpUsername)
 		} else {
 			body.V3Config.SnmpUsername = StringValueOrNil(plan.V3Config.SnmpUsername)
@@ -1043,6 +1238,12 @@ func (r *iotProfileResource) doPut(ctx context.Context, plan *rsModelDeviceIdPro
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=DeviceIdProfile
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=19
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -1053,13 +1254,31 @@ func (r *iotProfileResource) doPut(ctx context.Context, plan *rsModelDeviceIdPro
 	// property: name=description, type=STRING macro=copy_to_state
 	state.Description = types.StringPointerValue(ans.Description)
 	// property: name=disabled, type=BOOLEAN macro=copy_to_state
+	priorDisabled := state.Disabled
 	state.Disabled = types.BoolPointerValue(ans.Disabled)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.Disabled == nil {
+		if !plan.Disabled.IsUnknown() {
+			state.Disabled = plan.Disabled
+		} else {
+			state.Disabled = priorDisabled
+		}
+	}
 	// property: name=disabled_reason, type=STRING macro=copy_to_state
 	state.DisabledReason = types.StringPointerValue(ans.DisabledReason)
 	// property: name=id, type=STRING macro=copy_to_state
 	state.Id = types.StringPointerValue(ans.Id)
 	// property: name=inactive, type=BOOLEAN macro=copy_to_state
+	priorInactive := state.Inactive
 	state.Inactive = types.BoolPointerValue(ans.Inactive)
+	// the api never returns this value: keep the configured one, else the one known before
+	if ans.Inactive == nil {
+		if !plan.Inactive.IsUnknown() {
+			state.Inactive = plan.Inactive
+		} else {
+			state.Inactive = priorInactive
+		}
+	}
 	// property: name=inactive_reason, type=STRING macro=copy_to_state
 	state.InactiveReason = types.StringPointerValue(ans.InactiveReason)
 	// property: name=name, type=STRING macro=copy_to_state
@@ -1082,6 +1301,14 @@ func (r *iotProfileResource) doPut(ctx context.Context, plan *rsModelDeviceIdPro
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=v2_config, type=REFERENCE macro=copy_to_state
 	if ans.V2Config == nil {
 		state.V2Config = nil
@@ -1100,29 +1327,67 @@ func (r *iotProfileResource) doPut(ctx context.Context, plan *rsModelDeviceIdPro
 		// copy_to_state: state=state.V3Config prefix=rsModel ans=ans.V3Config properties=8
 		tflog.Debug(ctx, "copy_to_state state=state.V3Config prefix=rsModel ans=ans.V3Config")
 		// property: name=snmp_auth_password, type=STRING macro=copy_to_state
-		state.V3Config.SnmpAuthPassword = types.StringPointerValue(plan.V3Config.SnmpAuthPassword.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.V3Config.SnmpAuthPasswordInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.V3Config.SnmpAuthPassword = types.StringNull()
+		if plan.V3Config != nil {
+			state.V3Config.SnmpAuthPassword = types.StringPointerValue(plan.V3Config.SnmpAuthPassword.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.V3Config.SnmpAuthPassword.IsNull() {
-			encryptedSnmpAuthPassword, _ := Encrypt([]byte(state.V3Config.SnmpAuthPassword.String()))
-			resp.Private.SetKey(ctx, state.V3Config.SnmpAuthPasswordInternalKeyName.String(), []byte(encryptedSnmpAuthPassword))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSnmpAuthPassword, _ := Encrypt([]byte(state.V3Config.SnmpAuthPassword.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSnmpAuthPasswordJson, _ := json.Marshal(encryptedSnmpAuthPassword)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V3Config.SnmpAuthPasswordInternalKeyName.String(), encryptedSnmpAuthPasswordJson)...)
 		}
 		// property: name=snmp_auth_password_encrypted, type=STRING macro=copy_to_state
-		state.V3Config.SnmpAuthPasswordEncrypted = types.StringPointerValue(plan.V3Config.SnmpAuthPasswordEncrypted.ValueStringPointer())
 		// this property is sensitive and will be stored in the state's internal key name
 		state.V3Config.SnmpAuthPasswordEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.V3Config.SnmpAuthPasswordEncrypted = types.StringNull()
+		if plan.V3Config != nil {
+			state.V3Config.SnmpAuthPasswordEncrypted = types.StringPointerValue(plan.V3Config.SnmpAuthPasswordEncrypted.ValueStringPointer())
+		}
 		// store value if needed
 		if !state.V3Config.SnmpAuthPasswordEncrypted.IsNull() {
-			encryptedSnmpAuthPasswordEncrypted, _ := Encrypt([]byte(state.V3Config.SnmpAuthPasswordEncrypted.String()))
-			resp.Private.SetKey(ctx, state.V3Config.SnmpAuthPasswordEncryptedInternalKeyName.String(), []byte(encryptedSnmpAuthPasswordEncrypted))
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSnmpAuthPasswordEncrypted, _ := Encrypt([]byte(state.V3Config.SnmpAuthPasswordEncrypted.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSnmpAuthPasswordEncryptedJson, _ := json.Marshal(encryptedSnmpAuthPasswordEncrypted)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V3Config.SnmpAuthPasswordEncryptedInternalKeyName.String(), encryptedSnmpAuthPasswordEncryptedJson)...)
 		}
 		// property: name=snmp_auth_protocol, type=STRING macro=copy_to_state
 		state.V3Config.SnmpAuthProtocol = types.StringPointerValue(ans.V3Config.SnmpAuthProtocol)
 		// property: name=snmp_privacy_password, type=STRING macro=copy_to_state
-		state.V3Config.SnmpPrivacyPassword = types.StringPointerValue(ans.V3Config.SnmpPrivacyPassword)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.V3Config.SnmpPrivacyPasswordInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.V3Config.SnmpPrivacyPassword = types.StringNull()
+		if plan.V3Config != nil {
+			state.V3Config.SnmpPrivacyPassword = types.StringPointerValue(plan.V3Config.SnmpPrivacyPassword.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.V3Config.SnmpPrivacyPassword.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSnmpPrivacyPassword, _ := Encrypt([]byte(state.V3Config.SnmpPrivacyPassword.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSnmpPrivacyPasswordJson, _ := json.Marshal(encryptedSnmpPrivacyPassword)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V3Config.SnmpPrivacyPasswordInternalKeyName.String(), encryptedSnmpPrivacyPasswordJson)...)
+		}
 		// property: name=snmp_privacy_password_encrypted, type=STRING macro=copy_to_state
-		state.V3Config.SnmpPrivacyPasswordEncrypted = types.StringPointerValue(ans.V3Config.SnmpPrivacyPasswordEncrypted)
+		// this property is sensitive and will be stored in the state's internal key name
+		state.V3Config.SnmpPrivacyPasswordEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+		state.V3Config.SnmpPrivacyPasswordEncrypted = types.StringNull()
+		if plan.V3Config != nil {
+			state.V3Config.SnmpPrivacyPasswordEncrypted = types.StringPointerValue(plan.V3Config.SnmpPrivacyPasswordEncrypted.ValueStringPointer())
+		}
+		// store value if needed
+		if !state.V3Config.SnmpPrivacyPasswordEncrypted.IsNull() {
+			// ValueString, not String: String() returns the value quoted, which drifts on read
+			encryptedSnmpPrivacyPasswordEncrypted, _ := Encrypt([]byte(state.V3Config.SnmpPrivacyPasswordEncrypted.ValueString()))
+			// private state only accepts valid JSON, so store the ciphertext as a JSON string
+			encryptedSnmpPrivacyPasswordEncryptedJson, _ := json.Marshal(encryptedSnmpPrivacyPasswordEncrypted)
+			resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.V3Config.SnmpPrivacyPasswordEncryptedInternalKeyName.String(), encryptedSnmpPrivacyPasswordEncryptedJson)...)
+		}
 		// property: name=snmp_privacy_protocol, type=STRING macro=copy_to_state
 		state.V3Config.SnmpPrivacyProtocol = types.StringPointerValue(ans.V3Config.SnmpPrivacyProtocol)
 		// property: name=snmp_security_level, type=STRING macro=copy_to_state

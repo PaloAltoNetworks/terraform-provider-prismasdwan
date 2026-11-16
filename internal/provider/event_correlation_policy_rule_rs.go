@@ -35,9 +35,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &eventCorrelationPolicyRuleResource{}
-	_ resource.ResourceWithConfigure   = &eventCorrelationPolicyRuleResource{}
-	_ resource.ResourceWithImportState = &eventCorrelationPolicyRuleResource{}
+	_ resource.Resource                   = &eventCorrelationPolicyRuleResource{}
+	_ resource.ResourceWithConfigure      = &eventCorrelationPolicyRuleResource{}
+	_ resource.ResourceWithImportState    = &eventCorrelationPolicyRuleResource{}
+	_ resource.ResourceWithValidateConfig = &eventCorrelationPolicyRuleResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -58,6 +59,12 @@ type eventCorrelationPolicyRuleResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *eventCorrelationPolicyRuleResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"policy_set_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *eventCorrelationPolicyRuleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_event_correlation_policy_rule"
@@ -66,13 +73,14 @@ func (r *eventCorrelationPolicyRuleResource) Metadata(_ context.Context, req res
 // Schema defines the schema for this data source.
 func (r *eventCorrelationPolicyRuleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Event Correlation Policy Rule.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=EventCorrelationPolicyRuleScreenV2N1
 			// generic x_parameters is added to accomodate path parameters
@@ -81,148 +89,166 @@ func (r *eventCorrelationPolicyRuleResource) Schema(_ context.Context, _ resourc
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=dampening_duration, type=INTEGER macro=rss_schema
 			"dampening_duration": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Dampening duration. Value: between 5 and 10080.",
 			},
 			// key name holder for attribute: name=dampening_duration, type=INTEGER macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=enabled, type=BOOLEAN macro=rss_schema
 			"enabled": rsschema.BoolAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Enabled.",
 			},
 			// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 			// property: name=end_time, type=INTEGER macro=rss_schema
 			"end_time": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "End time.",
 			},
 			// key name holder for attribute: name=end_time, type=INTEGER macro=rss_schema
 			// property: name=escalation_rules, type=REFERENCE macro=rss_schema
 			"escalation_rules": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Escalation rules.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=flap_rule, type=REFERENCE macro=rss_schema
 					"flap_rule": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Flap rule.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=flap_duration, type=INTEGER macro=rss_schema
 							"flap_duration": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Flap duration. Value: between 5 and 10080.",
 							},
 							// key name holder for attribute: name=flap_duration, type=INTEGER macro=rss_schema
 							// property: name=flap_rate, type=INTEGER macro=rss_schema
 							"flap_rate": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Flap rate. Value: between 2 and 512.",
 							},
 							// key name holder for attribute: name=flap_rate, type=INTEGER macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=flap_rate, type=INTEGER macro=rss_schema
+					// key name holder for attribute: name=flap_rule, type=REFERENCE macro=rss_schema
 					// property: name=standing_rule, type=REFERENCE macro=rss_schema
 					"standing_rule": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Standing rule.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=priority, type=STRING macro=rss_schema
 							"priority": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Priority. Value: one of p1, p2, p3, p4, p5, none.",
 							},
 							// key name holder for attribute: name=priority, type=STRING macro=rss_schema
 							// property: name=standing_for, type=INTEGER macro=rss_schema
 							"standing_for": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Standing for. Value: between 5 and 10080.",
 							},
 							// key name holder for attribute: name=standing_for, type=INTEGER macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=standing_for, type=INTEGER macro=rss_schema
+					// key name holder for attribute: name=standing_rule, type=REFERENCE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=standing_for, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=escalation_rules, type=REFERENCE macro=rss_schema
 			// property: name=event_codes, type=ARRAY_PRIMITIVE macro=rss_schema
 			"event_codes": rsschema.ListAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Event codes. Each item: one of DEVICEHW_POWER_LOST, DEVICEHW_INTERFACE_DOWN, DEVICEHW_INTERFACE_HALFDUPLEX, DEVICEHW_INTERFACE_ERRORS, DEVICEHW_DISKUTIL_PARTITIONSPACE, DEVICEHW_DISKENC_SYSTEM, DEVICEHW_MEMUTIL_SWAPSPACE, DEVICESW_GENERAL_PROCESSRESTART, DEVICESW_GENERAL_PROCESSSTOP, DEVICESW_CRITICAL_PROCESSRESTART, DEVICESW_CRITICAL_PROCESSSTOP, DEVICESW_LICENSE_VERIFICATION_FAILED, DEVICESW_MONITOR_DISABLED, DEVICESW_SYSTEM_BOOT, DEVICESW_TOKEN_VERIFICATION_FAILED, DEVICESW_IMAGE_UNSUPPORTED, DEVICESW_DHCPSERVER_RESTART, DEVICESW_DHCPRELAY_RESTART, DEVICESW_DHCPSERVER_ERRORS, DEVICESW_SNMP_AGENT_RESTART, DEVICESW_SNMP_AGENT_FAILED_TO_START, DEVICESW_SYSLOGSERVERS_DOWN, DEVICESW_NTP_NO_SYNC, DEVICEIF_ADDRESS_DUPLICATE, DEVICEIF_IPV6_ADDRESS_DUPLICATE, NETWORK_VPNLINK_DOWN, NETWORK_VPNPEER_UNAVAILABLE, NETWORK_VPNPEER_UNREACHABLE, NETWORK_VPNSS_MISMATCH, NETWORK_VPNSS_UNAVAILABLE, NETWORK_VPNBFD_DOWN, NETWORK_VPNLINKCIPHERS_INCOMPATIBLE, NETWORK_DIRECTPRIVATE_DOWN, NETWORK_DIRECTINTERNET_DOWN, NETWORK_PRIVATEWAN_UNREACHABLE, NETWORK_PRIVATEWAN_DEGRADED, PEERING_EDGE_DOWN, PEERING_CORE_DOWN, PEERING_BGP_DOWN, APPLICATION_APP_UNREACHABLE, APPLICATION_IP_COLLISION, APPLICATION_UNKNOWNS_HIGH, APPLICATION_FLOWCTRL_APPUNREACHABLE, APPLICATION_FLOWCTRL_APPREACHABLE, APPLICATION_FLOWCTRL_APPWITHINSLA, APPLICATION_FLOWCTRL_APPOUTSIDESLA, OPERATOR_SIGNUP_TOKEN_DISABLED, DEVICESW_FPS_LIMIT_EXCEEDED, DEVICESW_CONCURRENT_FLOW_SOFTLIMIT_EXCEEDED, DEVICESW_CONCURRENT_FLOWLIMIT_EXCEEDED, SITE_CIRCUIT_ABSENT_FOR_POLICY, NETWORK_POLICY_RULE_CONFLICT, PRIORITY_POLICY_RULE_CONFLICT, APPLICATION_CUSTOM_RULE_CONFLICT, NETWORK_POLICY_RULE_DROPPED, PRIORITY_POLICY_RULE_DROPPED, DEVICESW_DISCONNECTED_FROM_CONTROLLER, DEVICESW_USERIDAGENTS_DOWN, SPOKEHA_STATE_UPDATE, SPOKEHA_MULTIPLE_ACTIVE_DEVICES, SPOKEHA_CLUSTER_DEGRADED, SPOKEHA_CLUSTER_DOWN, NAT_POLICY_LEGACY_ALG_CONFIG_OVERRIDE, NAT_POLICY_STATIC_NATPOOL_OVERRUN, DEVICESW_CONNTRACK_FLOWLIMIT_EXCEEDED, DEVICESW_INITIATED_CONNECTION_ON_EXCLUDED_PATH, NETWORK_ANYNETLINK_DEGRADED, NETWORK_ANYNETLINK_DOWN, CLAIMCERT_RENEWAL_RETRY_LIMIT_EXCEEDED, CLAIMCERT_RENEWAL_FAILED, CLAIMCERT_AUTO_RENEWAL_DISABLED, CLAIMCERT_RENEWALS_TOO_FREQUENT, FLAP_RATE_EXCEEDED, DEVICESW_ANALYTICS_DISCONNECTED_FROM_CONTROLLER, DEVICESW_FLOWS_DISCONNECTED_FROM_CONTROLLER, APPLICATION_PROBE_DISABLED, SITE_CONNECTIVITY_DOWN, NETWORK_STANDARD_VPN_ENDPOINT_DOWN, SECURITY_POLICY_RULE_INCOMPLETE, SITE_NETWORK_SERVICE_ABSENT_FOR_POLICY, DEVICESW_IPFIX_COLLECTORS_DOWN, SITE_CONNECTIVITY_DEGRADED, CLAIMCERT_EXPIRY_WARNING, DEVICE_CELLULAR_ROAMING, DEVICE_CELLULAR_SIM_REMOVAL, DEVICE_CELLULAR_SIM_SWITCHOVER, DEVICE_CELLULAR_SIGNAL_STRENGTH_THRESH, DEVICE_CELLULAR_INTERNAL_MODEM_ERROR, DEVICE_CELLULAR_TECH_CHANGE, DEVICE_CELLULAR_SIM_PIN_ERROR, DEVICE_CELLULAR_SIM_PUK_NEEDED, DEVICE_CELLULAR_MODEM_TEMP_HIGH, DEVICE_CELLULAR_MTU_MISMATCH, DEVICE_CELLULAR_MODEM_DETECTION_ERROR, DEVICE_CELLULAR_SIM_SECURITY_ERROR, DEVICE_CELLULAR_FIRMWARE_NOT_AVAILABLE, DEVICE_CELLULAR_MODEM_GPS_DC_BIOS_FAULT, DEVICEHW_ION9000X722FW_OUTOFDATE, DEVICESW_APPDEF_SIGFILE_MISMATCH, SECURITY_POLICY_LIMITS_EXCEEDED, SASE_SERVICEENDPOINT_BANDWIDTH_LIMIT_EXCEEDED, SASE_SERVICEENDPOINT_BANDWIDTH_SOFT_LIMIT_EXCEEDED, VION_BANDWIDTH_LIMIT_EXCEEDED, VION_BANDWIDTH_SOFT_LIMIT_EXCEEDED, SPN_BANDWIDTH_LIMIT_EXCEEDED, SPN_BANDWIDTH_SOFT_LIMIT_EXCEEDED, DEVICE_POE_PORT_POWER_STATUS, DEVICE_POE_PORT_POWER_OVER_THRESHOLD, DEVICE_POE_MAIN_POWER_OVER_THRESHOLD, DEVICE_POE_MAIN_POWER_FAULT, DOT1X_RADIUS_SERVER_UNREACHABLE, DOT1X_DYNAMIC_VLAN_NOT_CONFIGURED, DOT1X_CLIENT_AUTH_FAIL, HUB_CLUSTER_SITE_COUNT_THRESHOLD_EXCEEDED, DEVICEHW_DISKUTIL_FRUSSD, DEVICEHW_TEMPERATURE_SENSOR, USER_ID_DIRECTORY_SYNC_FAILED, USER_ID_HUB_SELECTION_FAILED, CUID_SYNC_FAILED, DEVICE_POE_SHUT_CPU_TEMP_OVER_THRESHOLD, DEVICESW_INTERFACE_CONFIG_OUTOFSYNC, DEVICE_CELLULAR_INTERFACE_CONFIG_OUTOFSYNC, DEVICE_CELLULAR_MODULE_CONFIG_OUTOFSYNC, CARRIER_PERFORMANCE_DEGRADED, CIRCUIT_PERFORMANCE_DEGRADED, APPLICATION_PERFORMANCE_DEGRADED, DEVICE_ID_HUB_SELECTION_FAILED, NETWORK_VPNKEK_UNAVAILABLE, DEVICEHW_FAN_LOST, DEVICESW_MFGCERT_RENEWAL_FAILED, DEVICESW_MFGCERT_EXPIRY_WARNING, DEVICEHW_POWER_MISSING, SYSTEM_CIRCUIT_UTILIZATION_THRESHOLD_EXCEEDED, SYSTEM_CPU_THRESHOLD_EXCEEDED, SYSTEM_MEMORY_THRESHOLD_EXCEEDED, SYSTEM_DISK_THRESHOLD_EXCEEDED, SYSTEM_CONCURRENT_FLOW_THRESHOLD_EXCEEDED, DEVICESW_MCTD_INITIALIZATION_FAILURE, DEVICESW_MCTD_CONTENT_LOAD_FAILURE, DEVICESW_MCTD_LOG_BUFFER_FULL, DEVICESW_URLCLOUDSERVER_DOWN, DEVICESW_DNSSECCLOUDSERVER_DOWN, DEVICESW_SLSCONNECTION_DOWN, ALL_INCIDENTS, ALL_ALERTS, DEVICESW_TACACS_SERVERS_DOWN, BRANCH_GATEWAY_CLUSTER_SITE_COUNT_THRESHOLD_EXCEEDED, FLOW_LIMIT_PER_SOURCE_EXCEEDED, SECURITY_POLICY_RULES_FAILED, NPNSPN_INSUFFICIENT_VALID_GENEVE_KEYS, INCONSISTENT_IPSEC_TUNNEL_HA_STATE, NPN_MP_CPU_HIGH.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=event_codes, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=priority, type=STRING macro=rss_schema
 			"priority": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Priority. Value: one of p1, p2, p3, p4, p5, none.",
 			},
 			// key name holder for attribute: name=priority, type=STRING macro=rss_schema
 			// property: name=resource_ids, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -231,39 +257,45 @@ func (r *eventCorrelationPolicyRuleResource) Schema(_ context.Context, _ resourc
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Resource ids. At most 2000 items. Each item: matching `[0-9]{1,20}`.",
+				Validators:  ListMaxItems(2000),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=resource_ids, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=resource_type, type=STRING macro=rss_schema
 			"resource_type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Resource type. Value: one of site, element, anynetlink, bgppeer, interface, waninterface, wannetwork, networkpolicyset, prioritypolicyset, natpolicyset, securitypolicyset, appdef, serviceendpoint, cellular_module, hubcluster, useridagent, directoryservice, cuid, deviceidconfig, machine, spokecluster, user_id.",
 			},
 			// key name holder for attribute: name=resource_type, type=STRING macro=rss_schema
 			// property: name=start_time, type=INTEGER macro=rss_schema
 			"start_time": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Start time.",
 			},
 			// key name holder for attribute: name=start_time, type=INTEGER macro=rss_schema
 			// property: name=sub_resource_type, type=STRING macro=rss_schema
 			"sub_resource_type": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Sub resource type. Value: one of spoke, hub, public, private.",
 			},
 			// key name holder for attribute: name=sub_resource_type, type=STRING macro=rss_schema
 			// property: name=suppress, type=STRING macro=rss_schema
 			"suppress": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Suppress. Value: one of yes, no, none.",
 			},
 			// key name holder for attribute: name=suppress, type=STRING macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -272,6 +304,8 @@ func (r *eventCorrelationPolicyRuleResource) Schema(_ context.Context, _ resourc
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -536,6 +570,14 @@ func (r *eventCorrelationPolicyRuleResource) doPost(ctx context.Context, plan *r
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
@@ -607,7 +649,23 @@ func (r *eventCorrelationPolicyRuleResource) doGet(ctx context.Context, state *r
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -693,6 +751,14 @@ func (r *eventCorrelationPolicyRuleResource) doGet(ctx context.Context, state *r
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	return true
 }
 
@@ -800,13 +866,13 @@ func (r *eventCorrelationPolicyRuleResource) doPut(ctx context.Context, plan *rs
 			// copy_from_plan_or_state: body=body.EscalationRules.FlapRule prefix=rsModel state=state.EscalationRules.FlapRule plan=plan.EscalationRules.FlapRule properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.EscalationRules.FlapRule prefix=rsModel state=state.EscalationRules.FlapRule plan=plan.EscalationRules.FlapRule")
 			// property: name=flap_duration, type=INTEGER macro=copy_from_plan_or_state
-			if state.EscalationRules.FlapRule != nil {
+			if state != nil && state.EscalationRules != nil && state.EscalationRules.FlapRule != nil {
 				body.EscalationRules.FlapRule.FlapDuration = ValueInt64PointerFromPlanOrState(plan.EscalationRules.FlapRule.FlapDuration, state.EscalationRules.FlapRule.FlapDuration)
 			} else {
 				body.EscalationRules.FlapRule.FlapDuration = Int64ValueOrNil(plan.EscalationRules.FlapRule.FlapDuration)
 			}
 			// property: name=flap_rate, type=INTEGER macro=copy_from_plan_or_state
-			if state.EscalationRules.FlapRule != nil {
+			if state != nil && state.EscalationRules != nil && state.EscalationRules.FlapRule != nil {
 				body.EscalationRules.FlapRule.FlapRate = ValueInt64PointerFromPlanOrState(plan.EscalationRules.FlapRule.FlapRate, state.EscalationRules.FlapRule.FlapRate)
 			} else {
 				body.EscalationRules.FlapRule.FlapRate = Int64ValueOrNil(plan.EscalationRules.FlapRule.FlapRate)
@@ -820,13 +886,13 @@ func (r *eventCorrelationPolicyRuleResource) doPut(ctx context.Context, plan *rs
 			// copy_from_plan_or_state: body=body.EscalationRules.StandingRule prefix=rsModel state=state.EscalationRules.StandingRule plan=plan.EscalationRules.StandingRule properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.EscalationRules.StandingRule prefix=rsModel state=state.EscalationRules.StandingRule plan=plan.EscalationRules.StandingRule")
 			// property: name=priority, type=STRING macro=copy_from_plan_or_state
-			if state.EscalationRules.StandingRule != nil {
+			if state != nil && state.EscalationRules != nil && state.EscalationRules.StandingRule != nil {
 				body.EscalationRules.StandingRule.Priority = ValueStringPointerFromPlanOrState(plan.EscalationRules.StandingRule.Priority, state.EscalationRules.StandingRule.Priority)
 			} else {
 				body.EscalationRules.StandingRule.Priority = StringValueOrNil(plan.EscalationRules.StandingRule.Priority)
 			}
 			// property: name=standing_for, type=INTEGER macro=copy_from_plan_or_state
-			if state.EscalationRules.StandingRule != nil {
+			if state != nil && state.EscalationRules != nil && state.EscalationRules.StandingRule != nil {
 				body.EscalationRules.StandingRule.StandingFor = ValueInt64PointerFromPlanOrState(plan.EscalationRules.StandingRule.StandingFor, state.EscalationRules.StandingRule.StandingFor)
 			} else {
 				body.EscalationRules.StandingRule.StandingFor = Int64ValueOrNil(plan.EscalationRules.StandingRule.StandingFor)
@@ -834,7 +900,12 @@ func (r *eventCorrelationPolicyRuleResource) doPut(ctx context.Context, plan *rs
 		}
 	}
 	// property: name=event_codes, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.EventCodes = ListStringValueOrNil(ctx, plan.EventCodes)
+	if state != nil && plan.EventCodes.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.EventCodes = ListStringValueOrNil(ctx, state.EventCodes)
+	} else {
+		body.EventCodes = ListStringValueOrNil(ctx, plan.EventCodes)
+	}
 	// property: name=id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.Id = ValueStringPointerFromPlanOrState(plan.Id, state.Id)
@@ -854,7 +925,12 @@ func (r *eventCorrelationPolicyRuleResource) doPut(ctx context.Context, plan *rs
 		body.Priority = StringValueOrNil(plan.Priority)
 	}
 	// property: name=resource_ids, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.ResourceIds = ListStringValueOrNil(ctx, plan.ResourceIds)
+	if state != nil && plan.ResourceIds.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.ResourceIds = ListStringValueOrNil(ctx, state.ResourceIds)
+	} else {
+		body.ResourceIds = ListStringValueOrNil(ctx, plan.ResourceIds)
+	}
 	// property: name=resource_type, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.ResourceType = ValueStringPointerFromPlanOrState(plan.ResourceType, state.ResourceType)
@@ -880,7 +956,12 @@ func (r *eventCorrelationPolicyRuleResource) doPut(ctx context.Context, plan *rs
 		body.Suppress = StringValueOrNil(plan.Suppress)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
@@ -928,6 +1009,12 @@ func (r *eventCorrelationPolicyRuleResource) doPut(ctx context.Context, plan *rs
 	if json_err != nil {
 		resp.Diagnostics.AddError("error in json unmarshal to EventCorrelationPolicyRuleScreenV2N1 in update", json_err.Error())
 		return false
+	}
+
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
 	}
 
 	// Store the answer to state. schema=EventCorrelationPolicyRuleScreenV2N1
@@ -1003,6 +1090,14 @@ func (r *eventCorrelationPolicyRuleResource) doPut(ctx context.Context, plan *rs
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 

@@ -33,9 +33,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &elementRadiusResource{}
-	_ resource.ResourceWithConfigure   = &elementRadiusResource{}
-	_ resource.ResourceWithImportState = &elementRadiusResource{}
+	_ resource.Resource                   = &elementRadiusResource{}
+	_ resource.ResourceWithConfigure      = &elementRadiusResource{}
+	_ resource.ResourceWithImportState    = &elementRadiusResource{}
+	_ resource.ResourceWithValidateConfig = &elementRadiusResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -56,6 +57,12 @@ type elementRadiusResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *elementRadiusResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"element_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *elementRadiusResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_element_radius"
@@ -64,13 +71,14 @@ func (r *elementRadiusResource) Metadata(_ context.Context, req resource.Metadat
 // Schema defines the schema for this data source.
 func (r *elementRadiusResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Element Radius.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=ElementRadiusScreen
 			// generic x_parameters is added to accomodate path parameters
@@ -79,45 +87,51 @@ func (r *elementRadiusResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=override_indicator, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -126,123 +140,133 @@ func (r *elementRadiusResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Override indicator.",
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=override_indicator, type=ARRAY_PRIMITIVE macro=rss_schema
 			// property: name=radius_configuration, type=ARRAY_REFERENCE macro=rss_schema
 			"radius_configuration": rsschema.ListNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Radius configuration. At most 2 items.",
+				Validators:  ListMaxItems(2),
 				NestedObject: rsschema.NestedAttributeObject{
 					Attributes: map[string]rsschema.Attribute{
 						// property: name=accounting_port, type=INTEGER macro=rss_schema
 						"accounting_port": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Accounting port. Value: between 0 and 65535.",
 						},
 						// key name holder for attribute: name=accounting_port, type=INTEGER macro=rss_schema
 						// property: name=authentication_port, type=INTEGER macro=rss_schema
 						"authentication_port": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Authentication port. Value: between 0 and 65535.",
 						},
 						// key name holder for attribute: name=authentication_port, type=INTEGER macro=rss_schema
 						// property: name=ip_version, type=INTEGER macro=rss_schema
 						"ip_version": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Ip version.",
 						},
 						// key name holder for attribute: name=ip_version, type=INTEGER macro=rss_schema
 						// property: name=priority, type=INTEGER macro=rss_schema
 						"priority": rsschema.Int64Attribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Priority. Value: between 0 and 255.",
 						},
 						// key name holder for attribute: name=priority, type=INTEGER macro=rss_schema
 						// property: name=retain_shared_secret, type=BOOLEAN macro=rss_schema
 						"retain_shared_secret": rsschema.BoolAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: true,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   true,
+							Description: "Retain shared secret.",
 						},
 						// key name holder for attribute: name=retain_shared_secret, type=BOOLEAN macro=rss_schema
 						"retain_shared_secret_internal_key_name": rsschema.BoolAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Internal key name for the sensitive attribute retain_shared_secret, managed automatically by the provider.",
 						},
 						// property: name=server_ip_address, type=STRING macro=rss_schema
 						"server_ip_address": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Server ip address.",
 						},
 						// key name holder for attribute: name=server_ip_address, type=STRING macro=rss_schema
 						// property: name=shared_secret, type=STRING macro=rss_schema
 						"shared_secret": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: true,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   true,
+							Description: "Shared secret.",
 						},
 						// key name holder for attribute: name=shared_secret, type=STRING macro=rss_schema
 						"shared_secret_internal_key_name": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Internal key name for the sensitive attribute shared_secret, managed automatically by the provider.",
 						},
 						// property: name=shared_secret_encrypted, type=STRING macro=rss_schema
 						"shared_secret_encrypted": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  false,
-							Optional:  true,
-							Sensitive: true,
+							Required:    false,
+							Computed:    false,
+							Optional:    true,
+							Sensitive:   true,
+							Description: "Shared secret encrypted.",
 						},
 						// key name holder for attribute: name=shared_secret_encrypted, type=STRING macro=rss_schema
 						"shared_secret_encrypted_internal_key_name": rsschema.StringAttribute{
-							Required:  false,
-							Computed:  true,
-							Optional:  true,
-							Sensitive: false,
+							Required:    false,
+							Computed:    true,
+							Optional:    true,
+							Sensitive:   false,
+							Description: "Internal key name for the sensitive attribute shared_secret_encrypted, managed automatically by the provider.",
 						},
 					},
 				},
 			},
-			// key name holder for attribute: name=shared_secret_encrypted, type=STRING macro=rss_schema
-			"shared_secret_encrypted_internal_key_name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
-			},
+			// key name holder for attribute: name=radius_configuration, type=ARRAY_REFERENCE macro=rss_schema
 			// property: name=radius_profile_id, type=STRING macro=rss_schema
 			"radius_profile_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Radius profile id.",
 			},
 			// key name holder for attribute: name=radius_profile_id, type=STRING macro=rss_schema
 			// property: name=source_interface_id, type=STRING macro=rss_schema
 			"source_interface_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Source interface id.",
 			},
 			// key name holder for attribute: name=source_interface_id, type=STRING macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -251,6 +275,8 @@ func (r *elementRadiusResource) Schema(_ context.Context, _ resource.SchemaReque
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -474,22 +500,34 @@ func (r *elementRadiusResource) doPost(ctx context.Context, plan *rsModelElement
 			// property: name=server_ip_address, type=STRING macro=copy_to_state
 			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].ServerIpAddress = types.StringPointerValue(varLoopRadiusConfiguration.ServerIpAddress)
 			// property: name=shared_secret, type=STRING macro=copy_to_state
-			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret = types.StringPointerValue(plan.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret = types.StringNull()
+			if len(plan.RadiusConfiguration) > varLoopRadiusConfigurationIndex {
+				state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret = types.StringPointerValue(plan.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret.IsNull() {
-				encryptedSharedSecret, _ := Encrypt([]byte(state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret.String()))
-				resp.Private.SetKey(ctx, state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretInternalKeyName.String(), []byte(encryptedSharedSecret))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedSharedSecret, _ := Encrypt([]byte(state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedSharedSecretJson, _ := json.Marshal(encryptedSharedSecret)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretInternalKeyName.String(), encryptedSharedSecretJson)...)
 			}
 			// property: name=shared_secret_encrypted, type=STRING macro=copy_to_state
-			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted = types.StringPointerValue(plan.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted = types.StringNull()
+			if len(plan.RadiusConfiguration) > varLoopRadiusConfigurationIndex {
+				state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted = types.StringPointerValue(plan.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted.IsNull() {
-				encryptedSharedSecretEncrypted, _ := Encrypt([]byte(state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted.String()))
-				resp.Private.SetKey(ctx, state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncryptedInternalKeyName.String(), []byte(encryptedSharedSecretEncrypted))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedSharedSecretEncrypted, _ := Encrypt([]byte(state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedSharedSecretEncryptedJson, _ := json.Marshal(encryptedSharedSecretEncrypted)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncryptedInternalKeyName.String(), encryptedSharedSecretEncryptedJson)...)
 			}
 		}
 	}
@@ -501,6 +539,14 @@ func (r *elementRadiusResource) doPost(ctx context.Context, plan *rsModelElement
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
@@ -572,7 +618,23 @@ func (r *elementRadiusResource) doGet(ctx context.Context, state *rsModelElement
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -627,17 +689,27 @@ func (r *elementRadiusResource) doGet(ctx context.Context, state *rsModelElement
 			// property: name=server_ip_address, type=STRING macro=copy_to_state
 			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].ServerIpAddress = types.StringPointerValue(varLoopRadiusConfiguration.ServerIpAddress)
 			// property: name=shared_secret, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if len(savestate.RadiusConfiguration) > varLoopRadiusConfigurationIndex {
+				state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretInternalKeyName = savestate.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretInternalKeyName
+			}
 			encryptedSharedSecretKeyName := state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretInternalKeyName.String()
 			encryptedSharedSecretValueBytes, _ := resp.Private.GetKey(ctx, encryptedSharedSecretKeyName)
-			if encryptedSharedSecretValueBytes != nil {
-				decryptedSharedSecret, _ := Decrypt(string(encryptedSharedSecretValueBytes))
+			var encryptedSharedSecretValue string
+			if encryptedSharedSecretValueBytes != nil && json.Unmarshal(encryptedSharedSecretValueBytes, &encryptedSharedSecretValue) == nil {
+				decryptedSharedSecret, _ := Decrypt(encryptedSharedSecretValue)
 				state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret = types.StringValue(decryptedSharedSecret)
 			}
 			// property: name=shared_secret_encrypted, type=STRING macro=copy_to_state
+			// the api returns sensitive values blank, so keep the key name from prior state to find the stored value
+			if len(savestate.RadiusConfiguration) > varLoopRadiusConfigurationIndex {
+				state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncryptedInternalKeyName = savestate.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncryptedInternalKeyName
+			}
 			encryptedSharedSecretEncryptedKeyName := state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncryptedInternalKeyName.String()
 			encryptedSharedSecretEncryptedValueBytes, _ := resp.Private.GetKey(ctx, encryptedSharedSecretEncryptedKeyName)
-			if encryptedSharedSecretEncryptedValueBytes != nil {
-				decryptedSharedSecretEncrypted, _ := Decrypt(string(encryptedSharedSecretEncryptedValueBytes))
+			var encryptedSharedSecretEncryptedValue string
+			if encryptedSharedSecretEncryptedValueBytes != nil && json.Unmarshal(encryptedSharedSecretEncryptedValueBytes, &encryptedSharedSecretEncryptedValue) == nil {
+				decryptedSharedSecretEncrypted, _ := Decrypt(encryptedSharedSecretEncryptedValue)
 				state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted = types.StringValue(decryptedSharedSecretEncrypted)
 			}
 		}
@@ -650,6 +722,14 @@ func (r *elementRadiusResource) doGet(ctx context.Context, state *rsModelElement
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	return true
 }
 
@@ -737,11 +817,16 @@ func (r *elementRadiusResource) doPut(ctx context.Context, plan *rsModelElementR
 		body.Name = StringValueOrNil(plan.Name)
 	}
 	// property: name=override_indicator, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-	body.OverrideIndicator = ListStringValueOrNil(ctx, plan.OverrideIndicator)
+	if state != nil && plan.OverrideIndicator.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.OverrideIndicator = ListStringValueOrNil(ctx, state.OverrideIndicator)
+	} else {
+		body.OverrideIndicator = ListStringValueOrNil(ctx, plan.OverrideIndicator)
+	}
 	// property: name=radius_configuration, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-	if plan.RadiusConfiguration == nil && (state == nil || state.RadiusConfiguration == nil) {
+	if plan.RadiusConfiguration == nil && (!(state != nil) || state.RadiusConfiguration == nil) {
 		body.RadiusConfiguration = nil
-	} else if len(plan.RadiusConfiguration) == 0 && (state == nil || len(state.RadiusConfiguration) == 0) {
+	} else if len(plan.RadiusConfiguration) == 0 && (!(state != nil) || len(state.RadiusConfiguration) == 0) {
 		body.RadiusConfiguration = []sdwan_schema.RadiusConfiguration{}
 	} else if len(plan.RadiusConfiguration) != 0 || (state != nil && len(state.RadiusConfiguration) != 0) {
 		RadiusConfigurationToUse := plan.RadiusConfiguration
@@ -786,7 +871,12 @@ func (r *elementRadiusResource) doPut(ctx context.Context, plan *rsModelElementR
 		body.SourceInterfaceId = StringValueOrNil(plan.SourceInterfaceId)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
@@ -836,6 +926,12 @@ func (r *elementRadiusResource) doPut(ctx context.Context, plan *rsModelElementR
 		return false
 	}
 
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
+	}
+
 	// Store the answer to state. schema=ElementRadiusScreen
 	// copy_to_state: state=state prefix=rsModel ans=ans properties=10
 	tflog.Debug(ctx, "copy_to_state state=state prefix=rsModel ans=ans")
@@ -878,22 +974,34 @@ func (r *elementRadiusResource) doPut(ctx context.Context, plan *rsModelElementR
 			// property: name=server_ip_address, type=STRING macro=copy_to_state
 			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].ServerIpAddress = types.StringPointerValue(varLoopRadiusConfiguration.ServerIpAddress)
 			// property: name=shared_secret, type=STRING macro=copy_to_state
-			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret = types.StringPointerValue(plan.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret = types.StringNull()
+			if len(plan.RadiusConfiguration) > varLoopRadiusConfigurationIndex {
+				state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret = types.StringPointerValue(plan.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret.IsNull() {
-				encryptedSharedSecret, _ := Encrypt([]byte(state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret.String()))
-				resp.Private.SetKey(ctx, state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretInternalKeyName.String(), []byte(encryptedSharedSecret))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedSharedSecret, _ := Encrypt([]byte(state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecret.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedSharedSecretJson, _ := json.Marshal(encryptedSharedSecret)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretInternalKeyName.String(), encryptedSharedSecretJson)...)
 			}
 			// property: name=shared_secret_encrypted, type=STRING macro=copy_to_state
-			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted = types.StringPointerValue(plan.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted.ValueStringPointer())
 			// this property is sensitive and will be stored in the state's internal key name
 			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncryptedInternalKeyName = types.StringValue(GenerateRandomString(16))
+			state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted = types.StringNull()
+			if len(plan.RadiusConfiguration) > varLoopRadiusConfigurationIndex {
+				state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted = types.StringPointerValue(plan.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted.ValueStringPointer())
+			}
 			// store value if needed
 			if !state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted.IsNull() {
-				encryptedSharedSecretEncrypted, _ := Encrypt([]byte(state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted.String()))
-				resp.Private.SetKey(ctx, state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncryptedInternalKeyName.String(), []byte(encryptedSharedSecretEncrypted))
+				// ValueString, not String: String() returns the value quoted, which drifts on read
+				encryptedSharedSecretEncrypted, _ := Encrypt([]byte(state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncrypted.ValueString()))
+				// private state only accepts valid JSON, so store the ciphertext as a JSON string
+				encryptedSharedSecretEncryptedJson, _ := json.Marshal(encryptedSharedSecretEncrypted)
+				resp.Diagnostics.Append(resp.Private.SetKey(ctx, state.RadiusConfiguration[varLoopRadiusConfigurationIndex].SharedSecretEncryptedInternalKeyName.String(), encryptedSharedSecretEncryptedJson)...)
 			}
 		}
 	}
@@ -905,6 +1013,14 @@ func (r *elementRadiusResource) doPut(ctx context.Context, plan *rsModelElementR
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
@@ -969,10 +1085,78 @@ func (r *elementRadiusResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
-	// make post call
-	var state rsModelElementRadiusScreen
-	if r.doPost(ctx, &plan, &state, resp) {
-		resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	// Every switch-capable element has exactly one RADIUS configuration: once it exists (created by Terraform, the portal or
+	// a direct call) a POST is answered with INVALID_REQUEST_DUPLICATE_KEY for ever, and a DELETE only clears its fields.
+	// "Create" therefore adopts the existing one (GET, then PUT) and only POSTs when the element has none.
+	params := MapStringValueOrNil(ctx, plan.TfParameters)
+	element_id, ok := params["element_id"]
+	if !ok || element_id == nil {
+		resp.Diagnostics.AddError("could not find element_id in x_parameters", "missing parameter")
+		return
+	}
+
+	svc := sdwan_client.NewClient(r.client)
+	list_request := &sdwan_client.SdwanClientRequestResponse{}
+	list_request.ResourceType = "prismasdwan_element_radius"
+	list_request.Method = "GET"
+	list_request.Path = "/sdwan/v2.0/api/elements/{element_id}/radii"
+	list_request.PathParameters = &map[string]*string{"element_id": element_id}
+	svc.ExecuteSdwanRequest(ctx, list_request)
+	if list_request.ResponseErr != nil {
+		resp.Diagnostics.AddError("error reading the element's RADIUS configuration",
+			(*list_request.ResponseErr).Error()+" (GET "+*list_request.FinalPath+")")
+		return
+	}
+	var existing struct {
+		Items []struct {
+			Id *string `json:"id"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(*list_request.ResponseBytes, &existing); err != nil {
+		resp.Diagnostics.AddError("error reading the element's RADIUS configuration", err.Error())
+		return
+	}
+
+	if len(existing.Items) == 0 || existing.Items[0].Id == nil {
+		// none yet: the normal create
+		var state rsModelElementRadiusScreen
+		if r.doPost(ctx, &plan, &state, resp) {
+			resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+		}
+		return
+	}
+
+	// adopt: same tfid format as a created object, <id>, then the path parameters
+	var idBuilder strings.Builder
+	idBuilder.WriteString(*existing.Items[0].Id)
+	for p, v := range params {
+		if v != nil && p != "radius_id" {
+			idBuilder.WriteString(IdSeparator)
+			idBuilder.WriteString(p)
+			idBuilder.WriteString("=")
+			idBuilder.WriteString(*v)
+		}
+	}
+	plan.Tfid = types.StringValue(idBuilder.String())
+
+	var save rsModelElementRadiusScreen
+	save.Tfid = plan.Tfid
+	gResp := resource.ReadResponse{
+		Private:     resp.Private,
+		Diagnostics: resp.Diagnostics,
+	}
+	if r.doGet(ctx, &save, &plan, &resp.State, &gResp) {
+		uResp := resource.UpdateResponse{
+			Private:     resp.Private,
+			Diagnostics: resp.Diagnostics,
+		}
+		if r.doPut(ctx, &plan, &save, &resp.State, &uResp) {
+			resp.Diagnostics.Append(resp.State.Set(ctx, &save)...)
+		} else {
+			resp.Diagnostics = uResp.Diagnostics
+		}
+	} else {
+		resp.Diagnostics = gResp.Diagnostics
 	}
 }
 

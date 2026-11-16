@@ -24,14 +24,12 @@ import (
 )
 
 // +-----------------------------------------------------------------
-// | Schema Map Summary (size=goLangStructMap=9)
+// | Schema Map Summary (size=goLangStructMap=7)
 // | Computed Resource Name=sites_lannetworks
 // +-----------------------------------------------------------------
 // | LanNetworkIPv6Config HasID=false
-// | BaseCustomDHCPOptions HasID=false
-// | StaticMapping HasID=false
-// | IPRange HasID=false
-// | DHCPServer HasID=true
+// | IPAddressPool HasID=false
+// | DHCPServer HasID=false
 // | DHCPRelayOption82 HasID=false
 // | DHCPRelay HasID=false
 // | LanNetworkIPv4Config HasID=false
@@ -40,9 +38,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &siteLanNetworkResource{}
-	_ resource.ResourceWithConfigure   = &siteLanNetworkResource{}
-	_ resource.ResourceWithImportState = &siteLanNetworkResource{}
+	_ resource.Resource                   = &siteLanNetworkResource{}
+	_ resource.ResourceWithConfigure      = &siteLanNetworkResource{}
+	_ resource.ResourceWithImportState    = &siteLanNetworkResource{}
+	_ resource.ResourceWithValidateConfig = &siteLanNetworkResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -63,6 +62,12 @@ type siteLanNetworkResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *siteLanNetworkResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{"site_id"})...)
+}
+
 // Metadata returns the data source type name.
 func (r *siteLanNetworkResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_site_lan_network"
@@ -71,13 +76,14 @@ func (r *siteLanNetworkResource) Metadata(_ context.Context, req resource.Metada
 // Schema defines the schema for this data source.
 func (r *siteLanNetworkResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Site Lan Network.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=LANNetworkScreenV3N3
 			// generic x_parameters is added to accomodate path parameters
@@ -86,45 +92,51 @@ func (r *siteLanNetworkResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 1024 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=ipv4_config, type=REFERENCE macro=rss_schema
 			"ipv4_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ipv4 config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=default_routers, type=ARRAY_PRIMITIVE macro=rss_schema
 					"default_routers": rsschema.ListAttribute{
@@ -132,327 +144,196 @@ func (r *siteLanNetworkResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "Default routers.",
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=default_routers, type=ARRAY_PRIMITIVE macro=rss_schema
 					// property: name=dhcp_relay, type=REFERENCE macro=rss_schema
 					"dhcp_relay": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Dhcp relay.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=enabled, type=BOOLEAN macro=rss_schema
 							"enabled": rsschema.BoolAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Enabled.",
 							},
 							// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 							// property: name=option_82, type=REFERENCE macro=rss_schema
 							"option_82": rsschema.SingleNestedAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Option 82.",
 								Attributes: map[string]rsschema.Attribute{
 									// property: name=circuit_id, type=STRING macro=rss_schema
 									"circuit_id": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Circuit id. Value: at most 255 characters.",
 									},
 									// key name holder for attribute: name=circuit_id, type=STRING macro=rss_schema
 									// property: name=enabled, type=BOOLEAN macro=rss_schema
 									"enabled": rsschema.BoolAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Enabled.",
 									},
 									// key name holder for attribute: name=enabled, type=BOOLEAN macro=rss_schema
 									// property: name=reforwarding_policy, type=STRING macro=rss_schema
 									"reforwarding_policy": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Reforwarding policy. Value: one of replace, keep, append, drop.",
 									},
 									// key name holder for attribute: name=reforwarding_policy, type=STRING macro=rss_schema
 									// property: name=remote_id, type=STRING macro=rss_schema
 									"remote_id": rsschema.StringAttribute{
-										Required:  false,
-										Computed:  false,
-										Optional:  true,
-										Sensitive: false,
+										Required:    false,
+										Computed:    false,
+										Optional:    true,
+										Sensitive:   false,
+										Description: "Remote id. Value: at most 255 characters.",
 									},
 									// key name holder for attribute: name=remote_id, type=STRING macro=rss_schema
 								},
 							},
-							// key name holder for attribute: name=remote_id, type=STRING macro=rss_schema
+							// key name holder for attribute: name=option_82, type=REFERENCE macro=rss_schema
 							// property: name=server_ips, type=ARRAY_PRIMITIVE macro=rss_schema
 							"server_ips": rsschema.ListAttribute{
 								Required:    false,
 								Computed:    false,
 								Optional:    true,
 								Sensitive:   false,
+								Description: "Server ips. At most 16 items.",
+								Validators:  ListMaxItems(16),
 								ElementType: types.StringType,
 							},
 							// key name holder for attribute: name=server_ips, type=ARRAY_PRIMITIVE macro=rss_schema
 							// property: name=source_interface, type=STRING macro=rss_schema
 							"source_interface": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Source interface.",
 							},
 							// key name holder for attribute: name=source_interface, type=STRING macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=source_interface, type=STRING macro=rss_schema
+					// key name holder for attribute: name=dhcp_relay, type=REFERENCE macro=rss_schema
 					// property: name=dhcp_server, type=REFERENCE macro=rss_schema
 					"dhcp_server": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Dhcp server.",
 						Attributes: map[string]rsschema.Attribute{
-							// generic x_parameters is added to accomodate path parameters
-							"x_parameters": rsschema.MapAttribute{
-								Required:    false,
-								Computed:    false,
-								Optional:    true,
-								ElementType: types.StringType,
-							},
-							// property: name=_etag, type=INTEGER macro=rss_schema
-							"x_etag": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  true,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
-							// property: name=_schema, type=INTEGER macro=rss_schema
-							"x_schema": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  true,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
-							// property: name=broadcast_address, type=STRING macro=rss_schema
-							"broadcast_address": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=broadcast_address, type=STRING macro=rss_schema
-							// property: name=custom_options, type=ARRAY_REFERENCE macro=rss_schema
-							"custom_options": rsschema.ListNestedAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-								NestedObject: rsschema.NestedAttributeObject{
-									Attributes: map[string]rsschema.Attribute{
-										// property: name=option_definition, type=STRING macro=rss_schema
-										"option_definition": rsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
-										},
-										// key name holder for attribute: name=option_definition, type=STRING macro=rss_schema
-										// property: name=option_value, type=STRING macro=rss_schema
-										"option_value": rsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
-										},
-										// key name holder for attribute: name=option_value, type=STRING macro=rss_schema
-									},
-								},
-							},
-							// key name holder for attribute: name=option_value, type=STRING macro=rss_schema
-							// property: name=default_lease_time, type=INTEGER macro=rss_schema
-							"default_lease_time": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=default_lease_time, type=INTEGER macro=rss_schema
-							// property: name=description, type=STRING macro=rss_schema
-							"description": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=description, type=STRING macro=rss_schema
-							// property: name=disabled, type=BOOLEAN macro=rss_schema
-							"disabled": rsschema.BoolAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=disabled, type=BOOLEAN macro=rss_schema
-							// property: name=dns_servers, type=ARRAY_PRIMITIVE macro=rss_schema
-							"dns_servers": rsschema.ListAttribute{
-								Required:    false,
-								Computed:    false,
-								Optional:    true,
-								Sensitive:   false,
-								ElementType: types.StringType,
-							},
-							// key name holder for attribute: name=dns_servers, type=ARRAY_PRIMITIVE macro=rss_schema
 							// property: name=domain_name, type=STRING macro=rss_schema
 							"domain_name": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=domain_name, type=STRING macro=rss_schema
-							// property: name=gateway, type=STRING macro=rss_schema
-							"gateway": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=gateway, type=STRING macro=rss_schema
-							// property: name=id, type=STRING macro=rss_schema
-							"id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  true,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=id, type=STRING macro=rss_schema
-							// property: name=ip_ranges, type=ARRAY_REFERENCE macro=rss_schema
-							"ip_ranges": rsschema.ListNestedAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-								NestedObject: rsschema.NestedAttributeObject{
-									Attributes: map[string]rsschema.Attribute{
-										// property: name=end_ip, type=STRING macro=rss_schema
-										"end_ip": rsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
-										},
-										// key name holder for attribute: name=end_ip, type=STRING macro=rss_schema
-										// property: name=start_ip, type=STRING macro=rss_schema
-										"start_ip": rsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
-										},
-										// key name holder for attribute: name=start_ip, type=STRING macro=rss_schema
-									},
-								},
-							},
-							// key name holder for attribute: name=start_ip, type=STRING macro=rss_schema
-							// property: name=max_lease_time, type=INTEGER macro=rss_schema
-							"max_lease_time": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=max_lease_time, type=INTEGER macro=rss_schema
-							// property: name=network_context_id, type=STRING macro=rss_schema
-							"network_context_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=network_context_id, type=STRING macro=rss_schema
-							// property: name=static_mappings, type=ARRAY_REFERENCE macro=rss_schema
-							"static_mappings": rsschema.ListNestedAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-								NestedObject: rsschema.NestedAttributeObject{
-									Attributes: map[string]rsschema.Attribute{
-										// property: name=ip_address, type=STRING macro=rss_schema
-										"ip_address": rsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
-										},
-										// key name holder for attribute: name=ip_address, type=STRING macro=rss_schema
-										// property: name=mac, type=STRING macro=rss_schema
-										"mac": rsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
-										},
-										// key name holder for attribute: name=mac, type=STRING macro=rss_schema
-										// property: name=name, type=STRING macro=rss_schema
-										"name": rsschema.StringAttribute{
-											Required:  false,
-											Computed:  false,
-											Optional:  true,
-											Sensitive: false,
-										},
-										// key name holder for attribute: name=name, type=STRING macro=rss_schema
-									},
-								},
-							},
-							// key name holder for attribute: name=name, type=STRING macro=rss_schema
-							// property: name=subnet, type=STRING macro=rss_schema
-							"subnet": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
-							},
-							// key name holder for attribute: name=subnet, type=STRING macro=rss_schema
-							// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
-							"tags": rsschema.SetAttribute{
 								Required:    false,
 								Computed:    false,
 								Optional:    true,
 								Sensitive:   false,
+								Description: "Domain name.",
+							},
+							// key name holder for attribute: name=domain_name, type=STRING macro=rss_schema
+							// property: name=domain_name_servers, type=ARRAY_PRIMITIVE macro=rss_schema
+							"domain_name_servers": rsschema.ListAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Domain name servers.",
 								ElementType: types.StringType,
 							},
-							// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
+							// key name holder for attribute: name=domain_name_servers, type=ARRAY_PRIMITIVE macro=rss_schema
+							// property: name=ip_address_pool, type=ARRAY_REFERENCE macro=rss_schema
+							"ip_address_pool": rsschema.ListNestedAttribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Ip address pool.",
+								NestedObject: rsschema.NestedAttributeObject{
+									Attributes: map[string]rsschema.Attribute{
+										// property: name=end, type=STRING macro=rss_schema
+										"end": rsschema.StringAttribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "End.",
+										},
+										// key name holder for attribute: name=end, type=STRING macro=rss_schema
+										// property: name=start, type=STRING macro=rss_schema
+										"start": rsschema.StringAttribute{
+											Required:    false,
+											Computed:    false,
+											Optional:    true,
+											Sensitive:   false,
+											Description: "Start.",
+										},
+										// key name holder for attribute: name=start, type=STRING macro=rss_schema
+									},
+								},
+							},
+							// key name holder for attribute: name=ip_address_pool, type=ARRAY_REFERENCE macro=rss_schema
+							// property: name=lease_expiry_time, type=INTEGER macro=rss_schema
+							"lease_expiry_time": rsschema.Int64Attribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Lease expiry time.",
+							},
+							// key name holder for attribute: name=lease_expiry_time, type=INTEGER macro=rss_schema
+							// property: name=lease_renew_time, type=INTEGER macro=rss_schema
+							"lease_renew_time": rsschema.Int64Attribute{
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Lease renew time.",
+							},
+							// key name holder for attribute: name=lease_renew_time, type=INTEGER macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
+					// key name holder for attribute: name=dhcp_server, type=REFERENCE macro=rss_schema
 					// property: name=prefixes, type=ARRAY_PRIMITIVE macro=rss_schema
 					"prefixes": rsschema.ListAttribute{
 						Required:    false,
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "Prefixes.",
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=prefixes, type=ARRAY_PRIMITIVE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=prefixes, type=ARRAY_PRIMITIVE macro=rss_schema
+			// key name holder for attribute: name=ipv4_config, type=REFERENCE macro=rss_schema
 			// property: name=ipv6_config, type=REFERENCE macro=rss_schema
 			"ipv6_config": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Ipv6 config.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=default_routers, type=ARRAY_PRIMITIVE macro=rss_schema
 					"default_routers": rsschema.ListAttribute{
@@ -460,6 +341,7 @@ func (r *siteLanNetworkResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "Default routers.",
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=default_routers, type=ARRAY_PRIMITIVE macro=rss_schema
@@ -469,34 +351,38 @@ func (r *siteLanNetworkResource) Schema(_ context.Context, _ resource.SchemaRequ
 						Computed:    false,
 						Optional:    true,
 						Sensitive:   false,
+						Description: "Prefixes.",
 						ElementType: types.StringType,
 					},
 					// key name holder for attribute: name=prefixes, type=ARRAY_PRIMITIVE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=prefixes, type=ARRAY_PRIMITIVE macro=rss_schema
+			// key name holder for attribute: name=ipv6_config, type=REFERENCE macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=network_context_id, type=STRING macro=rss_schema
 			"network_context_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Network context id. Value: at most 30 characters, matching `^-?[0-9]{1,30}$`.",
 			},
 			// key name holder for attribute: name=network_context_id, type=STRING macro=rss_schema
 			// property: name=scope, type=STRING macro=rss_schema
 			"scope": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Scope. Value: one of global, local.",
 			},
 			// key name holder for attribute: name=scope, type=STRING macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -505,15 +391,18 @@ func (r *siteLanNetworkResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 1024 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			// property: name=vrf_context_id, type=STRING macro=rss_schema
 			"vrf_context_id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Vrf context id. Value: at most 20 characters, matching `^-?[0-9]{1,20}$`. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=vrf_context_id, type=STRING macro=rss_schema
 		},
@@ -613,92 +502,34 @@ func (r *siteLanNetworkResource) doPost(ctx context.Context, plan *rsModelLANNet
 		// property: name=dhcp_server, type=REFERENCE macro=copy_from_plan
 		if plan.Ipv4Config.DhcpServer != nil {
 			body.Ipv4Config.DhcpServer = &sdwan_schema.DHCPServer{}
-			// copy_from_plan: body=body.Ipv4Config.DhcpServer prefix=rsModel plan=plan.Ipv4Config.DhcpServer properties=17
+			// copy_from_plan: body=body.Ipv4Config.DhcpServer prefix=rsModel plan=plan.Ipv4Config.DhcpServer properties=5
 			tflog.Debug(ctx, "copy_from_plan body=body.Ipv4Config.DhcpServer prefix=rsModel plan=plan.Ipv4Config.DhcpServer")
-			// property: name=_etag, type=INTEGER macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.Etag = Int64ValueOrNil(plan.Ipv4Config.DhcpServer.Etag)
-			// property: name=_schema, type=INTEGER macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.Schema = Int64ValueOrNil(plan.Ipv4Config.DhcpServer.Schema)
-			// property: name=broadcast_address, type=STRING macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.BroadcastAddress = StringValueOrNil(plan.Ipv4Config.DhcpServer.BroadcastAddress)
-			// property: name=custom_options, type=ARRAY_REFERENCE macro=copy_from_plan
-			if plan.Ipv4Config.DhcpServer.CustomOptions == nil {
-				body.Ipv4Config.DhcpServer.CustomOptions = nil
-			} else if len(plan.Ipv4Config.DhcpServer.CustomOptions) == 0 {
-				body.Ipv4Config.DhcpServer.CustomOptions = []sdwan_schema.BaseCustomDHCPOptions{}
-			} else {
-				body.Ipv4Config.DhcpServer.CustomOptions = make([]sdwan_schema.BaseCustomDHCPOptions, 0, len(plan.Ipv4Config.DhcpServer.CustomOptions))
-				for varLoopCustomOptionsIndex, varLoopCustomOptions := range plan.Ipv4Config.DhcpServer.CustomOptions {
-					// add a new item
-					body.Ipv4Config.DhcpServer.CustomOptions = append(body.Ipv4Config.DhcpServer.CustomOptions, sdwan_schema.BaseCustomDHCPOptions{})
-					// copy_from_plan: body=body.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex] prefix=rsModel plan=varLoopCustomOptions properties=2
-					tflog.Debug(ctx, "copy_from_plan body=body.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex] prefix=rsModel plan=varLoopCustomOptions")
-					// property: name=option_definition, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex].OptionDefinition = StringValueOrNil(varLoopCustomOptions.OptionDefinition)
-					// property: name=option_value, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex].OptionValue = StringValueOrNil(varLoopCustomOptions.OptionValue)
-				}
-			}
-			// property: name=default_lease_time, type=INTEGER macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.DefaultLeaseTime = Int64ValueOrNil(plan.Ipv4Config.DhcpServer.DefaultLeaseTime)
-			// property: name=description, type=STRING macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.Description = StringValueOrNil(plan.Ipv4Config.DhcpServer.Description)
-			// property: name=disabled, type=BOOLEAN macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.Disabled = BoolValueOrNil(plan.Ipv4Config.DhcpServer.Disabled)
-			// property: name=dns_servers, type=ARRAY_PRIMITIVE macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.DnsServers = ListStringValueOrNil(ctx, plan.Ipv4Config.DhcpServer.DnsServers)
 			// property: name=domain_name, type=STRING macro=copy_from_plan
 			body.Ipv4Config.DhcpServer.DomainName = StringValueOrNil(plan.Ipv4Config.DhcpServer.DomainName)
-			// property: name=gateway, type=STRING macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.Gateway = StringValueOrNil(plan.Ipv4Config.DhcpServer.Gateway)
-			// property: name=id, type=STRING macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.Id = StringValueOrNil(plan.Ipv4Config.DhcpServer.Id)
-			// property: name=ip_ranges, type=ARRAY_REFERENCE macro=copy_from_plan
-			if plan.Ipv4Config.DhcpServer.IpRanges == nil {
-				body.Ipv4Config.DhcpServer.IpRanges = nil
-			} else if len(plan.Ipv4Config.DhcpServer.IpRanges) == 0 {
-				body.Ipv4Config.DhcpServer.IpRanges = []sdwan_schema.IPRange{}
+			// property: name=domain_name_servers, type=ARRAY_PRIMITIVE macro=copy_from_plan
+			body.Ipv4Config.DhcpServer.DomainNameServers = ListStringValueOrNil(ctx, plan.Ipv4Config.DhcpServer.DomainNameServers)
+			// property: name=ip_address_pool, type=ARRAY_REFERENCE macro=copy_from_plan
+			if plan.Ipv4Config.DhcpServer.IpAddressPool == nil {
+				body.Ipv4Config.DhcpServer.IpAddressPool = nil
+			} else if len(plan.Ipv4Config.DhcpServer.IpAddressPool) == 0 {
+				body.Ipv4Config.DhcpServer.IpAddressPool = []sdwan_schema.IPAddressPool{}
 			} else {
-				body.Ipv4Config.DhcpServer.IpRanges = make([]sdwan_schema.IPRange, 0, len(plan.Ipv4Config.DhcpServer.IpRanges))
-				for varLoopIpRangesIndex, varLoopIpRanges := range plan.Ipv4Config.DhcpServer.IpRanges {
+				body.Ipv4Config.DhcpServer.IpAddressPool = make([]sdwan_schema.IPAddressPool, 0, len(plan.Ipv4Config.DhcpServer.IpAddressPool))
+				for varLoopIpAddressPoolIndex, varLoopIpAddressPool := range plan.Ipv4Config.DhcpServer.IpAddressPool {
 					// add a new item
-					body.Ipv4Config.DhcpServer.IpRanges = append(body.Ipv4Config.DhcpServer.IpRanges, sdwan_schema.IPRange{})
-					// copy_from_plan: body=body.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex] prefix=rsModel plan=varLoopIpRanges properties=2
-					tflog.Debug(ctx, "copy_from_plan body=body.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex] prefix=rsModel plan=varLoopIpRanges")
-					// property: name=end_ip, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex].EndIp = StringValueOrNil(varLoopIpRanges.EndIp)
-					// property: name=start_ip, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex].StartIp = StringValueOrNil(varLoopIpRanges.StartIp)
+					body.Ipv4Config.DhcpServer.IpAddressPool = append(body.Ipv4Config.DhcpServer.IpAddressPool, sdwan_schema.IPAddressPool{})
+					// copy_from_plan: body=body.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex] prefix=rsModel plan=varLoopIpAddressPool properties=2
+					tflog.Debug(ctx, "copy_from_plan body=body.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex] prefix=rsModel plan=varLoopIpAddressPool")
+					// property: name=end, type=STRING macro=copy_from_plan
+					body.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex].End = StringValueOrNil(varLoopIpAddressPool.End)
+					// property: name=start, type=STRING macro=copy_from_plan
+					body.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex].Start = StringValueOrNil(varLoopIpAddressPool.Start)
 				}
 			}
-			// property: name=max_lease_time, type=INTEGER macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.MaxLeaseTime = Int64ValueOrNil(plan.Ipv4Config.DhcpServer.MaxLeaseTime)
-			// property: name=network_context_id, type=STRING macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.NetworkContextId = StringValueOrNil(plan.Ipv4Config.DhcpServer.NetworkContextId)
-			// property: name=static_mappings, type=ARRAY_REFERENCE macro=copy_from_plan
-			if plan.Ipv4Config.DhcpServer.StaticMappings == nil {
-				body.Ipv4Config.DhcpServer.StaticMappings = nil
-			} else if len(plan.Ipv4Config.DhcpServer.StaticMappings) == 0 {
-				body.Ipv4Config.DhcpServer.StaticMappings = []sdwan_schema.StaticMapping{}
-			} else {
-				body.Ipv4Config.DhcpServer.StaticMappings = make([]sdwan_schema.StaticMapping, 0, len(plan.Ipv4Config.DhcpServer.StaticMappings))
-				for varLoopStaticMappingsIndex, varLoopStaticMappings := range plan.Ipv4Config.DhcpServer.StaticMappings {
-					// add a new item
-					body.Ipv4Config.DhcpServer.StaticMappings = append(body.Ipv4Config.DhcpServer.StaticMappings, sdwan_schema.StaticMapping{})
-					// copy_from_plan: body=body.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex] prefix=rsModel plan=varLoopStaticMappings properties=3
-					tflog.Debug(ctx, "copy_from_plan body=body.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex] prefix=rsModel plan=varLoopStaticMappings")
-					// property: name=ip_address, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].IpAddress = StringValueOrNil(varLoopStaticMappings.IpAddress)
-					// property: name=mac, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].Mac = StringValueOrNil(varLoopStaticMappings.Mac)
-					// property: name=name, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].Name = StringValueOrNil(varLoopStaticMappings.Name)
-				}
-			}
-			// property: name=subnet, type=STRING macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.Subnet = StringValueOrNil(plan.Ipv4Config.DhcpServer.Subnet)
-			// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan
-			body.Ipv4Config.DhcpServer.Tags = SetStringValueOrNil(ctx, plan.Ipv4Config.DhcpServer.Tags)
+			// property: name=lease_expiry_time, type=INTEGER macro=copy_from_plan
+			body.Ipv4Config.DhcpServer.LeaseExpiryTime = Int64ValueOrNil(plan.Ipv4Config.DhcpServer.LeaseExpiryTime)
+			// property: name=lease_renew_time, type=INTEGER macro=copy_from_plan
+			body.Ipv4Config.DhcpServer.LeaseRenewTime = Int64ValueOrNil(plan.Ipv4Config.DhcpServer.LeaseRenewTime)
 		}
 		// property: name=prefixes, type=ARRAY_PRIMITIVE macro=copy_from_plan
 		body.Ipv4Config.Prefixes = ListStringValueOrNil(ctx, plan.Ipv4Config.Prefixes)
@@ -859,96 +690,36 @@ func (r *siteLanNetworkResource) doPost(ctx context.Context, plan *rsModelLANNet
 			state.Ipv4Config.DhcpServer = nil
 		} else {
 			state.Ipv4Config.DhcpServer = &rsModelDHCPServer{}
-			// copy_to_state: state=state.Ipv4Config.DhcpServer prefix=rsModel ans=ans.Ipv4Config.DhcpServer properties=17
+			// copy_to_state: state=state.Ipv4Config.DhcpServer prefix=rsModel ans=ans.Ipv4Config.DhcpServer properties=5
 			tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer prefix=rsModel ans=ans.Ipv4Config.DhcpServer")
-			// property: name=_etag, type=INTEGER macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Etag = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.Etag)
-			// property: name=_schema, type=INTEGER macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Schema = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.Schema)
-			// property: name=broadcast_address, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.BroadcastAddress = types.StringPointerValue(ans.Ipv4Config.DhcpServer.BroadcastAddress)
-			// property: name=custom_options, type=ARRAY_REFERENCE macro=copy_to_state
-			if ans.Ipv4Config.DhcpServer.CustomOptions == nil {
-				state.Ipv4Config.DhcpServer.CustomOptions = nil
-			} else if len(ans.Ipv4Config.DhcpServer.CustomOptions) == 0 {
-				state.Ipv4Config.DhcpServer.CustomOptions = []rsModelBaseCustomDHCPOptions{}
-			} else {
-				state.Ipv4Config.DhcpServer.CustomOptions = make([]rsModelBaseCustomDHCPOptions, 0, len(ans.Ipv4Config.DhcpServer.CustomOptions))
-				for varLoopCustomOptionsIndex, varLoopCustomOptions := range ans.Ipv4Config.DhcpServer.CustomOptions {
-					// add a new item
-					state.Ipv4Config.DhcpServer.CustomOptions = append(state.Ipv4Config.DhcpServer.CustomOptions, rsModelBaseCustomDHCPOptions{})
-					// copy_to_state: state=state.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex] prefix=rsModel ans=varLoopCustomOptions properties=2
-					tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex] prefix=rsModel ans=varLoopCustomOptions")
-					// property: name=option_definition, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex].OptionDefinition = types.StringPointerValue(varLoopCustomOptions.OptionDefinition)
-					// property: name=option_value, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex].OptionValue = types.StringPointerValue(varLoopCustomOptions.OptionValue)
-				}
-			}
-			// property: name=default_lease_time, type=INTEGER macro=copy_to_state
-			state.Ipv4Config.DhcpServer.DefaultLeaseTime = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.DefaultLeaseTime)
-			// property: name=description, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Description = types.StringPointerValue(ans.Ipv4Config.DhcpServer.Description)
-			// property: name=disabled, type=BOOLEAN macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Disabled = types.BoolPointerValue(ans.Ipv4Config.DhcpServer.Disabled)
-			// property: name=dns_servers, type=ARRAY_PRIMITIVE macro=copy_to_state
-			varDnsServers, errDnsServers := types.ListValueFrom(ctx, types.StringType, ans.Ipv4Config.DhcpServer.DnsServers)
-			state.Ipv4Config.DhcpServer.DnsServers = varDnsServers
-			resp.Diagnostics.Append(errDnsServers.Errors()...)
 			// property: name=domain_name, type=STRING macro=copy_to_state
 			state.Ipv4Config.DhcpServer.DomainName = types.StringPointerValue(ans.Ipv4Config.DhcpServer.DomainName)
-			// property: name=gateway, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Gateway = types.StringPointerValue(ans.Ipv4Config.DhcpServer.Gateway)
-			// property: name=id, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Id = types.StringPointerValue(ans.Ipv4Config.DhcpServer.Id)
-			// property: name=ip_ranges, type=ARRAY_REFERENCE macro=copy_to_state
-			if ans.Ipv4Config.DhcpServer.IpRanges == nil {
-				state.Ipv4Config.DhcpServer.IpRanges = nil
-			} else if len(ans.Ipv4Config.DhcpServer.IpRanges) == 0 {
-				state.Ipv4Config.DhcpServer.IpRanges = []rsModelIPRange{}
+			// property: name=domain_name_servers, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varDomainNameServers, errDomainNameServers := types.ListValueFrom(ctx, types.StringType, ans.Ipv4Config.DhcpServer.DomainNameServers)
+			state.Ipv4Config.DhcpServer.DomainNameServers = varDomainNameServers
+			resp.Diagnostics.Append(errDomainNameServers.Errors()...)
+			// property: name=ip_address_pool, type=ARRAY_REFERENCE macro=copy_to_state
+			if ans.Ipv4Config.DhcpServer.IpAddressPool == nil {
+				state.Ipv4Config.DhcpServer.IpAddressPool = nil
+			} else if len(ans.Ipv4Config.DhcpServer.IpAddressPool) == 0 {
+				state.Ipv4Config.DhcpServer.IpAddressPool = []rsModelIPAddressPool{}
 			} else {
-				state.Ipv4Config.DhcpServer.IpRanges = make([]rsModelIPRange, 0, len(ans.Ipv4Config.DhcpServer.IpRanges))
-				for varLoopIpRangesIndex, varLoopIpRanges := range ans.Ipv4Config.DhcpServer.IpRanges {
+				state.Ipv4Config.DhcpServer.IpAddressPool = make([]rsModelIPAddressPool, 0, len(ans.Ipv4Config.DhcpServer.IpAddressPool))
+				for varLoopIpAddressPoolIndex, varLoopIpAddressPool := range ans.Ipv4Config.DhcpServer.IpAddressPool {
 					// add a new item
-					state.Ipv4Config.DhcpServer.IpRanges = append(state.Ipv4Config.DhcpServer.IpRanges, rsModelIPRange{})
-					// copy_to_state: state=state.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex] prefix=rsModel ans=varLoopIpRanges properties=2
-					tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex] prefix=rsModel ans=varLoopIpRanges")
-					// property: name=end_ip, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex].EndIp = types.StringPointerValue(varLoopIpRanges.EndIp)
-					// property: name=start_ip, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex].StartIp = types.StringPointerValue(varLoopIpRanges.StartIp)
+					state.Ipv4Config.DhcpServer.IpAddressPool = append(state.Ipv4Config.DhcpServer.IpAddressPool, rsModelIPAddressPool{})
+					// copy_to_state: state=state.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex] prefix=rsModel ans=varLoopIpAddressPool properties=2
+					tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex] prefix=rsModel ans=varLoopIpAddressPool")
+					// property: name=end, type=STRING macro=copy_to_state
+					state.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex].End = types.StringPointerValue(varLoopIpAddressPool.End)
+					// property: name=start, type=STRING macro=copy_to_state
+					state.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex].Start = types.StringPointerValue(varLoopIpAddressPool.Start)
 				}
 			}
-			// property: name=max_lease_time, type=INTEGER macro=copy_to_state
-			state.Ipv4Config.DhcpServer.MaxLeaseTime = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.MaxLeaseTime)
-			// property: name=network_context_id, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.NetworkContextId = types.StringPointerValue(ans.Ipv4Config.DhcpServer.NetworkContextId)
-			// property: name=static_mappings, type=ARRAY_REFERENCE macro=copy_to_state
-			if ans.Ipv4Config.DhcpServer.StaticMappings == nil {
-				state.Ipv4Config.DhcpServer.StaticMappings = nil
-			} else if len(ans.Ipv4Config.DhcpServer.StaticMappings) == 0 {
-				state.Ipv4Config.DhcpServer.StaticMappings = []rsModelStaticMapping{}
-			} else {
-				state.Ipv4Config.DhcpServer.StaticMappings = make([]rsModelStaticMapping, 0, len(ans.Ipv4Config.DhcpServer.StaticMappings))
-				for varLoopStaticMappingsIndex, varLoopStaticMappings := range ans.Ipv4Config.DhcpServer.StaticMappings {
-					// add a new item
-					state.Ipv4Config.DhcpServer.StaticMappings = append(state.Ipv4Config.DhcpServer.StaticMappings, rsModelStaticMapping{})
-					// copy_to_state: state=state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex] prefix=rsModel ans=varLoopStaticMappings properties=3
-					tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex] prefix=rsModel ans=varLoopStaticMappings")
-					// property: name=ip_address, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].IpAddress = types.StringPointerValue(varLoopStaticMappings.IpAddress)
-					// property: name=mac, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].Mac = types.StringPointerValue(varLoopStaticMappings.Mac)
-					// property: name=name, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].Name = types.StringPointerValue(varLoopStaticMappings.Name)
-				}
-			}
-			// property: name=subnet, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Subnet = types.StringPointerValue(ans.Ipv4Config.DhcpServer.Subnet)
-			// property: name=tags, type=SET_PRIMITIVE macro=copy_to_state
-			varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Ipv4Config.DhcpServer.Tags)
-			state.Ipv4Config.DhcpServer.Tags = varTags
-			resp.Diagnostics.Append(errTags.Errors()...)
+			// property: name=lease_expiry_time, type=INTEGER macro=copy_to_state
+			state.Ipv4Config.DhcpServer.LeaseExpiryTime = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.LeaseExpiryTime)
+			// property: name=lease_renew_time, type=INTEGER macro=copy_to_state
+			state.Ipv4Config.DhcpServer.LeaseRenewTime = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.LeaseRenewTime)
 		}
 		// property: name=prefixes, type=ARRAY_PRIMITIVE macro=copy_to_state
 		varPrefixes, errPrefixes := types.ListValueFrom(ctx, types.StringType, ans.Ipv4Config.Prefixes)
@@ -981,6 +752,14 @@ func (r *siteLanNetworkResource) doPost(ctx context.Context, plan *rsModelLANNet
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=vrf_context_id, type=STRING macro=copy_to_state
 	state.VrfContextId = types.StringPointerValue(ans.VrfContextId)
 	return true
@@ -1054,7 +833,23 @@ func (r *siteLanNetworkResource) doGet(ctx context.Context, state *rsModelLANNet
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -1126,96 +921,36 @@ func (r *siteLanNetworkResource) doGet(ctx context.Context, state *rsModelLANNet
 			state.Ipv4Config.DhcpServer = nil
 		} else {
 			state.Ipv4Config.DhcpServer = &rsModelDHCPServer{}
-			// copy_to_state: state=state.Ipv4Config.DhcpServer prefix=rsModel ans=ans.Ipv4Config.DhcpServer properties=17
+			// copy_to_state: state=state.Ipv4Config.DhcpServer prefix=rsModel ans=ans.Ipv4Config.DhcpServer properties=5
 			tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer prefix=rsModel ans=ans.Ipv4Config.DhcpServer")
-			// property: name=_etag, type=INTEGER macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Etag = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.Etag)
-			// property: name=_schema, type=INTEGER macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Schema = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.Schema)
-			// property: name=broadcast_address, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.BroadcastAddress = types.StringPointerValue(ans.Ipv4Config.DhcpServer.BroadcastAddress)
-			// property: name=custom_options, type=ARRAY_REFERENCE macro=copy_to_state
-			if ans.Ipv4Config.DhcpServer.CustomOptions == nil {
-				state.Ipv4Config.DhcpServer.CustomOptions = nil
-			} else if len(ans.Ipv4Config.DhcpServer.CustomOptions) == 0 {
-				state.Ipv4Config.DhcpServer.CustomOptions = []rsModelBaseCustomDHCPOptions{}
-			} else {
-				state.Ipv4Config.DhcpServer.CustomOptions = make([]rsModelBaseCustomDHCPOptions, 0, len(ans.Ipv4Config.DhcpServer.CustomOptions))
-				for varLoopCustomOptionsIndex, varLoopCustomOptions := range ans.Ipv4Config.DhcpServer.CustomOptions {
-					// add a new item
-					state.Ipv4Config.DhcpServer.CustomOptions = append(state.Ipv4Config.DhcpServer.CustomOptions, rsModelBaseCustomDHCPOptions{})
-					// copy_to_state: state=state.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex] prefix=rsModel ans=varLoopCustomOptions properties=2
-					tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex] prefix=rsModel ans=varLoopCustomOptions")
-					// property: name=option_definition, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex].OptionDefinition = types.StringPointerValue(varLoopCustomOptions.OptionDefinition)
-					// property: name=option_value, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex].OptionValue = types.StringPointerValue(varLoopCustomOptions.OptionValue)
-				}
-			}
-			// property: name=default_lease_time, type=INTEGER macro=copy_to_state
-			state.Ipv4Config.DhcpServer.DefaultLeaseTime = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.DefaultLeaseTime)
-			// property: name=description, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Description = types.StringPointerValue(ans.Ipv4Config.DhcpServer.Description)
-			// property: name=disabled, type=BOOLEAN macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Disabled = types.BoolPointerValue(ans.Ipv4Config.DhcpServer.Disabled)
-			// property: name=dns_servers, type=ARRAY_PRIMITIVE macro=copy_to_state
-			varDnsServers, errDnsServers := types.ListValueFrom(ctx, types.StringType, ans.Ipv4Config.DhcpServer.DnsServers)
-			state.Ipv4Config.DhcpServer.DnsServers = varDnsServers
-			resp.Diagnostics.Append(errDnsServers.Errors()...)
 			// property: name=domain_name, type=STRING macro=copy_to_state
 			state.Ipv4Config.DhcpServer.DomainName = types.StringPointerValue(ans.Ipv4Config.DhcpServer.DomainName)
-			// property: name=gateway, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Gateway = types.StringPointerValue(ans.Ipv4Config.DhcpServer.Gateway)
-			// property: name=id, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Id = types.StringPointerValue(ans.Ipv4Config.DhcpServer.Id)
-			// property: name=ip_ranges, type=ARRAY_REFERENCE macro=copy_to_state
-			if ans.Ipv4Config.DhcpServer.IpRanges == nil {
-				state.Ipv4Config.DhcpServer.IpRanges = nil
-			} else if len(ans.Ipv4Config.DhcpServer.IpRanges) == 0 {
-				state.Ipv4Config.DhcpServer.IpRanges = []rsModelIPRange{}
+			// property: name=domain_name_servers, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varDomainNameServers, errDomainNameServers := types.ListValueFrom(ctx, types.StringType, ans.Ipv4Config.DhcpServer.DomainNameServers)
+			state.Ipv4Config.DhcpServer.DomainNameServers = varDomainNameServers
+			resp.Diagnostics.Append(errDomainNameServers.Errors()...)
+			// property: name=ip_address_pool, type=ARRAY_REFERENCE macro=copy_to_state
+			if ans.Ipv4Config.DhcpServer.IpAddressPool == nil {
+				state.Ipv4Config.DhcpServer.IpAddressPool = nil
+			} else if len(ans.Ipv4Config.DhcpServer.IpAddressPool) == 0 {
+				state.Ipv4Config.DhcpServer.IpAddressPool = []rsModelIPAddressPool{}
 			} else {
-				state.Ipv4Config.DhcpServer.IpRanges = make([]rsModelIPRange, 0, len(ans.Ipv4Config.DhcpServer.IpRanges))
-				for varLoopIpRangesIndex, varLoopIpRanges := range ans.Ipv4Config.DhcpServer.IpRanges {
+				state.Ipv4Config.DhcpServer.IpAddressPool = make([]rsModelIPAddressPool, 0, len(ans.Ipv4Config.DhcpServer.IpAddressPool))
+				for varLoopIpAddressPoolIndex, varLoopIpAddressPool := range ans.Ipv4Config.DhcpServer.IpAddressPool {
 					// add a new item
-					state.Ipv4Config.DhcpServer.IpRanges = append(state.Ipv4Config.DhcpServer.IpRanges, rsModelIPRange{})
-					// copy_to_state: state=state.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex] prefix=rsModel ans=varLoopIpRanges properties=2
-					tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex] prefix=rsModel ans=varLoopIpRanges")
-					// property: name=end_ip, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex].EndIp = types.StringPointerValue(varLoopIpRanges.EndIp)
-					// property: name=start_ip, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex].StartIp = types.StringPointerValue(varLoopIpRanges.StartIp)
+					state.Ipv4Config.DhcpServer.IpAddressPool = append(state.Ipv4Config.DhcpServer.IpAddressPool, rsModelIPAddressPool{})
+					// copy_to_state: state=state.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex] prefix=rsModel ans=varLoopIpAddressPool properties=2
+					tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex] prefix=rsModel ans=varLoopIpAddressPool")
+					// property: name=end, type=STRING macro=copy_to_state
+					state.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex].End = types.StringPointerValue(varLoopIpAddressPool.End)
+					// property: name=start, type=STRING macro=copy_to_state
+					state.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex].Start = types.StringPointerValue(varLoopIpAddressPool.Start)
 				}
 			}
-			// property: name=max_lease_time, type=INTEGER macro=copy_to_state
-			state.Ipv4Config.DhcpServer.MaxLeaseTime = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.MaxLeaseTime)
-			// property: name=network_context_id, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.NetworkContextId = types.StringPointerValue(ans.Ipv4Config.DhcpServer.NetworkContextId)
-			// property: name=static_mappings, type=ARRAY_REFERENCE macro=copy_to_state
-			if ans.Ipv4Config.DhcpServer.StaticMappings == nil {
-				state.Ipv4Config.DhcpServer.StaticMappings = nil
-			} else if len(ans.Ipv4Config.DhcpServer.StaticMappings) == 0 {
-				state.Ipv4Config.DhcpServer.StaticMappings = []rsModelStaticMapping{}
-			} else {
-				state.Ipv4Config.DhcpServer.StaticMappings = make([]rsModelStaticMapping, 0, len(ans.Ipv4Config.DhcpServer.StaticMappings))
-				for varLoopStaticMappingsIndex, varLoopStaticMappings := range ans.Ipv4Config.DhcpServer.StaticMappings {
-					// add a new item
-					state.Ipv4Config.DhcpServer.StaticMappings = append(state.Ipv4Config.DhcpServer.StaticMappings, rsModelStaticMapping{})
-					// copy_to_state: state=state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex] prefix=rsModel ans=varLoopStaticMappings properties=3
-					tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex] prefix=rsModel ans=varLoopStaticMappings")
-					// property: name=ip_address, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].IpAddress = types.StringPointerValue(varLoopStaticMappings.IpAddress)
-					// property: name=mac, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].Mac = types.StringPointerValue(varLoopStaticMappings.Mac)
-					// property: name=name, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].Name = types.StringPointerValue(varLoopStaticMappings.Name)
-				}
-			}
-			// property: name=subnet, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Subnet = types.StringPointerValue(ans.Ipv4Config.DhcpServer.Subnet)
-			// property: name=tags, type=SET_PRIMITIVE macro=copy_to_state
-			varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Ipv4Config.DhcpServer.Tags)
-			state.Ipv4Config.DhcpServer.Tags = varTags
-			resp.Diagnostics.Append(errTags.Errors()...)
+			// property: name=lease_expiry_time, type=INTEGER macro=copy_to_state
+			state.Ipv4Config.DhcpServer.LeaseExpiryTime = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.LeaseExpiryTime)
+			// property: name=lease_renew_time, type=INTEGER macro=copy_to_state
+			state.Ipv4Config.DhcpServer.LeaseRenewTime = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.LeaseRenewTime)
 		}
 		// property: name=prefixes, type=ARRAY_PRIMITIVE macro=copy_to_state
 		varPrefixes, errPrefixes := types.ListValueFrom(ctx, types.StringType, ans.Ipv4Config.Prefixes)
@@ -1248,6 +983,14 @@ func (r *siteLanNetworkResource) doGet(ctx context.Context, state *rsModelLANNet
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	// property: name=vrf_context_id, type=STRING macro=copy_to_state
 	state.VrfContextId = types.StringPointerValue(ans.VrfContextId)
 	return true
@@ -1338,7 +1081,12 @@ func (r *siteLanNetworkResource) doPut(ctx context.Context, plan *rsModelLANNetw
 		// copy_from_plan_or_state: body=body.Ipv4Config prefix=rsModel state=state.Ipv4Config plan=plan.Ipv4Config properties=4
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv4Config prefix=rsModel state=state.Ipv4Config plan=plan.Ipv4Config")
 		// property: name=default_routers, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.Ipv4Config.DefaultRouters = ListStringValueOrNil(ctx, plan.Ipv4Config.DefaultRouters)
+		if state != nil && state.Ipv4Config != nil && plan.Ipv4Config.DefaultRouters.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.Ipv4Config.DefaultRouters = ListStringValueOrNil(ctx, state.Ipv4Config.DefaultRouters)
+		} else {
+			body.Ipv4Config.DefaultRouters = ListStringValueOrNil(ctx, plan.Ipv4Config.DefaultRouters)
+		}
 		// property: name=dhcp_relay, type=REFERENCE macro=copy_from_plan_or_state
 		if plan.Ipv4Config.DhcpRelay == nil {
 			body.Ipv4Config.DhcpRelay = nil
@@ -1347,7 +1095,7 @@ func (r *siteLanNetworkResource) doPut(ctx context.Context, plan *rsModelLANNetw
 			// copy_from_plan_or_state: body=body.Ipv4Config.DhcpRelay prefix=rsModel state=state.Ipv4Config.DhcpRelay plan=plan.Ipv4Config.DhcpRelay properties=4
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv4Config.DhcpRelay prefix=rsModel state=state.Ipv4Config.DhcpRelay plan=plan.Ipv4Config.DhcpRelay")
 			// property: name=enabled, type=BOOLEAN macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpRelay != nil {
+			if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpRelay != nil {
 				body.Ipv4Config.DhcpRelay.Enabled = ValueBoolPointerFromPlanOrState(plan.Ipv4Config.DhcpRelay.Enabled, state.Ipv4Config.DhcpRelay.Enabled)
 			} else {
 				body.Ipv4Config.DhcpRelay.Enabled = BoolValueOrNil(plan.Ipv4Config.DhcpRelay.Enabled)
@@ -1360,34 +1108,39 @@ func (r *siteLanNetworkResource) doPut(ctx context.Context, plan *rsModelLANNetw
 				// copy_from_plan_or_state: body=body.Ipv4Config.DhcpRelay.Option82 prefix=rsModel state=state.Ipv4Config.DhcpRelay.Option82 plan=plan.Ipv4Config.DhcpRelay.Option82 properties=4
 				tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv4Config.DhcpRelay.Option82 prefix=rsModel state=state.Ipv4Config.DhcpRelay.Option82 plan=plan.Ipv4Config.DhcpRelay.Option82")
 				// property: name=circuit_id, type=STRING macro=copy_from_plan_or_state
-				if state.Ipv4Config.DhcpRelay.Option82 != nil {
+				if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpRelay != nil && state.Ipv4Config.DhcpRelay.Option82 != nil {
 					body.Ipv4Config.DhcpRelay.Option82.CircuitId = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpRelay.Option82.CircuitId, state.Ipv4Config.DhcpRelay.Option82.CircuitId)
 				} else {
 					body.Ipv4Config.DhcpRelay.Option82.CircuitId = StringValueOrNil(plan.Ipv4Config.DhcpRelay.Option82.CircuitId)
 				}
 				// property: name=enabled, type=BOOLEAN macro=copy_from_plan_or_state
-				if state.Ipv4Config.DhcpRelay.Option82 != nil {
+				if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpRelay != nil && state.Ipv4Config.DhcpRelay.Option82 != nil {
 					body.Ipv4Config.DhcpRelay.Option82.Enabled = ValueBoolPointerFromPlanOrState(plan.Ipv4Config.DhcpRelay.Option82.Enabled, state.Ipv4Config.DhcpRelay.Option82.Enabled)
 				} else {
 					body.Ipv4Config.DhcpRelay.Option82.Enabled = BoolValueOrNil(plan.Ipv4Config.DhcpRelay.Option82.Enabled)
 				}
 				// property: name=reforwarding_policy, type=STRING macro=copy_from_plan_or_state
-				if state.Ipv4Config.DhcpRelay.Option82 != nil {
+				if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpRelay != nil && state.Ipv4Config.DhcpRelay.Option82 != nil {
 					body.Ipv4Config.DhcpRelay.Option82.ReforwardingPolicy = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpRelay.Option82.ReforwardingPolicy, state.Ipv4Config.DhcpRelay.Option82.ReforwardingPolicy)
 				} else {
 					body.Ipv4Config.DhcpRelay.Option82.ReforwardingPolicy = StringValueOrNil(plan.Ipv4Config.DhcpRelay.Option82.ReforwardingPolicy)
 				}
 				// property: name=remote_id, type=STRING macro=copy_from_plan_or_state
-				if state.Ipv4Config.DhcpRelay.Option82 != nil {
+				if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpRelay != nil && state.Ipv4Config.DhcpRelay.Option82 != nil {
 					body.Ipv4Config.DhcpRelay.Option82.RemoteId = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpRelay.Option82.RemoteId, state.Ipv4Config.DhcpRelay.Option82.RemoteId)
 				} else {
 					body.Ipv4Config.DhcpRelay.Option82.RemoteId = StringValueOrNil(plan.Ipv4Config.DhcpRelay.Option82.RemoteId)
 				}
 			}
 			// property: name=server_ips, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-			body.Ipv4Config.DhcpRelay.ServerIps = ListStringValueOrNil(ctx, plan.Ipv4Config.DhcpRelay.ServerIps)
+			if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpRelay != nil && plan.Ipv4Config.DhcpRelay.ServerIps.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.Ipv4Config.DhcpRelay.ServerIps = ListStringValueOrNil(ctx, state.Ipv4Config.DhcpRelay.ServerIps)
+			} else {
+				body.Ipv4Config.DhcpRelay.ServerIps = ListStringValueOrNil(ctx, plan.Ipv4Config.DhcpRelay.ServerIps)
+			}
 			// property: name=source_interface, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpRelay != nil {
+			if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpRelay != nil {
 				body.Ipv4Config.DhcpRelay.SourceInterface = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpRelay.SourceInterface, state.Ipv4Config.DhcpRelay.SourceInterface)
 			} else {
 				body.Ipv4Config.DhcpRelay.SourceInterface = StringValueOrNil(plan.Ipv4Config.DhcpRelay.SourceInterface)
@@ -1398,158 +1151,64 @@ func (r *siteLanNetworkResource) doPut(ctx context.Context, plan *rsModelLANNetw
 			body.Ipv4Config.DhcpServer = nil
 		} else {
 			body.Ipv4Config.DhcpServer = &sdwan_schema.DHCPServer{}
-			// copy_from_plan_or_state: body=body.Ipv4Config.DhcpServer prefix=rsModel state=state.Ipv4Config.DhcpServer plan=plan.Ipv4Config.DhcpServer properties=17
+			// copy_from_plan_or_state: body=body.Ipv4Config.DhcpServer prefix=rsModel state=state.Ipv4Config.DhcpServer plan=plan.Ipv4Config.DhcpServer properties=5
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv4Config.DhcpServer prefix=rsModel state=state.Ipv4Config.DhcpServer plan=plan.Ipv4Config.DhcpServer")
-			// property: name=_etag, type=INTEGER macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpServer != nil {
-				body.Ipv4Config.DhcpServer.Etag = ValueInt64PointerFromPlanOrState(plan.Ipv4Config.DhcpServer.Etag, state.Ipv4Config.DhcpServer.Etag)
-			} else {
-				body.Ipv4Config.DhcpServer.Etag = Int64ValueOrNil(plan.Ipv4Config.DhcpServer.Etag)
-			}
-			// property: name=_schema, type=INTEGER macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpServer != nil {
-				body.Ipv4Config.DhcpServer.Schema = ValueInt64PointerFromPlanOrState(plan.Ipv4Config.DhcpServer.Schema, state.Ipv4Config.DhcpServer.Schema)
-			} else {
-				body.Ipv4Config.DhcpServer.Schema = Int64ValueOrNil(plan.Ipv4Config.DhcpServer.Schema)
-			}
-			// property: name=broadcast_address, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpServer != nil {
-				body.Ipv4Config.DhcpServer.BroadcastAddress = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpServer.BroadcastAddress, state.Ipv4Config.DhcpServer.BroadcastAddress)
-			} else {
-				body.Ipv4Config.DhcpServer.BroadcastAddress = StringValueOrNil(plan.Ipv4Config.DhcpServer.BroadcastAddress)
-			}
-			// property: name=custom_options, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-			if plan.Ipv4Config.DhcpServer.CustomOptions == nil && (state.Ipv4Config.DhcpServer == nil || state.Ipv4Config.DhcpServer.CustomOptions == nil) {
-				body.Ipv4Config.DhcpServer.CustomOptions = nil
-			} else if len(plan.Ipv4Config.DhcpServer.CustomOptions) == 0 && (state.Ipv4Config.DhcpServer == nil || len(state.Ipv4Config.DhcpServer.CustomOptions) == 0) {
-				body.Ipv4Config.DhcpServer.CustomOptions = []sdwan_schema.BaseCustomDHCPOptions{}
-			} else if len(plan.Ipv4Config.DhcpServer.CustomOptions) != 0 || (state.Ipv4Config.DhcpServer != nil && len(state.Ipv4Config.DhcpServer.CustomOptions) != 0) {
-				CustomOptionsToUse := plan.Ipv4Config.DhcpServer.CustomOptions
-				if len(plan.Ipv4Config.DhcpServer.CustomOptions) == 0 {
-					CustomOptionsToUse = state.Ipv4Config.DhcpServer.CustomOptions
-				}
-				body.Ipv4Config.DhcpServer.CustomOptions = make([]sdwan_schema.BaseCustomDHCPOptions, 0, len(CustomOptionsToUse))
-				for varLoopCustomOptionsIndex, varLoopCustomOptions := range CustomOptionsToUse {
-					// add a new item
-					body.Ipv4Config.DhcpServer.CustomOptions = append(body.Ipv4Config.DhcpServer.CustomOptions, sdwan_schema.BaseCustomDHCPOptions{})
-					// since we have chosen to stick with either the plan or state, we need to simply copy child properties
-					// copy_from_plan: body=body.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex] prefix=rsModel plan=varLoopCustomOptions properties=2
-					tflog.Debug(ctx, "copy_from_plan body=body.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex] prefix=rsModel plan=varLoopCustomOptions")
-					// property: name=option_definition, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex].OptionDefinition = StringValueOrNil(varLoopCustomOptions.OptionDefinition)
-					// property: name=option_value, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex].OptionValue = StringValueOrNil(varLoopCustomOptions.OptionValue)
-				}
-			}
-			// property: name=default_lease_time, type=INTEGER macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpServer != nil {
-				body.Ipv4Config.DhcpServer.DefaultLeaseTime = ValueInt64PointerFromPlanOrState(plan.Ipv4Config.DhcpServer.DefaultLeaseTime, state.Ipv4Config.DhcpServer.DefaultLeaseTime)
-			} else {
-				body.Ipv4Config.DhcpServer.DefaultLeaseTime = Int64ValueOrNil(plan.Ipv4Config.DhcpServer.DefaultLeaseTime)
-			}
-			// property: name=description, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpServer != nil {
-				body.Ipv4Config.DhcpServer.Description = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpServer.Description, state.Ipv4Config.DhcpServer.Description)
-			} else {
-				body.Ipv4Config.DhcpServer.Description = StringValueOrNil(plan.Ipv4Config.DhcpServer.Description)
-			}
-			// property: name=disabled, type=BOOLEAN macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpServer != nil {
-				body.Ipv4Config.DhcpServer.Disabled = ValueBoolPointerFromPlanOrState(plan.Ipv4Config.DhcpServer.Disabled, state.Ipv4Config.DhcpServer.Disabled)
-			} else {
-				body.Ipv4Config.DhcpServer.Disabled = BoolValueOrNil(plan.Ipv4Config.DhcpServer.Disabled)
-			}
-			// property: name=dns_servers, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-			body.Ipv4Config.DhcpServer.DnsServers = ListStringValueOrNil(ctx, plan.Ipv4Config.DhcpServer.DnsServers)
 			// property: name=domain_name, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpServer != nil {
+			if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpServer != nil {
 				body.Ipv4Config.DhcpServer.DomainName = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpServer.DomainName, state.Ipv4Config.DhcpServer.DomainName)
 			} else {
 				body.Ipv4Config.DhcpServer.DomainName = StringValueOrNil(plan.Ipv4Config.DhcpServer.DomainName)
 			}
-			// property: name=gateway, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpServer != nil {
-				body.Ipv4Config.DhcpServer.Gateway = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpServer.Gateway, state.Ipv4Config.DhcpServer.Gateway)
+			// property: name=domain_name_servers, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
+			if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpServer != nil && plan.Ipv4Config.DhcpServer.DomainNameServers.IsUnknown() {
+				// computed and not configured: send what the server has, not an empty list the api may read as a change
+				body.Ipv4Config.DhcpServer.DomainNameServers = ListStringValueOrNil(ctx, state.Ipv4Config.DhcpServer.DomainNameServers)
 			} else {
-				body.Ipv4Config.DhcpServer.Gateway = StringValueOrNil(plan.Ipv4Config.DhcpServer.Gateway)
+				body.Ipv4Config.DhcpServer.DomainNameServers = ListStringValueOrNil(ctx, plan.Ipv4Config.DhcpServer.DomainNameServers)
 			}
-			// property: name=id, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpServer != nil {
-				body.Ipv4Config.DhcpServer.Id = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpServer.Id, state.Ipv4Config.DhcpServer.Id)
-			} else {
-				body.Ipv4Config.DhcpServer.Id = StringValueOrNil(plan.Ipv4Config.DhcpServer.Id)
-			}
-			// property: name=ip_ranges, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-			if plan.Ipv4Config.DhcpServer.IpRanges == nil && (state.Ipv4Config.DhcpServer == nil || state.Ipv4Config.DhcpServer.IpRanges == nil) {
-				body.Ipv4Config.DhcpServer.IpRanges = nil
-			} else if len(plan.Ipv4Config.DhcpServer.IpRanges) == 0 && (state.Ipv4Config.DhcpServer == nil || len(state.Ipv4Config.DhcpServer.IpRanges) == 0) {
-				body.Ipv4Config.DhcpServer.IpRanges = []sdwan_schema.IPRange{}
-			} else if len(plan.Ipv4Config.DhcpServer.IpRanges) != 0 || (state.Ipv4Config.DhcpServer != nil && len(state.Ipv4Config.DhcpServer.IpRanges) != 0) {
-				IpRangesToUse := plan.Ipv4Config.DhcpServer.IpRanges
-				if len(plan.Ipv4Config.DhcpServer.IpRanges) == 0 {
-					IpRangesToUse = state.Ipv4Config.DhcpServer.IpRanges
+			// property: name=ip_address_pool, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
+			if plan.Ipv4Config.DhcpServer.IpAddressPool == nil && (!(state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpServer != nil) || state.Ipv4Config.DhcpServer.IpAddressPool == nil) {
+				body.Ipv4Config.DhcpServer.IpAddressPool = nil
+			} else if len(plan.Ipv4Config.DhcpServer.IpAddressPool) == 0 && (!(state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpServer != nil) || len(state.Ipv4Config.DhcpServer.IpAddressPool) == 0) {
+				body.Ipv4Config.DhcpServer.IpAddressPool = []sdwan_schema.IPAddressPool{}
+			} else if len(plan.Ipv4Config.DhcpServer.IpAddressPool) != 0 || (state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpServer != nil && len(state.Ipv4Config.DhcpServer.IpAddressPool) != 0) {
+				IpAddressPoolToUse := plan.Ipv4Config.DhcpServer.IpAddressPool
+				if len(plan.Ipv4Config.DhcpServer.IpAddressPool) == 0 {
+					IpAddressPoolToUse = state.Ipv4Config.DhcpServer.IpAddressPool
 				}
-				body.Ipv4Config.DhcpServer.IpRanges = make([]sdwan_schema.IPRange, 0, len(IpRangesToUse))
-				for varLoopIpRangesIndex, varLoopIpRanges := range IpRangesToUse {
+				body.Ipv4Config.DhcpServer.IpAddressPool = make([]sdwan_schema.IPAddressPool, 0, len(IpAddressPoolToUse))
+				for varLoopIpAddressPoolIndex, varLoopIpAddressPool := range IpAddressPoolToUse {
 					// add a new item
-					body.Ipv4Config.DhcpServer.IpRanges = append(body.Ipv4Config.DhcpServer.IpRanges, sdwan_schema.IPRange{})
+					body.Ipv4Config.DhcpServer.IpAddressPool = append(body.Ipv4Config.DhcpServer.IpAddressPool, sdwan_schema.IPAddressPool{})
 					// since we have chosen to stick with either the plan or state, we need to simply copy child properties
-					// copy_from_plan: body=body.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex] prefix=rsModel plan=varLoopIpRanges properties=2
-					tflog.Debug(ctx, "copy_from_plan body=body.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex] prefix=rsModel plan=varLoopIpRanges")
-					// property: name=end_ip, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex].EndIp = StringValueOrNil(varLoopIpRanges.EndIp)
-					// property: name=start_ip, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex].StartIp = StringValueOrNil(varLoopIpRanges.StartIp)
+					// copy_from_plan: body=body.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex] prefix=rsModel plan=varLoopIpAddressPool properties=2
+					tflog.Debug(ctx, "copy_from_plan body=body.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex] prefix=rsModel plan=varLoopIpAddressPool")
+					// property: name=end, type=STRING macro=copy_from_plan
+					body.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex].End = StringValueOrNil(varLoopIpAddressPool.End)
+					// property: name=start, type=STRING macro=copy_from_plan
+					body.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex].Start = StringValueOrNil(varLoopIpAddressPool.Start)
 				}
 			}
-			// property: name=max_lease_time, type=INTEGER macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpServer != nil {
-				body.Ipv4Config.DhcpServer.MaxLeaseTime = ValueInt64PointerFromPlanOrState(plan.Ipv4Config.DhcpServer.MaxLeaseTime, state.Ipv4Config.DhcpServer.MaxLeaseTime)
+			// property: name=lease_expiry_time, type=INTEGER macro=copy_from_plan_or_state
+			if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpServer != nil {
+				body.Ipv4Config.DhcpServer.LeaseExpiryTime = ValueInt64PointerFromPlanOrState(plan.Ipv4Config.DhcpServer.LeaseExpiryTime, state.Ipv4Config.DhcpServer.LeaseExpiryTime)
 			} else {
-				body.Ipv4Config.DhcpServer.MaxLeaseTime = Int64ValueOrNil(plan.Ipv4Config.DhcpServer.MaxLeaseTime)
+				body.Ipv4Config.DhcpServer.LeaseExpiryTime = Int64ValueOrNil(plan.Ipv4Config.DhcpServer.LeaseExpiryTime)
 			}
-			// property: name=network_context_id, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpServer != nil {
-				body.Ipv4Config.DhcpServer.NetworkContextId = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpServer.NetworkContextId, state.Ipv4Config.DhcpServer.NetworkContextId)
+			// property: name=lease_renew_time, type=INTEGER macro=copy_from_plan_or_state
+			if state != nil && state.Ipv4Config != nil && state.Ipv4Config.DhcpServer != nil {
+				body.Ipv4Config.DhcpServer.LeaseRenewTime = ValueInt64PointerFromPlanOrState(plan.Ipv4Config.DhcpServer.LeaseRenewTime, state.Ipv4Config.DhcpServer.LeaseRenewTime)
 			} else {
-				body.Ipv4Config.DhcpServer.NetworkContextId = StringValueOrNil(plan.Ipv4Config.DhcpServer.NetworkContextId)
+				body.Ipv4Config.DhcpServer.LeaseRenewTime = Int64ValueOrNil(plan.Ipv4Config.DhcpServer.LeaseRenewTime)
 			}
-			// property: name=static_mappings, type=ARRAY_REFERENCE macro=copy_from_plan_or_state
-			if plan.Ipv4Config.DhcpServer.StaticMappings == nil && (state.Ipv4Config.DhcpServer == nil || state.Ipv4Config.DhcpServer.StaticMappings == nil) {
-				body.Ipv4Config.DhcpServer.StaticMappings = nil
-			} else if len(plan.Ipv4Config.DhcpServer.StaticMappings) == 0 && (state.Ipv4Config.DhcpServer == nil || len(state.Ipv4Config.DhcpServer.StaticMappings) == 0) {
-				body.Ipv4Config.DhcpServer.StaticMappings = []sdwan_schema.StaticMapping{}
-			} else if len(plan.Ipv4Config.DhcpServer.StaticMappings) != 0 || (state.Ipv4Config.DhcpServer != nil && len(state.Ipv4Config.DhcpServer.StaticMappings) != 0) {
-				StaticMappingsToUse := plan.Ipv4Config.DhcpServer.StaticMappings
-				if len(plan.Ipv4Config.DhcpServer.StaticMappings) == 0 {
-					StaticMappingsToUse = state.Ipv4Config.DhcpServer.StaticMappings
-				}
-				body.Ipv4Config.DhcpServer.StaticMappings = make([]sdwan_schema.StaticMapping, 0, len(StaticMappingsToUse))
-				for varLoopStaticMappingsIndex, varLoopStaticMappings := range StaticMappingsToUse {
-					// add a new item
-					body.Ipv4Config.DhcpServer.StaticMappings = append(body.Ipv4Config.DhcpServer.StaticMappings, sdwan_schema.StaticMapping{})
-					// since we have chosen to stick with either the plan or state, we need to simply copy child properties
-					// copy_from_plan: body=body.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex] prefix=rsModel plan=varLoopStaticMappings properties=3
-					tflog.Debug(ctx, "copy_from_plan body=body.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex] prefix=rsModel plan=varLoopStaticMappings")
-					// property: name=ip_address, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].IpAddress = StringValueOrNil(varLoopStaticMappings.IpAddress)
-					// property: name=mac, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].Mac = StringValueOrNil(varLoopStaticMappings.Mac)
-					// property: name=name, type=STRING macro=copy_from_plan
-					body.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].Name = StringValueOrNil(varLoopStaticMappings.Name)
-				}
-			}
-			// property: name=subnet, type=STRING macro=copy_from_plan_or_state
-			if state.Ipv4Config.DhcpServer != nil {
-				body.Ipv4Config.DhcpServer.Subnet = ValueStringPointerFromPlanOrState(plan.Ipv4Config.DhcpServer.Subnet, state.Ipv4Config.DhcpServer.Subnet)
-			} else {
-				body.Ipv4Config.DhcpServer.Subnet = StringValueOrNil(plan.Ipv4Config.DhcpServer.Subnet)
-			}
-			// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-			body.Ipv4Config.DhcpServer.Tags = SetStringValueOrNil(ctx, plan.Ipv4Config.DhcpServer.Tags)
 		}
 		// property: name=prefixes, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.Ipv4Config.Prefixes = ListStringValueOrNil(ctx, plan.Ipv4Config.Prefixes)
+		if state != nil && state.Ipv4Config != nil && plan.Ipv4Config.Prefixes.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.Ipv4Config.Prefixes = ListStringValueOrNil(ctx, state.Ipv4Config.Prefixes)
+		} else {
+			body.Ipv4Config.Prefixes = ListStringValueOrNil(ctx, plan.Ipv4Config.Prefixes)
+		}
 	}
 	// property: name=ipv6_config, type=REFERENCE macro=copy_from_plan_or_state
 	if plan.Ipv6Config == nil {
@@ -1559,9 +1218,19 @@ func (r *siteLanNetworkResource) doPut(ctx context.Context, plan *rsModelLANNetw
 		// copy_from_plan_or_state: body=body.Ipv6Config prefix=rsModel state=state.Ipv6Config plan=plan.Ipv6Config properties=2
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.Ipv6Config prefix=rsModel state=state.Ipv6Config plan=plan.Ipv6Config")
 		// property: name=default_routers, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.Ipv6Config.DefaultRouters = ListStringValueOrNil(ctx, plan.Ipv6Config.DefaultRouters)
+		if state != nil && state.Ipv6Config != nil && plan.Ipv6Config.DefaultRouters.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.Ipv6Config.DefaultRouters = ListStringValueOrNil(ctx, state.Ipv6Config.DefaultRouters)
+		} else {
+			body.Ipv6Config.DefaultRouters = ListStringValueOrNil(ctx, plan.Ipv6Config.DefaultRouters)
+		}
 		// property: name=prefixes, type=ARRAY_PRIMITIVE macro=copy_from_plan_or_state
-		body.Ipv6Config.Prefixes = ListStringValueOrNil(ctx, plan.Ipv6Config.Prefixes)
+		if state != nil && state.Ipv6Config != nil && plan.Ipv6Config.Prefixes.IsUnknown() {
+			// computed and not configured: send what the server has, not an empty list the api may read as a change
+			body.Ipv6Config.Prefixes = ListStringValueOrNil(ctx, state.Ipv6Config.Prefixes)
+		} else {
+			body.Ipv6Config.Prefixes = ListStringValueOrNil(ctx, plan.Ipv6Config.Prefixes)
+		}
 	}
 	// property: name=name, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
@@ -1582,7 +1251,12 @@ func (r *siteLanNetworkResource) doPut(ctx context.Context, plan *rsModelLANNetw
 		body.Scope = StringValueOrNil(plan.Scope)
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 	// property: name=vrf_context_id, type=STRING macro=copy_from_plan_or_state
 	if state != nil {
 		body.VrfContextId = ValueStringPointerFromPlanOrState(plan.VrfContextId, state.VrfContextId)
@@ -1636,6 +1310,12 @@ func (r *siteLanNetworkResource) doPut(ctx context.Context, plan *rsModelLANNetw
 	if json_err != nil {
 		resp.Diagnostics.AddError("error in json unmarshal to LANNetworkScreenV3N3 in update", json_err.Error())
 		return false
+	}
+
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
 	}
 
 	// Store the answer to state. schema=LANNetworkScreenV3N3
@@ -1697,96 +1377,36 @@ func (r *siteLanNetworkResource) doPut(ctx context.Context, plan *rsModelLANNetw
 			state.Ipv4Config.DhcpServer = nil
 		} else {
 			state.Ipv4Config.DhcpServer = &rsModelDHCPServer{}
-			// copy_to_state: state=state.Ipv4Config.DhcpServer prefix=rsModel ans=ans.Ipv4Config.DhcpServer properties=17
+			// copy_to_state: state=state.Ipv4Config.DhcpServer prefix=rsModel ans=ans.Ipv4Config.DhcpServer properties=5
 			tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer prefix=rsModel ans=ans.Ipv4Config.DhcpServer")
-			// property: name=_etag, type=INTEGER macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Etag = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.Etag)
-			// property: name=_schema, type=INTEGER macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Schema = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.Schema)
-			// property: name=broadcast_address, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.BroadcastAddress = types.StringPointerValue(ans.Ipv4Config.DhcpServer.BroadcastAddress)
-			// property: name=custom_options, type=ARRAY_REFERENCE macro=copy_to_state
-			if ans.Ipv4Config.DhcpServer.CustomOptions == nil {
-				state.Ipv4Config.DhcpServer.CustomOptions = nil
-			} else if len(ans.Ipv4Config.DhcpServer.CustomOptions) == 0 {
-				state.Ipv4Config.DhcpServer.CustomOptions = []rsModelBaseCustomDHCPOptions{}
-			} else {
-				state.Ipv4Config.DhcpServer.CustomOptions = make([]rsModelBaseCustomDHCPOptions, 0, len(ans.Ipv4Config.DhcpServer.CustomOptions))
-				for varLoopCustomOptionsIndex, varLoopCustomOptions := range ans.Ipv4Config.DhcpServer.CustomOptions {
-					// add a new item
-					state.Ipv4Config.DhcpServer.CustomOptions = append(state.Ipv4Config.DhcpServer.CustomOptions, rsModelBaseCustomDHCPOptions{})
-					// copy_to_state: state=state.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex] prefix=rsModel ans=varLoopCustomOptions properties=2
-					tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex] prefix=rsModel ans=varLoopCustomOptions")
-					// property: name=option_definition, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex].OptionDefinition = types.StringPointerValue(varLoopCustomOptions.OptionDefinition)
-					// property: name=option_value, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.CustomOptions[varLoopCustomOptionsIndex].OptionValue = types.StringPointerValue(varLoopCustomOptions.OptionValue)
-				}
-			}
-			// property: name=default_lease_time, type=INTEGER macro=copy_to_state
-			state.Ipv4Config.DhcpServer.DefaultLeaseTime = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.DefaultLeaseTime)
-			// property: name=description, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Description = types.StringPointerValue(ans.Ipv4Config.DhcpServer.Description)
-			// property: name=disabled, type=BOOLEAN macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Disabled = types.BoolPointerValue(ans.Ipv4Config.DhcpServer.Disabled)
-			// property: name=dns_servers, type=ARRAY_PRIMITIVE macro=copy_to_state
-			varDnsServers, errDnsServers := types.ListValueFrom(ctx, types.StringType, ans.Ipv4Config.DhcpServer.DnsServers)
-			state.Ipv4Config.DhcpServer.DnsServers = varDnsServers
-			resp.Diagnostics.Append(errDnsServers.Errors()...)
 			// property: name=domain_name, type=STRING macro=copy_to_state
 			state.Ipv4Config.DhcpServer.DomainName = types.StringPointerValue(ans.Ipv4Config.DhcpServer.DomainName)
-			// property: name=gateway, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Gateway = types.StringPointerValue(ans.Ipv4Config.DhcpServer.Gateway)
-			// property: name=id, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Id = types.StringPointerValue(ans.Ipv4Config.DhcpServer.Id)
-			// property: name=ip_ranges, type=ARRAY_REFERENCE macro=copy_to_state
-			if ans.Ipv4Config.DhcpServer.IpRanges == nil {
-				state.Ipv4Config.DhcpServer.IpRanges = nil
-			} else if len(ans.Ipv4Config.DhcpServer.IpRanges) == 0 {
-				state.Ipv4Config.DhcpServer.IpRanges = []rsModelIPRange{}
+			// property: name=domain_name_servers, type=ARRAY_PRIMITIVE macro=copy_to_state
+			varDomainNameServers, errDomainNameServers := types.ListValueFrom(ctx, types.StringType, ans.Ipv4Config.DhcpServer.DomainNameServers)
+			state.Ipv4Config.DhcpServer.DomainNameServers = varDomainNameServers
+			resp.Diagnostics.Append(errDomainNameServers.Errors()...)
+			// property: name=ip_address_pool, type=ARRAY_REFERENCE macro=copy_to_state
+			if ans.Ipv4Config.DhcpServer.IpAddressPool == nil {
+				state.Ipv4Config.DhcpServer.IpAddressPool = nil
+			} else if len(ans.Ipv4Config.DhcpServer.IpAddressPool) == 0 {
+				state.Ipv4Config.DhcpServer.IpAddressPool = []rsModelIPAddressPool{}
 			} else {
-				state.Ipv4Config.DhcpServer.IpRanges = make([]rsModelIPRange, 0, len(ans.Ipv4Config.DhcpServer.IpRanges))
-				for varLoopIpRangesIndex, varLoopIpRanges := range ans.Ipv4Config.DhcpServer.IpRanges {
+				state.Ipv4Config.DhcpServer.IpAddressPool = make([]rsModelIPAddressPool, 0, len(ans.Ipv4Config.DhcpServer.IpAddressPool))
+				for varLoopIpAddressPoolIndex, varLoopIpAddressPool := range ans.Ipv4Config.DhcpServer.IpAddressPool {
 					// add a new item
-					state.Ipv4Config.DhcpServer.IpRanges = append(state.Ipv4Config.DhcpServer.IpRanges, rsModelIPRange{})
-					// copy_to_state: state=state.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex] prefix=rsModel ans=varLoopIpRanges properties=2
-					tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex] prefix=rsModel ans=varLoopIpRanges")
-					// property: name=end_ip, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex].EndIp = types.StringPointerValue(varLoopIpRanges.EndIp)
-					// property: name=start_ip, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.IpRanges[varLoopIpRangesIndex].StartIp = types.StringPointerValue(varLoopIpRanges.StartIp)
+					state.Ipv4Config.DhcpServer.IpAddressPool = append(state.Ipv4Config.DhcpServer.IpAddressPool, rsModelIPAddressPool{})
+					// copy_to_state: state=state.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex] prefix=rsModel ans=varLoopIpAddressPool properties=2
+					tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex] prefix=rsModel ans=varLoopIpAddressPool")
+					// property: name=end, type=STRING macro=copy_to_state
+					state.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex].End = types.StringPointerValue(varLoopIpAddressPool.End)
+					// property: name=start, type=STRING macro=copy_to_state
+					state.Ipv4Config.DhcpServer.IpAddressPool[varLoopIpAddressPoolIndex].Start = types.StringPointerValue(varLoopIpAddressPool.Start)
 				}
 			}
-			// property: name=max_lease_time, type=INTEGER macro=copy_to_state
-			state.Ipv4Config.DhcpServer.MaxLeaseTime = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.MaxLeaseTime)
-			// property: name=network_context_id, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.NetworkContextId = types.StringPointerValue(ans.Ipv4Config.DhcpServer.NetworkContextId)
-			// property: name=static_mappings, type=ARRAY_REFERENCE macro=copy_to_state
-			if ans.Ipv4Config.DhcpServer.StaticMappings == nil {
-				state.Ipv4Config.DhcpServer.StaticMappings = nil
-			} else if len(ans.Ipv4Config.DhcpServer.StaticMappings) == 0 {
-				state.Ipv4Config.DhcpServer.StaticMappings = []rsModelStaticMapping{}
-			} else {
-				state.Ipv4Config.DhcpServer.StaticMappings = make([]rsModelStaticMapping, 0, len(ans.Ipv4Config.DhcpServer.StaticMappings))
-				for varLoopStaticMappingsIndex, varLoopStaticMappings := range ans.Ipv4Config.DhcpServer.StaticMappings {
-					// add a new item
-					state.Ipv4Config.DhcpServer.StaticMappings = append(state.Ipv4Config.DhcpServer.StaticMappings, rsModelStaticMapping{})
-					// copy_to_state: state=state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex] prefix=rsModel ans=varLoopStaticMappings properties=3
-					tflog.Debug(ctx, "copy_to_state state=state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex] prefix=rsModel ans=varLoopStaticMappings")
-					// property: name=ip_address, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].IpAddress = types.StringPointerValue(varLoopStaticMappings.IpAddress)
-					// property: name=mac, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].Mac = types.StringPointerValue(varLoopStaticMappings.Mac)
-					// property: name=name, type=STRING macro=copy_to_state
-					state.Ipv4Config.DhcpServer.StaticMappings[varLoopStaticMappingsIndex].Name = types.StringPointerValue(varLoopStaticMappings.Name)
-				}
-			}
-			// property: name=subnet, type=STRING macro=copy_to_state
-			state.Ipv4Config.DhcpServer.Subnet = types.StringPointerValue(ans.Ipv4Config.DhcpServer.Subnet)
-			// property: name=tags, type=SET_PRIMITIVE macro=copy_to_state
-			varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Ipv4Config.DhcpServer.Tags)
-			state.Ipv4Config.DhcpServer.Tags = varTags
-			resp.Diagnostics.Append(errTags.Errors()...)
+			// property: name=lease_expiry_time, type=INTEGER macro=copy_to_state
+			state.Ipv4Config.DhcpServer.LeaseExpiryTime = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.LeaseExpiryTime)
+			// property: name=lease_renew_time, type=INTEGER macro=copy_to_state
+			state.Ipv4Config.DhcpServer.LeaseRenewTime = types.Int64PointerValue(ans.Ipv4Config.DhcpServer.LeaseRenewTime)
 		}
 		// property: name=prefixes, type=ARRAY_PRIMITIVE macro=copy_to_state
 		varPrefixes, errPrefixes := types.ListValueFrom(ctx, types.StringType, ans.Ipv4Config.Prefixes)
@@ -1819,6 +1439,14 @@ func (r *siteLanNetworkResource) doPut(ctx context.Context, plan *rsModelLANNetw
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	// property: name=vrf_context_id, type=STRING macro=copy_to_state
 	state.VrfContextId = types.StringPointerValue(ans.VrfContextId)
 	return true

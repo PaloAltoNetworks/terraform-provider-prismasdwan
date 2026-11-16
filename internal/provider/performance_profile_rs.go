@@ -39,9 +39,10 @@ import (
 
 // Resource.
 var (
-	_ resource.Resource                = &performanceProfileResource{}
-	_ resource.ResourceWithConfigure   = &performanceProfileResource{}
-	_ resource.ResourceWithImportState = &performanceProfileResource{}
+	_ resource.Resource                   = &performanceProfileResource{}
+	_ resource.ResourceWithConfigure      = &performanceProfileResource{}
+	_ resource.ResourceWithImportState    = &performanceProfileResource{}
+	_ resource.ResourceWithValidateConfig = &performanceProfileResource{}
 )
 
 // To enable this data source for TF Provider, go to `provider.go` and inject this into the function
@@ -62,6 +63,12 @@ type performanceProfileResource struct {
 	client *sdwan.Client
 }
 
+// ValidateConfig fails the plan when a path parameter the create call needs is missing from x_parameters,
+// instead of sending a request with a literal "{param}" in its path.
+func (r *performanceProfileResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	resp.Diagnostics.Append(ValidateRequiredXParameters(ctx, req.Config, []string{})...)
+}
+
 // Metadata returns the data source type name.
 func (r *performanceProfileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = "prismasdwan_performance_profile"
@@ -70,13 +77,14 @@ func (r *performanceProfileResource) Metadata(_ context.Context, req resource.Me
 // Schema defines the schema for this data source.
 func (r *performanceProfileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rsschema.Schema{
-		Description: "Retrieves a config item.",
+		Description: "Manages a Prisma SD-WAN Performance Profile.",
 		Attributes: map[string]rsschema.Attribute{
 			"tfid": rsschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+				Description: "The Terraform internal identifier for this resource.",
 			},
 			// rest all properties to be read from GET API Schema schema=PerfMgmtThresholdProfileScreenV2N1
 			// generic x_parameters is added to accomodate path parameters
@@ -85,373 +93,418 @@ func (r *performanceProfileResource) Schema(_ context.Context, _ resource.Schema
 				Computed:    false,
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "Path parameters for the resource, managed automatically by the provider.",
 			},
 			// property: name=_etag, type=INTEGER macro=rss_schema
 			"x_etag": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Etag for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_etag, type=INTEGER macro=rss_schema
 			// property: name=_schema, type=INTEGER macro=rss_schema
 			"x_schema": rsschema.Int64Attribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Schema version for this object. Value: at least 1. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=_schema, type=INTEGER macro=rss_schema
 			// property: name=circuit_utilization_metrics_thresholds, type=REFERENCE macro=rss_schema
 			"circuit_utilization_metrics_thresholds": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Circuit utilization metrics thresholds.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=percentage_circuit_utilization, type=INTEGER macro=rss_schema
 					"percentage_circuit_utilization": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Percentage circuit utilization. Value: between 1 and 100.",
 					},
 					// key name holder for attribute: name=percentage_circuit_utilization, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=percentage_circuit_utilization, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=circuit_utilization_metrics_thresholds, type=REFERENCE macro=rss_schema
 			// property: name=description, type=STRING macro=rss_schema
 			"description": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Description. Value: at most 256 characters.",
 			},
 			// key name holder for attribute: name=description, type=STRING macro=rss_schema
 			// property: name=flow_metrics_thresholds, type=REFERENCE macro=rss_schema
 			"flow_metrics_thresholds": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Flow metrics thresholds.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=percentage_flow_utilization, type=INTEGER macro=rss_schema
 					"percentage_flow_utilization": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Percentage flow utilization. Value: between 1 and 100.",
 					},
 					// key name holder for attribute: name=percentage_flow_utilization, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=percentage_flow_utilization, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=flow_metrics_thresholds, type=REFERENCE macro=rss_schema
 			// property: name=hard_limit_app_metrics, type=REFERENCE macro=rss_schema
 			"hard_limit_app_metrics": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Hard limit app metrics.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=max_init_failure_rate, type=INTEGER macro=rss_schema
 					"max_init_failure_rate": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Max init failure rate. Value: between 0 and 100.",
 					},
 					// key name holder for attribute: name=max_init_failure_rate, type=INTEGER macro=rss_schema
 					// property: name=max_rtt, type=INTEGER macro=rss_schema
 					"max_rtt": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Max rtt. Value: between 0 and 500.",
 					},
 					// key name holder for attribute: name=max_rtt, type=INTEGER macro=rss_schema
 					// property: name=udp_trt, type=INTEGER macro=rss_schema
 					"udp_trt": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Udp trt.",
 					},
 					// key name holder for attribute: name=udp_trt, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=udp_trt, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=hard_limit_app_metrics, type=REFERENCE macro=rss_schema
 			// property: name=id, type=STRING macro=rss_schema
 			"id": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  true,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    true,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Identifier of the object, assigned by the API. Filled in by the server when it is not set.",
 			},
 			// key name holder for attribute: name=id, type=STRING macro=rss_schema
 			// property: name=lqm_thresholds, type=REFERENCE macro=rss_schema
 			"lqm_thresholds": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Lqm thresholds.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=max_jitter, type=INTEGER macro=rss_schema
 					"max_jitter": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Max jitter.",
 					},
 					// key name holder for attribute: name=max_jitter, type=INTEGER macro=rss_schema
 					// property: name=max_latency, type=INTEGER macro=rss_schema
 					"max_latency": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Max latency.",
 					},
 					// key name holder for attribute: name=max_latency, type=INTEGER macro=rss_schema
 					// property: name=max_packet_loss, type=INTEGER macro=rss_schema
 					"max_packet_loss": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Max packet loss.",
 					},
 					// key name holder for attribute: name=max_packet_loss, type=INTEGER macro=rss_schema
 					// property: name=min_mos, type=INTEGER macro=rss_schema
 					"min_mos": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Min mos.",
 					},
 					// key name holder for attribute: name=min_mos, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=min_mos, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=lqm_thresholds, type=REFERENCE macro=rss_schema
 			// property: name=name, type=STRING macro=rss_schema
 			"name": rsschema.StringAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Name. Value: at most 128 characters.",
 			},
 			// key name holder for attribute: name=name, type=STRING macro=rss_schema
 			// property: name=soft_limit_app_metrics, type=REFERENCE macro=rss_schema
 			"soft_limit_app_metrics": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Soft limit app metrics.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=max_init_failure_rate, type=INTEGER macro=rss_schema
 					"max_init_failure_rate": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Max init failure rate. Value: between 0 and 100.",
 					},
 					// key name holder for attribute: name=max_init_failure_rate, type=INTEGER macro=rss_schema
 					// property: name=max_rtt, type=INTEGER macro=rss_schema
 					"max_rtt": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Max rtt. Value: between 0 and 500.",
 					},
 					// key name holder for attribute: name=max_rtt, type=INTEGER macro=rss_schema
 					// property: name=udp_trt, type=INTEGER macro=rss_schema
 					"udp_trt": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Udp trt.",
 					},
 					// key name holder for attribute: name=udp_trt, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=udp_trt, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=soft_limit_app_metrics, type=REFERENCE macro=rss_schema
 			// property: name=synthetic_probe_thresholds, type=REFERENCE macro=rss_schema
 			"synthetic_probe_thresholds": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "Synthetic probe thresholds.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=dns_txn_failure_pct, type=REFERENCE macro=rss_schema
 					"dns_txn_failure_pct": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Dns txn failure pct.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=probe_config_id, type=STRING macro=rss_schema
 							"probe_config_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Probe config id.",
 							},
 							// key name holder for attribute: name=probe_config_id, type=STRING macro=rss_schema
 							// property: name=value, type=INTEGER macro=rss_schema
 							"value": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Value.",
 							},
 							// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+					// key name holder for attribute: name=dns_txn_failure_pct, type=REFERENCE macro=rss_schema
 					// property: name=init_failure_pct, type=REFERENCE macro=rss_schema
 					"init_failure_pct": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Init failure pct.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=probe_config_id, type=STRING macro=rss_schema
 							"probe_config_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Probe config id.",
 							},
 							// key name holder for attribute: name=probe_config_id, type=STRING macro=rss_schema
 							// property: name=value, type=INTEGER macro=rss_schema
 							"value": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Value.",
 							},
 							// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+					// key name holder for attribute: name=init_failure_pct, type=REFERENCE macro=rss_schema
 					// property: name=jitter, type=REFERENCE macro=rss_schema
 					"jitter": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Jitter.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=probe_config_id, type=STRING macro=rss_schema
 							"probe_config_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Probe config id.",
 							},
 							// key name holder for attribute: name=probe_config_id, type=STRING macro=rss_schema
 							// property: name=value, type=INTEGER macro=rss_schema
 							"value": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Value.",
 							},
 							// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+					// key name holder for attribute: name=jitter, type=REFERENCE macro=rss_schema
 					// property: name=latency, type=REFERENCE macro=rss_schema
 					"latency": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Latency.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=probe_config_id, type=STRING macro=rss_schema
 							"probe_config_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Probe config id.",
 							},
 							// key name holder for attribute: name=probe_config_id, type=STRING macro=rss_schema
 							// property: name=value, type=INTEGER macro=rss_schema
 							"value": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Value.",
 							},
 							// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+					// key name holder for attribute: name=latency, type=REFERENCE macro=rss_schema
 					// property: name=packet_loss, type=REFERENCE macro=rss_schema
 					"packet_loss": rsschema.SingleNestedAttribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Packet loss.",
 						Attributes: map[string]rsschema.Attribute{
 							// property: name=probe_config_id, type=STRING macro=rss_schema
 							"probe_config_id": rsschema.StringAttribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Probe config id.",
 							},
 							// key name holder for attribute: name=probe_config_id, type=STRING macro=rss_schema
 							// property: name=value, type=INTEGER macro=rss_schema
 							"value": rsschema.Int64Attribute{
-								Required:  false,
-								Computed:  false,
-								Optional:  true,
-								Sensitive: false,
+								Required:    false,
+								Computed:    false,
+								Optional:    true,
+								Sensitive:   false,
+								Description: "Value.",
 							},
 							// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
 						},
 					},
-					// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+					// key name holder for attribute: name=packet_loss, type=REFERENCE macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=value, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=synthetic_probe_thresholds, type=REFERENCE macro=rss_schema
 			// property: name=system_health_metrics_thresholds, type=REFERENCE macro=rss_schema
 			"system_health_metrics_thresholds": rsschema.SingleNestedAttribute{
-				Required:  false,
-				Computed:  false,
-				Optional:  true,
-				Sensitive: false,
+				Required:    false,
+				Computed:    false,
+				Optional:    true,
+				Sensitive:   false,
+				Description: "System health metrics thresholds.",
 				Attributes: map[string]rsschema.Attribute{
 					// property: name=cpu_utilization, type=INTEGER macro=rss_schema
 					"cpu_utilization": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Cpu utilization.",
 					},
 					// key name holder for attribute: name=cpu_utilization, type=INTEGER macro=rss_schema
 					// property: name=disk_utilization, type=INTEGER macro=rss_schema
 					"disk_utilization": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Disk utilization.",
 					},
 					// key name holder for attribute: name=disk_utilization, type=INTEGER macro=rss_schema
 					// property: name=memory_utilization, type=INTEGER macro=rss_schema
 					"memory_utilization": rsschema.Int64Attribute{
-						Required:  false,
-						Computed:  false,
-						Optional:  true,
-						Sensitive: false,
+						Required:    false,
+						Computed:    false,
+						Optional:    true,
+						Sensitive:   false,
+						Description: "Memory utilization.",
 					},
 					// key name holder for attribute: name=memory_utilization, type=INTEGER macro=rss_schema
 				},
 			},
-			// key name holder for attribute: name=memory_utilization, type=INTEGER macro=rss_schema
+			// key name holder for attribute: name=system_health_metrics_thresholds, type=REFERENCE macro=rss_schema
 			// property: name=tags, type=SET_PRIMITIVE macro=rss_schema
 			"tags": rsschema.SetAttribute{
 				Required:    false,
 				Computed:    false,
 				Optional:    true,
 				Sensitive:   false,
+				Description: "Tags. At most 10 items. Each item: at most 128 characters, matching `[^,\\s]+`.",
+				Validators:  SetMaxItems(10),
 				ElementType: types.StringType,
 			},
 			// key name holder for attribute: name=tags, type=SET_PRIMITIVE macro=rss_schema
@@ -895,6 +948,14 @@ func (r *performanceProfileResource) doPost(ctx context.Context, plan *rsModelPe
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
@@ -966,7 +1027,23 @@ func (r *performanceProfileResource) doGet(ctx context.Context, state *rsModelPe
 	state.Tfid = savestate.Tfid
 	// copy parameters from savestate as they are
 	if savestate.TfParameters.IsNull() {
-		state.TfParameters = types.MapNull(types.StringType)
+		// after an import the id (<object id>:key=value:...) is all there is: rebuild x_parameters from its key=value
+		// tokens so that the state matches the configuration and the first plan has nothing to change
+		idParameters := map[string]string{}
+		// the id of an object created by POST starts with the object id (no "="); the id of a resource that only updates
+		// an existing object (GET, then PUT) is key=value tokens only: take every token that has a key
+		for _, token := range tokens {
+			if param := strings.SplitN(token, "=", 2); len(param) == 2 && param[0] != "" {
+				idParameters[param[0]] = param[1]
+			}
+		}
+		if len(idParameters) == 0 {
+			state.TfParameters = types.MapNull(types.StringType)
+		} else {
+			idParametersValue, idParametersDiags := types.MapValueFrom(ctx, types.StringType, idParameters)
+			resp.Diagnostics.Append(idParametersDiags...)
+			state.TfParameters = idParametersValue
+		}
 	} else {
 		state.TfParameters = savestate.TfParameters
 	}
@@ -1142,6 +1219,14 @@ func (r *performanceProfileResource) doGet(ctx context.Context, state *rsModelPe
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !savestate.Tags.IsNull() && !savestate.Tags.IsUnknown() && len(savestate.Tags.Elements()) == 0 {
+		state.Tags = savestate.Tags
+	}
 	return true
 }
 
@@ -1218,7 +1303,7 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 		// copy_from_plan_or_state: body=body.CircuitUtilizationMetricsThresholds prefix=rsModel state=state.CircuitUtilizationMetricsThresholds plan=plan.CircuitUtilizationMetricsThresholds properties=1
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.CircuitUtilizationMetricsThresholds prefix=rsModel state=state.CircuitUtilizationMetricsThresholds plan=plan.CircuitUtilizationMetricsThresholds")
 		// property: name=percentage_circuit_utilization, type=INTEGER macro=copy_from_plan_or_state
-		if state.CircuitUtilizationMetricsThresholds != nil {
+		if state != nil && state.CircuitUtilizationMetricsThresholds != nil {
 			body.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization = ValueInt64PointerFromPlanOrState(plan.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization, state.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization)
 		} else {
 			body.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization = Int64ValueOrNil(plan.CircuitUtilizationMetricsThresholds.PercentageCircuitUtilization)
@@ -1238,7 +1323,7 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 		// copy_from_plan_or_state: body=body.FlowMetricsThresholds prefix=rsModel state=state.FlowMetricsThresholds plan=plan.FlowMetricsThresholds properties=1
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.FlowMetricsThresholds prefix=rsModel state=state.FlowMetricsThresholds plan=plan.FlowMetricsThresholds")
 		// property: name=percentage_flow_utilization, type=INTEGER macro=copy_from_plan_or_state
-		if state.FlowMetricsThresholds != nil {
+		if state != nil && state.FlowMetricsThresholds != nil {
 			body.FlowMetricsThresholds.PercentageFlowUtilization = ValueInt64PointerFromPlanOrState(plan.FlowMetricsThresholds.PercentageFlowUtilization, state.FlowMetricsThresholds.PercentageFlowUtilization)
 		} else {
 			body.FlowMetricsThresholds.PercentageFlowUtilization = Int64ValueOrNil(plan.FlowMetricsThresholds.PercentageFlowUtilization)
@@ -1252,19 +1337,19 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 		// copy_from_plan_or_state: body=body.HardLimitAppMetrics prefix=rsModel state=state.HardLimitAppMetrics plan=plan.HardLimitAppMetrics properties=3
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.HardLimitAppMetrics prefix=rsModel state=state.HardLimitAppMetrics plan=plan.HardLimitAppMetrics")
 		// property: name=max_init_failure_rate, type=INTEGER macro=copy_from_plan_or_state
-		if state.HardLimitAppMetrics != nil {
+		if state != nil && state.HardLimitAppMetrics != nil {
 			body.HardLimitAppMetrics.MaxInitFailureRate = ValueInt64PointerFromPlanOrState(plan.HardLimitAppMetrics.MaxInitFailureRate, state.HardLimitAppMetrics.MaxInitFailureRate)
 		} else {
 			body.HardLimitAppMetrics.MaxInitFailureRate = Int64ValueOrNil(plan.HardLimitAppMetrics.MaxInitFailureRate)
 		}
 		// property: name=max_rtt, type=INTEGER macro=copy_from_plan_or_state
-		if state.HardLimitAppMetrics != nil {
+		if state != nil && state.HardLimitAppMetrics != nil {
 			body.HardLimitAppMetrics.MaxRtt = ValueInt64PointerFromPlanOrState(plan.HardLimitAppMetrics.MaxRtt, state.HardLimitAppMetrics.MaxRtt)
 		} else {
 			body.HardLimitAppMetrics.MaxRtt = Int64ValueOrNil(plan.HardLimitAppMetrics.MaxRtt)
 		}
 		// property: name=udp_trt, type=INTEGER macro=copy_from_plan_or_state
-		if state.HardLimitAppMetrics != nil {
+		if state != nil && state.HardLimitAppMetrics != nil {
 			body.HardLimitAppMetrics.UdpTrt = ValueInt64PointerFromPlanOrState(plan.HardLimitAppMetrics.UdpTrt, state.HardLimitAppMetrics.UdpTrt)
 		} else {
 			body.HardLimitAppMetrics.UdpTrt = Int64ValueOrNil(plan.HardLimitAppMetrics.UdpTrt)
@@ -1284,25 +1369,25 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 		// copy_from_plan_or_state: body=body.LqmThresholds prefix=rsModel state=state.LqmThresholds plan=plan.LqmThresholds properties=4
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.LqmThresholds prefix=rsModel state=state.LqmThresholds plan=plan.LqmThresholds")
 		// property: name=max_jitter, type=INTEGER macro=copy_from_plan_or_state
-		if state.LqmThresholds != nil {
+		if state != nil && state.LqmThresholds != nil {
 			body.LqmThresholds.MaxJitter = ValueInt64PointerFromPlanOrState(plan.LqmThresholds.MaxJitter, state.LqmThresholds.MaxJitter)
 		} else {
 			body.LqmThresholds.MaxJitter = Int64ValueOrNil(plan.LqmThresholds.MaxJitter)
 		}
 		// property: name=max_latency, type=INTEGER macro=copy_from_plan_or_state
-		if state.LqmThresholds != nil {
+		if state != nil && state.LqmThresholds != nil {
 			body.LqmThresholds.MaxLatency = ValueInt64PointerFromPlanOrState(plan.LqmThresholds.MaxLatency, state.LqmThresholds.MaxLatency)
 		} else {
 			body.LqmThresholds.MaxLatency = Int64ValueOrNil(plan.LqmThresholds.MaxLatency)
 		}
 		// property: name=max_packet_loss, type=INTEGER macro=copy_from_plan_or_state
-		if state.LqmThresholds != nil {
+		if state != nil && state.LqmThresholds != nil {
 			body.LqmThresholds.MaxPacketLoss = ValueInt64PointerFromPlanOrState(plan.LqmThresholds.MaxPacketLoss, state.LqmThresholds.MaxPacketLoss)
 		} else {
 			body.LqmThresholds.MaxPacketLoss = Int64ValueOrNil(plan.LqmThresholds.MaxPacketLoss)
 		}
 		// property: name=min_mos, type=INTEGER macro=copy_from_plan_or_state
-		if state.LqmThresholds != nil {
+		if state != nil && state.LqmThresholds != nil {
 			body.LqmThresholds.MinMos = ValueInt64PointerFromPlanOrState(plan.LqmThresholds.MinMos, state.LqmThresholds.MinMos)
 		} else {
 			body.LqmThresholds.MinMos = Int64ValueOrNil(plan.LqmThresholds.MinMos)
@@ -1322,19 +1407,19 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 		// copy_from_plan_or_state: body=body.SoftLimitAppMetrics prefix=rsModel state=state.SoftLimitAppMetrics plan=plan.SoftLimitAppMetrics properties=3
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.SoftLimitAppMetrics prefix=rsModel state=state.SoftLimitAppMetrics plan=plan.SoftLimitAppMetrics")
 		// property: name=max_init_failure_rate, type=INTEGER macro=copy_from_plan_or_state
-		if state.SoftLimitAppMetrics != nil {
+		if state != nil && state.SoftLimitAppMetrics != nil {
 			body.SoftLimitAppMetrics.MaxInitFailureRate = ValueInt64PointerFromPlanOrState(plan.SoftLimitAppMetrics.MaxInitFailureRate, state.SoftLimitAppMetrics.MaxInitFailureRate)
 		} else {
 			body.SoftLimitAppMetrics.MaxInitFailureRate = Int64ValueOrNil(plan.SoftLimitAppMetrics.MaxInitFailureRate)
 		}
 		// property: name=max_rtt, type=INTEGER macro=copy_from_plan_or_state
-		if state.SoftLimitAppMetrics != nil {
+		if state != nil && state.SoftLimitAppMetrics != nil {
 			body.SoftLimitAppMetrics.MaxRtt = ValueInt64PointerFromPlanOrState(plan.SoftLimitAppMetrics.MaxRtt, state.SoftLimitAppMetrics.MaxRtt)
 		} else {
 			body.SoftLimitAppMetrics.MaxRtt = Int64ValueOrNil(plan.SoftLimitAppMetrics.MaxRtt)
 		}
 		// property: name=udp_trt, type=INTEGER macro=copy_from_plan_or_state
-		if state.SoftLimitAppMetrics != nil {
+		if state != nil && state.SoftLimitAppMetrics != nil {
 			body.SoftLimitAppMetrics.UdpTrt = ValueInt64PointerFromPlanOrState(plan.SoftLimitAppMetrics.UdpTrt, state.SoftLimitAppMetrics.UdpTrt)
 		} else {
 			body.SoftLimitAppMetrics.UdpTrt = Int64ValueOrNil(plan.SoftLimitAppMetrics.UdpTrt)
@@ -1355,13 +1440,13 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 			// copy_from_plan_or_state: body=body.SyntheticProbeThresholds.DnsTxnFailurePct prefix=rsModel state=state.SyntheticProbeThresholds.DnsTxnFailurePct plan=plan.SyntheticProbeThresholds.DnsTxnFailurePct properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.SyntheticProbeThresholds.DnsTxnFailurePct prefix=rsModel state=state.SyntheticProbeThresholds.DnsTxnFailurePct plan=plan.SyntheticProbeThresholds.DnsTxnFailurePct")
 			// property: name=probe_config_id, type=STRING macro=copy_from_plan_or_state
-			if state.SyntheticProbeThresholds.DnsTxnFailurePct != nil {
+			if state != nil && state.SyntheticProbeThresholds != nil && state.SyntheticProbeThresholds.DnsTxnFailurePct != nil {
 				body.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId = ValueStringPointerFromPlanOrState(plan.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId, state.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId)
 			} else {
 				body.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId = StringValueOrNil(plan.SyntheticProbeThresholds.DnsTxnFailurePct.ProbeConfigId)
 			}
 			// property: name=value, type=INTEGER macro=copy_from_plan_or_state
-			if state.SyntheticProbeThresholds.DnsTxnFailurePct != nil {
+			if state != nil && state.SyntheticProbeThresholds != nil && state.SyntheticProbeThresholds.DnsTxnFailurePct != nil {
 				body.SyntheticProbeThresholds.DnsTxnFailurePct.Value = ValueInt64PointerFromPlanOrState(plan.SyntheticProbeThresholds.DnsTxnFailurePct.Value, state.SyntheticProbeThresholds.DnsTxnFailurePct.Value)
 			} else {
 				body.SyntheticProbeThresholds.DnsTxnFailurePct.Value = Int64ValueOrNil(plan.SyntheticProbeThresholds.DnsTxnFailurePct.Value)
@@ -1375,13 +1460,13 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 			// copy_from_plan_or_state: body=body.SyntheticProbeThresholds.InitFailurePct prefix=rsModel state=state.SyntheticProbeThresholds.InitFailurePct plan=plan.SyntheticProbeThresholds.InitFailurePct properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.SyntheticProbeThresholds.InitFailurePct prefix=rsModel state=state.SyntheticProbeThresholds.InitFailurePct plan=plan.SyntheticProbeThresholds.InitFailurePct")
 			// property: name=probe_config_id, type=STRING macro=copy_from_plan_or_state
-			if state.SyntheticProbeThresholds.InitFailurePct != nil {
+			if state != nil && state.SyntheticProbeThresholds != nil && state.SyntheticProbeThresholds.InitFailurePct != nil {
 				body.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId = ValueStringPointerFromPlanOrState(plan.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId, state.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId)
 			} else {
 				body.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId = StringValueOrNil(plan.SyntheticProbeThresholds.InitFailurePct.ProbeConfigId)
 			}
 			// property: name=value, type=INTEGER macro=copy_from_plan_or_state
-			if state.SyntheticProbeThresholds.InitFailurePct != nil {
+			if state != nil && state.SyntheticProbeThresholds != nil && state.SyntheticProbeThresholds.InitFailurePct != nil {
 				body.SyntheticProbeThresholds.InitFailurePct.Value = ValueInt64PointerFromPlanOrState(plan.SyntheticProbeThresholds.InitFailurePct.Value, state.SyntheticProbeThresholds.InitFailurePct.Value)
 			} else {
 				body.SyntheticProbeThresholds.InitFailurePct.Value = Int64ValueOrNil(plan.SyntheticProbeThresholds.InitFailurePct.Value)
@@ -1395,13 +1480,13 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 			// copy_from_plan_or_state: body=body.SyntheticProbeThresholds.Jitter prefix=rsModel state=state.SyntheticProbeThresholds.Jitter plan=plan.SyntheticProbeThresholds.Jitter properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.SyntheticProbeThresholds.Jitter prefix=rsModel state=state.SyntheticProbeThresholds.Jitter plan=plan.SyntheticProbeThresholds.Jitter")
 			// property: name=probe_config_id, type=STRING macro=copy_from_plan_or_state
-			if state.SyntheticProbeThresholds.Jitter != nil {
+			if state != nil && state.SyntheticProbeThresholds != nil && state.SyntheticProbeThresholds.Jitter != nil {
 				body.SyntheticProbeThresholds.Jitter.ProbeConfigId = ValueStringPointerFromPlanOrState(plan.SyntheticProbeThresholds.Jitter.ProbeConfigId, state.SyntheticProbeThresholds.Jitter.ProbeConfigId)
 			} else {
 				body.SyntheticProbeThresholds.Jitter.ProbeConfigId = StringValueOrNil(plan.SyntheticProbeThresholds.Jitter.ProbeConfigId)
 			}
 			// property: name=value, type=INTEGER macro=copy_from_plan_or_state
-			if state.SyntheticProbeThresholds.Jitter != nil {
+			if state != nil && state.SyntheticProbeThresholds != nil && state.SyntheticProbeThresholds.Jitter != nil {
 				body.SyntheticProbeThresholds.Jitter.Value = ValueInt64PointerFromPlanOrState(plan.SyntheticProbeThresholds.Jitter.Value, state.SyntheticProbeThresholds.Jitter.Value)
 			} else {
 				body.SyntheticProbeThresholds.Jitter.Value = Int64ValueOrNil(plan.SyntheticProbeThresholds.Jitter.Value)
@@ -1415,13 +1500,13 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 			// copy_from_plan_or_state: body=body.SyntheticProbeThresholds.Latency prefix=rsModel state=state.SyntheticProbeThresholds.Latency plan=plan.SyntheticProbeThresholds.Latency properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.SyntheticProbeThresholds.Latency prefix=rsModel state=state.SyntheticProbeThresholds.Latency plan=plan.SyntheticProbeThresholds.Latency")
 			// property: name=probe_config_id, type=STRING macro=copy_from_plan_or_state
-			if state.SyntheticProbeThresholds.Latency != nil {
+			if state != nil && state.SyntheticProbeThresholds != nil && state.SyntheticProbeThresholds.Latency != nil {
 				body.SyntheticProbeThresholds.Latency.ProbeConfigId = ValueStringPointerFromPlanOrState(plan.SyntheticProbeThresholds.Latency.ProbeConfigId, state.SyntheticProbeThresholds.Latency.ProbeConfigId)
 			} else {
 				body.SyntheticProbeThresholds.Latency.ProbeConfigId = StringValueOrNil(plan.SyntheticProbeThresholds.Latency.ProbeConfigId)
 			}
 			// property: name=value, type=INTEGER macro=copy_from_plan_or_state
-			if state.SyntheticProbeThresholds.Latency != nil {
+			if state != nil && state.SyntheticProbeThresholds != nil && state.SyntheticProbeThresholds.Latency != nil {
 				body.SyntheticProbeThresholds.Latency.Value = ValueInt64PointerFromPlanOrState(plan.SyntheticProbeThresholds.Latency.Value, state.SyntheticProbeThresholds.Latency.Value)
 			} else {
 				body.SyntheticProbeThresholds.Latency.Value = Int64ValueOrNil(plan.SyntheticProbeThresholds.Latency.Value)
@@ -1435,13 +1520,13 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 			// copy_from_plan_or_state: body=body.SyntheticProbeThresholds.PacketLoss prefix=rsModel state=state.SyntheticProbeThresholds.PacketLoss plan=plan.SyntheticProbeThresholds.PacketLoss properties=2
 			tflog.Debug(ctx, "copy_from_plan_or_state body=body.SyntheticProbeThresholds.PacketLoss prefix=rsModel state=state.SyntheticProbeThresholds.PacketLoss plan=plan.SyntheticProbeThresholds.PacketLoss")
 			// property: name=probe_config_id, type=STRING macro=copy_from_plan_or_state
-			if state.SyntheticProbeThresholds.PacketLoss != nil {
+			if state != nil && state.SyntheticProbeThresholds != nil && state.SyntheticProbeThresholds.PacketLoss != nil {
 				body.SyntheticProbeThresholds.PacketLoss.ProbeConfigId = ValueStringPointerFromPlanOrState(plan.SyntheticProbeThresholds.PacketLoss.ProbeConfigId, state.SyntheticProbeThresholds.PacketLoss.ProbeConfigId)
 			} else {
 				body.SyntheticProbeThresholds.PacketLoss.ProbeConfigId = StringValueOrNil(plan.SyntheticProbeThresholds.PacketLoss.ProbeConfigId)
 			}
 			// property: name=value, type=INTEGER macro=copy_from_plan_or_state
-			if state.SyntheticProbeThresholds.PacketLoss != nil {
+			if state != nil && state.SyntheticProbeThresholds != nil && state.SyntheticProbeThresholds.PacketLoss != nil {
 				body.SyntheticProbeThresholds.PacketLoss.Value = ValueInt64PointerFromPlanOrState(plan.SyntheticProbeThresholds.PacketLoss.Value, state.SyntheticProbeThresholds.PacketLoss.Value)
 			} else {
 				body.SyntheticProbeThresholds.PacketLoss.Value = Int64ValueOrNil(plan.SyntheticProbeThresholds.PacketLoss.Value)
@@ -1456,26 +1541,31 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 		// copy_from_plan_or_state: body=body.SystemHealthMetricsThresholds prefix=rsModel state=state.SystemHealthMetricsThresholds plan=plan.SystemHealthMetricsThresholds properties=3
 		tflog.Debug(ctx, "copy_from_plan_or_state body=body.SystemHealthMetricsThresholds prefix=rsModel state=state.SystemHealthMetricsThresholds plan=plan.SystemHealthMetricsThresholds")
 		// property: name=cpu_utilization, type=INTEGER macro=copy_from_plan_or_state
-		if state.SystemHealthMetricsThresholds != nil {
+		if state != nil && state.SystemHealthMetricsThresholds != nil {
 			body.SystemHealthMetricsThresholds.CpuUtilization = ValueInt64PointerFromPlanOrState(plan.SystemHealthMetricsThresholds.CpuUtilization, state.SystemHealthMetricsThresholds.CpuUtilization)
 		} else {
 			body.SystemHealthMetricsThresholds.CpuUtilization = Int64ValueOrNil(plan.SystemHealthMetricsThresholds.CpuUtilization)
 		}
 		// property: name=disk_utilization, type=INTEGER macro=copy_from_plan_or_state
-		if state.SystemHealthMetricsThresholds != nil {
+		if state != nil && state.SystemHealthMetricsThresholds != nil {
 			body.SystemHealthMetricsThresholds.DiskUtilization = ValueInt64PointerFromPlanOrState(plan.SystemHealthMetricsThresholds.DiskUtilization, state.SystemHealthMetricsThresholds.DiskUtilization)
 		} else {
 			body.SystemHealthMetricsThresholds.DiskUtilization = Int64ValueOrNil(plan.SystemHealthMetricsThresholds.DiskUtilization)
 		}
 		// property: name=memory_utilization, type=INTEGER macro=copy_from_plan_or_state
-		if state.SystemHealthMetricsThresholds != nil {
+		if state != nil && state.SystemHealthMetricsThresholds != nil {
 			body.SystemHealthMetricsThresholds.MemoryUtilization = ValueInt64PointerFromPlanOrState(plan.SystemHealthMetricsThresholds.MemoryUtilization, state.SystemHealthMetricsThresholds.MemoryUtilization)
 		} else {
 			body.SystemHealthMetricsThresholds.MemoryUtilization = Int64ValueOrNil(plan.SystemHealthMetricsThresholds.MemoryUtilization)
 		}
 	}
 	// property: name=tags, type=SET_PRIMITIVE macro=copy_from_plan_or_state
-	body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	if state != nil && plan.Tags.IsUnknown() {
+		// computed and not configured: send what the server has, not an empty list the api may read as a change
+		body.Tags = SetStringValueOrNil(ctx, state.Tags)
+	} else {
+		body.Tags = SetStringValueOrNil(ctx, plan.Tags)
+	}
 
 	// convert body to map
 	json_body, err := json.Marshal(body)
@@ -1536,6 +1626,12 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 	if json_err != nil {
 		resp.Diagnostics.AddError("error in json unmarshal to PerfMgmtThresholdProfileScreenV2N1 in update", json_err.Error())
 		return false
+	}
+
+	// x_parameters is what the configuration says: after an import the prior state has none, and a state that
+	// differs from the plan ends in "Provider produced inconsistent result after apply"
+	if !plan.TfParameters.IsNull() && !plan.TfParameters.IsUnknown() {
+		state.TfParameters = plan.TfParameters
 	}
 
 	// Store the answer to state. schema=PerfMgmtThresholdProfileScreenV2N1
@@ -1701,6 +1797,14 @@ func (r *performanceProfileResource) doPut(ctx context.Context, plan *rsModelPer
 	varTags, errTags := types.SetValueFrom(ctx, types.StringType, ans.Tags)
 	state.Tags = varTags
 	resp.Diagnostics.Append(errTags.Errors()...)
+	// api does not accept empty list as missing value
+	if len(ans.Tags) == 0 {
+		state.Tags = types.SetNull(types.StringType)
+	}
+	// the configuration states an empty list: keep it
+	if len(ans.Tags) == 0 && !plan.Tags.IsNull() && !plan.Tags.IsUnknown() && len(plan.Tags.Elements()) == 0 {
+		state.Tags = plan.Tags
+	}
 	return true
 }
 
